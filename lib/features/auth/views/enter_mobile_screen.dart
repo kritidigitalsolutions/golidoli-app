@@ -194,7 +194,7 @@ class _MobileInputField extends StatelessWidget {
               ),
             ),
             child: Text(
-              '+91 - I',
+              '+91',
               style: text15(
                 color: AppColors.textColor,
                 fontWeight: FontWeight.w500,

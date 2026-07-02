@@ -94,7 +94,7 @@ class _OnboardingPageView extends StatelessWidget {
         Positioned(
           left: 28,
           right: 28,
-          bottom: 130,
+          bottom: 150,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
@@ -200,6 +200,7 @@ class _BottomControls extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(height: 20),
         ],
       ),
     );

@@ -14,7 +14,6 @@ class NotificationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProfilePageScaffold(
       title: 'Notifications',
-
       children: [
         Align(
           alignment: Alignment.centerRight,
@@ -34,40 +33,71 @@ class NotificationScreen extends StatelessWidget {
                     index,
                   ) {
                     final item = controller.notifications[index];
-                    return ProfileSurfaceTile(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.notifications_active_outlined,
-                            color: AppColors.primaryColor,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item['title'] ?? '',
-                                  style: text14(fontWeight: FontWeight.w700),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  item['subtitle'] ?? '',
-                                  style: text12(
-                                    color: AppColors.secondaryTextColor,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  item['time'] ?? '',
-                                  style: text10(color: AppColors.hintTextColor),
-                                ),
-                              ],
+
+                    return Dismissible(
+                      key: ValueKey("${item['title']}_${item['time']}_$index"),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        alignment: Alignment.centerRight,
+                        child: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      onDismissed: (_) {
+                        controller.notifications.removeAt(index);
+
+                        Get.snackbar(
+                          "Notification Removed",
+                          "Notification dismissed",
+                          snackPosition: SnackPosition.BOTTOM,
+                          duration: const Duration(seconds: 2),
+                        );
+                      },
+                      child: ProfileSurfaceTile(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.notifications_active_outlined,
+                              color: AppColors.primaryColor,
+                              size: 22,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['title'] ?? '',
+                                    style: text14(fontWeight: FontWeight.w700),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item['subtitle'] ?? '',
+                                    style: text12(
+                                      color: AppColors.secondaryTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    item['time'] ?? '',
+                                    style: text10(
+                                      color: AppColors.hintTextColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }),
