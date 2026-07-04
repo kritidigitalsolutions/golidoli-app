@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:golidoli_app/constants/app_images.dart';
+
+import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 
 class SplashController extends GetxController
@@ -126,11 +127,53 @@ class OnboardingController extends GetxController {
 // ==================================================
 
 class AuthController extends GetxController {
+  final AuthDatasource authDatasource = AuthDatasource();
   // ── Mobile number ────────────────────────────────────
   final TextEditingController mobileController = TextEditingController();
   final RxString mobileNumber = ''.obs;
   final RxBool isMobileValid = false.obs;
+  final RxBool isOtpValid = false.obs;
   final RxString mobileError = ''.obs;
+  final RxBool sendOtpStatus = false.obs;
+  final TextEditingController otpController = TextEditingController();
+
+  final RxString otp = ''.obs;
+  final RxBool verifyOtpStatus = false.obs;
+  Future<void> sendOTP() async {
+    if (!isMobileValid.value) {
+      Get.snackbar(
+        'Enter mobile number',
+        mobileError.value,
+        backgroundColor: Colors.red,
+      );
+      return;
+    }
+
+    try {
+      // Start loading
+      sendOtpStatus.value = true;
+
+      final result = await authDatasource.sendOtp(phone: mobileNumber.value);
+
+      // Stop loading
+      sendOtpStatus.value = false;
+
+      if (result) {
+        Get.snackbar("Success", "OTP sent successfully");
+
+        Get.toNamed(
+          AppRoutes.verifyOtp,
+          arguments: {'mobile': mobileController.text},
+        );
+      } else {
+        Get.snackbar("Error", "Failed to send OTP");
+      }
+    } catch (e) {
+      sendOtpStatus.value = false;
+
+      Get.snackbar("Error", e.toString());
+    }
+  }
 
   // ── OTP ──────────────────────────────────────────────
   final List<TextEditingController> otpControllers = List.generate(
@@ -294,124 +337,3 @@ class AuthController extends GetxController {
 // =====================================================================
 
 // ── Interest model ────────────────────────────────────
-class InterestItem {
-  final String label;
-  final String image;
-
-  const InterestItem({required this.label, required this.image});
-}
-
-class RegistrationController extends GetxController {
-  // ── Create Account fields ─────────────────────────────
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-
-  final RxBool isTermsAccepted = false.obs;
-  final RxBool isLoading = false.obs;
-
-  // Reactive field values for validation
-  final RxString name = ''.obs;
-  final RxString email = ''.obs;
-  final RxString nameError = ''.obs;
-  final RxString emailError = ''.obs;
-
-  bool get isFormValid {
-    final nameValid = name.value.trim().length >= 3;
-    final emailText = email.value.trim();
-    final emailValid = emailText.isEmpty || GetUtils.isEmail(emailText);
-    return nameValid && emailValid && isTermsAccepted.value;
-  }
-
-  // ── Interests ─────────────────────────────────────────
-  final List<InterestItem> interests = const [
-    InterestItem(label: 'Movies', image: AppImages.film),
-    InterestItem(label: 'Web Series', image: AppImages.videoEditing),
-    InterestItem(label: 'Micro Dramas', image: AppImages.video),
-    InterestItem(label: 'Action', image: AppImages.actionMovie),
-    InterestItem(label: 'Romance', image: AppImages.romance),
-    InterestItem(label: 'Thriller', image: AppImages.thriller),
-    InterestItem(label: 'Comedy', image: AppImages.comedy),
-    InterestItem(label: 'Bold Content', image: AppImages.plus18Movie),
-    InterestItem(label: 'Suspense', image: AppImages.thinking),
-    InterestItem(label: 'Horror', image: AppImages.horror),
-    InterestItem(label: 'Fantasy', image: AppImages.magical),
-  ];
-  final RxList<int> selectedInterests = <int>[].obs;
-
-  bool isInterestSelected(int index) {
-    return selectedInterests.contains(index);
-  }
-
-  void toggleInterest(int index) {
-    if (selectedInterests.contains(index)) {
-      selectedInterests.remove(index);
-    } else {
-      selectedInterests.add(index);
-    }
-  }
-
-  bool get hasSelectedInterests {
-    return selectedInterests.isNotEmpty;
-  }
-
-  void toggleTerms(bool? val) {
-    isTermsAccepted.value = val ?? false;
-  }
-
-  void nextFromCreateAccount() async {
-    if (!isFormValid) return;
-    isLoading.value = true;
-    await Future.delayed(const Duration(milliseconds: 800));
-    isLoading.value = false;
-    Get.toNamed(AppRoutes.selectInterests);
-  }
-
-  void continueFromInterests() async {
-    if (!hasSelectedInterests) return;
-    isLoading.value = true;
-    await Future.delayed(const Duration(milliseconds: 800));
-    isLoading.value = false;
-    Get.toNamed(AppRoutes.allSet);
-  }
-
-  void skipInterests() => Get.toNamed(AppRoutes.allSet);
-
-  void startWatching() {
-    Get.offAllNamed(AppRoutes.home);
-  }
-
-  @override
-  void onInit() {
-    super.onInit();
-    nameController.addListener(() {
-      final val = nameController.text.trim();
-      name.value = val;
-      if (val.isEmpty) {
-        nameError.value = '';
-      } else if (val.length < 3) {
-        nameError.value = 'Name must be at least 3 characters';
-      } else {
-        nameError.value = '';
-      }
-    });
-
-    emailController.addListener(() {
-      final val = emailController.text.trim();
-      email.value = val;
-      if (val.isEmpty) {
-        emailError.value = '';
-      } else if (!GetUtils.isEmail(val)) {
-        emailError.value = 'Please enter a valid email address';
-      } else {
-        emailError.value = '';
-      }
-    });
-  }
-
-  @override
-  void onClose() {
-    nameController.dispose();
-    emailController.dispose();
-    super.onClose();
-  }
-}

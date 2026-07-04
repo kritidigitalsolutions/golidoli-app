@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
+import 'package:golidoli_app/features/auth/controllers/register_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
   @override
   Widget build(BuildContext context) {
+    final FetchProfileController controllers = Get.put(
+      FetchProfileController(),
+    );
     final controller = Get.put(ProfileController());
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
@@ -21,7 +24,7 @@ class ProfileScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    _buildUserHeader(controller),
+                    _buildUserHeader(controllers),
                     SizedBox(height: 20),
                     _buildMenuList(controller),
                   ],
@@ -44,80 +47,97 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUserHeader(ProfileController controller) {
-    final user = controller.user;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      child: Row(
-        children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundImage: NetworkImage(user['avatar']),
-                backgroundColor: AppColors.cardColor,
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: AppColors.backgroundColor,
-                      width: 2,
+  Widget _buildUserHeader(FetchProfileController controller) {
+    return Obx(() {
+      final user = controller.user.value;
+
+      if (controller.isLoading.value) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      if (user == null) {
+        return const Center(child: Text("No user found"));
+      }
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        child: Row(
+          children: [
+            Stack(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: AppColors.cardColor,
+                  backgroundImage: user.profileImage.isNotEmpty
+                      ? NetworkImage(user.profileImage)
+                      : null,
+                  child: user.profileImage.isEmpty
+                      ? const Icon(Icons.person)
+                      : null,
+                ),
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.backgroundColor,
+                        width: 2,
+                      ),
                     ),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '✦',
-                      style: TextStyle(fontSize: 8, color: AppColors.black),
+                    child: const Center(
+                      child: Text(
+                        '✦',
+                        style: TextStyle(fontSize: 8, color: AppColors.black),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    user['name'],
-                    style: text16(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text('🔥', style: TextStyle(fontSize: 14)),
-                ],
-              ),
-              const SizedBox(height: 3),
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryColor,
-                      shape: BoxShape.circle,
+              ],
+            ),
+
+            const SizedBox(width: 12),
+
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(user.name, style: text16(fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 6),
+                    const Text('🔥', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+
+                const SizedBox(height: 3),
+
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    'Premium Member',
-                    style: text11(color: AppColors.primaryColor),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+                    const SizedBox(width: 5),
+                    Text(
+                      user.role,
+                      style: text11(color: AppColors.primaryColor),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildMenuList(ProfileController controller) {

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
+import 'package:golidoli_app/features/auth/controllers/auth_controllers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class VerifyOtpScreen extends StatelessWidget {
   VerifyOtpScreen({super.key});
 
-  final AuthController controller = Get.put(AuthController());
+  final AuthControllers controllers = Get.find<AuthControllers>();
 
   @override
   Widget build(BuildContext context) {
@@ -85,11 +85,13 @@ class VerifyOtpScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              '+91 ${controller.maskedMobile}',
-                              style: text14(
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textColor,
+                            Obx(
+                              () => Text(
+                                '+91 ${controllers.mobileNumber.value}',
+                                style: text14(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textColor,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -112,18 +114,18 @@ class VerifyOtpScreen extends StatelessWidget {
                             4,
                             (i) => _OtpBox(
                               index: i,
-                              controller: controller.otpControllers[i],
-                              focusNode: controller.otpFocusNodes[i],
-                              onChanged: (v) => controller.onOtpChanged(v, i),
+                              controller: controllers.otpControllers[i],
+                              focusNode: controllers.otpFocusNodes[i],
+                              onChanged: (v) => controllers.onOtpChanged(v, i),
                             ),
                           ),
                         ),
                         Obx(() {
-                          if (controller.otpError.value.isNotEmpty) {
+                          if (controllers.otpError.value.isNotEmpty) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 12.0),
                               child: Text(
-                                controller.otpError.value,
+                                controllers.otpError.value,
                                 style: text12(color: AppColors.errorColor),
                                 textAlign: TextAlign.center,
                               ),
@@ -135,9 +137,9 @@ class VerifyOtpScreen extends StatelessWidget {
 
                         // Resend timer
                         Obx(
-                          () => controller.canResend.value
+                          () => controllers.canResend.value
                               ? GestureDetector(
-                                  onTap: controller.resendOtp,
+                                  onTap: controllers.resendOtp,
                                   child: Text(
                                     'Resend OTP',
                                     style: text14(
@@ -154,7 +156,7 @@ class VerifyOtpScreen extends StatelessWidget {
                                     ),
                                     children: [
                                       TextSpan(
-                                        text: controller.formattedTimer,
+                                        text: controllers.formattedTimer,
                                         style: text13(
                                           color: AppColors.primaryColor,
                                           fontWeight: FontWeight.w700,
@@ -175,7 +177,7 @@ class VerifyOtpScreen extends StatelessWidget {
 
           // Loading overlay
           Obx(
-            () => controller.isLoading.value
+            () => controllers.verifyOtpStatus.value
                 ? Container(
                     color: Colors.black54,
                     child: const Center(

@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
+import 'package:golidoli_app/features/auth/controllers/auth_controllers.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class EnterMobileScreen extends StatelessWidget {
   EnterMobileScreen({super.key});
 
-  final AuthController controller = Get.put(AuthController());
-
+  final AuthControllers controllers = Get.put(AuthControllers());
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,14 +70,14 @@ class EnterMobileScreen extends StatelessWidget {
                         const SizedBox(height: 28),
 
                         // Phone input field
-                        _MobileInputField(controller: controller),
+                        _MobileInputField(controller: controllers),
 
                         Obx(() {
-                          if (controller.mobileError.value.isNotEmpty) {
+                          if (controllers.mobileError.value.isNotEmpty) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text(
-                                controller.mobileError.value,
+                                controllers.mobileError.value,
                                 style: text12(color: AppColors.errorColor),
                                 textAlign: TextAlign.center,
                               ),
@@ -100,10 +99,10 @@ class EnterMobileScreen extends StatelessWidget {
                         Obx(
                           () => AppButton(
                             title: "Send OTP",
-                            onTap: controller.isMobileValid.value
-                                ? controller.sendOtp
+                            onTap: controllers.isMobileValid.value
+                                ? controllers.sendOTP
                                 : null,
-                            isLoading: controller.isLoading.value,
+                            isLoading: controllers.sendOtpStatus.value,
                           ),
                         ),
                       ],
@@ -171,7 +170,7 @@ class _PhoneIllustration extends StatelessWidget {
 
 // ─── Mobile input field ───────────────────────────────
 class _MobileInputField extends StatelessWidget {
-  final AuthController controller;
+  final AuthControllers controller;
   const _MobileInputField({required this.controller});
 
   @override
@@ -210,6 +209,7 @@ class _MobileInputField extends StatelessWidget {
               cursorColor: AppColors.white,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               style: text15(color: AppColors.textColor),
+              onChanged: controller.validateMobile, // <-- add this line
               decoration: InputDecoration(
                 hintText: '0000000000',
                 hintStyle: text15(color: AppColors.hintTextColor),

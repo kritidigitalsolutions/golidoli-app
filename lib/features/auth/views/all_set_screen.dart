@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
-import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/features/auth/controllers/register_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,7 +15,8 @@ class AllSetScreen extends StatefulWidget {
 
 class _AllSetScreenState extends State<AllSetScreen>
     with SingleTickerProviderStateMixin {
-  final RegistrationController controller = Get.put(RegistrationController());
+  final RegistrationController controller =
+      Get.find<RegistrationController>(); // was Get.put(...)
 
   late final AnimationController _animController;
   late final Animation<double> _fade;
@@ -211,9 +211,7 @@ class _AllSetScreenState extends State<AllSetScreen>
                         width: double.infinity,
                         child: AppButton(
                           title: "Start Watching",
-                          onTap: () {
-                            Get.toNamed(AppRoutes.home);
-                          },
+                          onTap: controller.startWatching,
                         ),
                       ),
                     ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
+import 'package:golidoli_app/features/auth/controllers/register_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -9,8 +9,8 @@ import 'package:google_fonts/google_fonts.dart';
 class SelectInterestsScreen extends StatelessWidget {
   SelectInterestsScreen({super.key});
 
-  final RegistrationController controller = Get.put(RegistrationController());
-
+  final RegistrationController controller =
+      Get.find<RegistrationController>(); // was Get.put(...)
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,7 +122,9 @@ class SelectInterestsScreen extends StatelessWidget {
                         Obx(() {
                           final hasSelected =
                               controller.selectedInterests.isNotEmpty;
-                          final isLoading = controller.isLoading.value;
+                          final isLoading = controller
+                              .isCompleteProfileLoading
+                              .value; // was isLoading
                           return AppButton(
                             title: "Next",
                             onTap: hasSelected
@@ -134,12 +136,17 @@ class SelectInterestsScreen extends StatelessWidget {
 
                         const SizedBox(height: 16),
 
-                        // ── Skip ──
-                        GestureDetector(
-                          onTap: controller.skipInterests,
-                          child: Text(
-                            'Skip For Now',
-                            style: text14(color: AppColors.secondaryTextColor),
+                        Obx(
+                          () => GestureDetector(
+                            onTap: controller.isCompleteProfileLoading.value
+                                ? null
+                                : controller.skipInterests,
+                            child: Text(
+                              'Skip For Now',
+                              style: text14(
+                                color: AppColors.secondaryTextColor,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 32),
