@@ -42,4 +42,6 @@ class AppRoutes {
   // Web Series
   static const webSeries = '/web-series';
   static const webSeriesDetail = '/web-series-detail';
+
+  static const faq = '/faq';
 }

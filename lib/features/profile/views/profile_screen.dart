@@ -150,6 +150,7 @@ class ProfileScreen extends StatelessWidget {
       'settings': Icons.settings_outlined,
       'privacy': Icons.privacy_tip_outlined,
       'terms': Icons.description_outlined,
+      "FAQ's":Icons.question_answer_outlined,
     };
 
     final items = controller.menuItems;

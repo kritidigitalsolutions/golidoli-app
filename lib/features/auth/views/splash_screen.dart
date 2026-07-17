@@ -1,15 +1,78 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
+import '../../../core/services/storage_service.dart';
+import '../../../main.dart';
+import 'onboarding_screen.dart';
 
-class SplashScreen extends StatelessWidget {
-  SplashScreen({super.key});
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
 
-  final SplashController controller = Get.put(SplashController());
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  Timer? _timer;
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize animations
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
+
+    // Start animations
+    _fadeController.forward();
+
+    // Start navigation timer
+    _navigateAfterDelay();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _fadeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _navigateAfterDelay() async {
+    // Wait for 2 seconds
+    _timer = Timer(const Duration(seconds: 2), () async {
+      // Check token from StorageService
+      final token = await StorageService.getToken();
+      debugPrint('Token: $token');
+
+      if (token == null || token.isEmpty) {
+        // No token, go to onboarding
+        Get.offAll(() => OnboardingScreen());
+      } else {
+        // Token exists, go to home page
+        Get.offAll(() => const MyHomePage());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +108,9 @@ class SplashScreen extends StatelessWidget {
           // Logo + tagline
           Center(
             child: FadeTransition(
-              opacity: controller.fadeAnimation,
+              opacity: _fadeAnimation,
               child: ScaleTransition(
-                scale: controller.scaleAnimation,
+                scale: _scaleAnimation,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

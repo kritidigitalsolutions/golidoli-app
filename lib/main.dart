@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/core/di/injection.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/views/discover_tab.dart';
 import 'package:golidoli_app/features/home/views/home_tab.dart';
@@ -11,8 +12,12 @@ import 'package:golidoli_app/features/profile/views/profile_screen.dart';
 import 'package:golidoli_app/routes/app_pages.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/bottom_nav_bar.dart';
+import 'package:get/get.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Injection.initial();
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -21,61 +26,97 @@ void main() {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Flutter Demo',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
-        ),
-      ),
-      initialRoute: AppRoutes.splash,
-      getPages: [
-        ...AppPages.pages,
-        GetPage(
-          name: AppRoutes.home,
-          page: () => MyHomePage(),
-          transition: Transition.fadeIn,
-          transitionDuration: const Duration(milliseconds: 350),
-        ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => InjectionBlock.movieBloc),
+        BlocProvider(create: (context) => InjectionBlock.seriesBloc),
+        BlocProvider(create: (context) => InjectionBlock.episodeBloc),
+        BlocProvider(create: (context)=>InjectionBlock.helpCubit),
       ],
+      child: GetMaterialApp(
+        title: 'Golidoli App',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          fontFamily: 'Poppins',
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Colors.white,
+            foregroundColor: Colors.black,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            surfaceTintColor: Colors.transparent,
+          ),
+        ),
+        initialRoute: AppRoutes.splash,
+        getPages: [
+          ...AppPages.pages,
+          GetPage(
+            name: AppRoutes.home,
+            page: () => const MyHomePage(),
+            transitionDuration: const Duration(milliseconds: 350),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
   final int? initialIndex;
-  MyHomePage({super.key, this.initialIndex});
 
-  final HomeController controller = Get.put(HomeController());
+  const MyHomePage({super.key, this.initialIndex});
 
   @override
-  Widget build(BuildContext context) {
-    final pages = [
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  late final HomeController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(HomeController());
+
+    // Handle initial index after first build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.initialIndex != null && controller.selectedIndex.value == 0) {
+        final pagesLength = _getPages().length;
+        final validIndex = widget.initialIndex!.clamp(0, pagesLength - 1);
+        controller.changeTab(validIndex);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Clean up GetX controller if needed
+    // Get.delete<HomeController>();
+    super.dispose();
+  }
+
+  List<Widget> _getPages() {
+    return const [
       HomeTap(),
       WatchlistScreen(),
       ReelsTab(),
       DiscoverTab(),
       ProfileScreen(),
     ];
+  }
 
-    if (initialIndex != null && controller.selectedIndex.value == 0) {
-      controller.changeTab(initialIndex!.clamp(0, pages.length - 1).toInt());
-    }
+  @override
+  Widget build(BuildContext context) {
+    final pages = _getPages();
 
     return Obx(
       () => Scaffold(

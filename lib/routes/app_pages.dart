@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:golidoli_app/features/auth/views/all_set_screen.dart';
-import 'package:golidoli_app/features/auth/views/create_account_screen.dart';
 import 'package:golidoli_app/features/auth/views/enter_mobile_screen.dart';
 import 'package:golidoli_app/features/auth/views/login_screen.dart';
 import 'package:golidoli_app/features/auth/views/onboarding_screen.dart';
@@ -16,6 +15,7 @@ import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/views/content_preference_screen.dart';
 import 'package:golidoli_app/features/profile/views/downloads_screen.dart';
 import 'package:golidoli_app/features/profile/views/edit_profile_screen.dart';
+import 'package:golidoli_app/features/profile/views/faq_page.dart';
 import 'package:golidoli_app/features/profile/views/language_screen.dart';
 import 'package:golidoli_app/features/profile/views/notification_screen.dart';
 import 'package:golidoli_app/features/profile/views/notification_settings_screen.dart';
@@ -31,6 +31,8 @@ import 'package:golidoli_app/features/movie/views/movie_listing_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_listing_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+
+import '../features/auth/views/create_account_screen.dart';
 
 abstract class AppPages {
   AppPages._();
@@ -102,12 +104,12 @@ abstract class AppPages {
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 350),
     ),
-    GetPage(
-      name: AppRoutes.videoPlayer,
-      page: () => MoviePlayerScreen(),
-      transition: Transition.fadeIn,
-      transitionDuration: const Duration(milliseconds: 250),
-    ),
+    // GetPage(
+    //   name: AppRoutes.videoPlayer,
+    //   page: () => MoviePlayerScreen(episode: ,),
+    //   transition: Transition.fadeIn,
+    //   transitionDuration: const Duration(milliseconds: 250),
+    // ),
     GetPage(
       name: AppRoutes.subscription,
       page: () => const SubscriptionScreen(),
@@ -229,6 +231,13 @@ abstract class AppPages {
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 350),
     ),
+
+    GetPage(
+      name: AppRoutes.faq,
+      page: () => const FaqPage(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 350),
+    ),
     // ---------------------------------------------------
     // Web Series
     // ---------------------------------------------------
@@ -238,11 +247,11 @@ abstract class AppPages {
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 350),
     ),
-    GetPage(
-      name: AppRoutes.webSeriesDetail,
-      page: () => const WebSeriesDetailScreen(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 350),
-    ),
+    // GetPage(
+    //   name: AppRoutes.webSeriesDetail,
+    //   page: () => const WebSeriesDetailScreen(id: ,),
+    //   transition: Transition.rightToLeft,
+    //   transitionDuration: const Duration(milliseconds: 350),
+    // ),
   ];
 }

@@ -8,6 +8,8 @@ import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/services/storage_service.dart';
+
 // =================================────────────────────────────────────────────
 // 1. Profile Controller
 // =================================────────────────────────────────────────────
@@ -33,6 +35,7 @@ class ProfileController extends GetxController {
     {'icon': 'settings', 'label': 'Notifications Settings'},
     {'icon': 'privacy', 'label': 'Privacy Policy'},
     {'icon': 'terms', 'label': 'Terms & Conditions'},
+    {'icon': "FAQ's", 'label': "FAQ's"},
   ];
 
   void onMenuTap(String label) {
@@ -45,6 +48,7 @@ class ProfileController extends GetxController {
       'Notifications Settings': AppRoutes.notificationSettings,
       'Privacy Policy': AppRoutes.privacyPolicy,
       'Terms & Conditions': AppRoutes.termsConditions,
+      "FAQ's": AppRoutes.faq,
     };
 
     final route = routes[label];
@@ -76,10 +80,7 @@ class ProfileController extends GetxController {
                 size: 40,
               ),
               const SizedBox(height: 16),
-              Text(
-                'Log Out',
-                style: text18(fontWeight: FontWeight.bold),
-              ),
+              Text('Log Out', style: text18(fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Text(
                 'Are you sure you want to log out from GoliDoli?',
@@ -91,7 +92,9 @@ class ProfileController extends GetxController {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => Get.back(),
+                      onTap: () {
+                        Get.back();
+                      },
                       child: Container(
                         height: 44,
                         decoration: BoxDecoration(
@@ -116,8 +119,10 @@ class ProfileController extends GetxController {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
+                      onTap: () async {
+                        await StorageService.logout();
                         Get.back();
+                        print("token deleted!");
                         Get.offAllNamed(AppRoutes.login);
                       },
                       child: Container(
@@ -339,15 +344,18 @@ class PrivacyController extends GetxController {
   final sections = const [
     {
       'title': 'Data We Collect',
-      'body': 'We use profile, watch history, preferences, and device data to improve your streaming experience.',
+      'body':
+          'We use profile, watch history, preferences, and device data to improve your streaming experience.',
     },
     {
       'title': 'How We Use Data',
-      'body': 'Your data helps personalize recommendations, manage subscriptions, improve safety, and support downloads.',
+      'body':
+          'Your data helps personalize recommendations, manage subscriptions, improve safety, and support downloads.',
     },
     {
       'title': 'Your Choices',
-      'body': 'You can update profile details, content preferences, notification choices, and account settings anytime.',
+      'body':
+          'You can update profile details, content preferences, notification choices, and account settings anytime.',
     },
   ];
 }
@@ -376,15 +384,18 @@ class TermsController extends GetxController {
   final sections = const [
     {
       'title': 'Using GoliDoli',
-      'body': 'Use the app only for personal entertainment and follow all applicable laws and platform rules.',
+      'body':
+          'Use the app only for personal entertainment and follow all applicable laws and platform rules.',
     },
     {
       'title': 'Subscriptions',
-      'body': 'Premium benefits, billing cycles, offers, and cancellation terms may vary by plan and region.',
+      'body':
+          'Premium benefits, billing cycles, offers, and cancellation terms may vary by plan and region.',
     },
     {
       'title': 'Content Access',
-      'body': 'Movies, web series, micro dramas, downloads, and quality settings can change based on rights and availability.',
+      'body':
+          'Movies, web series, micro dramas, downloads, and quality settings can change based on rights and availability.',
     },
   ];
 }
@@ -404,8 +415,8 @@ class WatchlistController extends GetxController {
       'title': i % 3 == 0
           ? 'Me Before You'
           : i % 3 == 1
-              ? 'Squid Game'
-              : 'Connect',
+          ? 'Squid Game'
+          : 'Connect',
       'image': 'https://picsum.photos/seed/wm${i + 1}/200/300',
     },
   );
@@ -417,8 +428,8 @@ class WatchlistController extends GetxController {
       'title': i % 3 == 0
           ? 'Me Before You'
           : i % 3 == 1
-              ? 'Squid Game'
-              : 'Connect',
+          ? 'Squid Game'
+          : 'Connect',
       'image': 'https://picsum.photos/seed/ws${i + 1}/200/300',
     },
   );
@@ -430,8 +441,8 @@ class WatchlistController extends GetxController {
       'title': i % 3 == 0
           ? 'My Racer Stepbrother'
           : i % 3 == 1
-              ? 'The True Heiress'
-              : 'Connect',
+          ? 'The True Heiress'
+          : 'Connect',
       'image': 'https://picsum.photos/seed/wd${i + 1}/200/300',
     },
   );
