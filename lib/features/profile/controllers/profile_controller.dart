@@ -36,6 +36,7 @@ class ProfileController extends GetxController {
     {'icon': 'privacy', 'label': 'Privacy Policy'},
     {'icon': 'terms', 'label': 'Terms & Conditions'},
     {'icon': "FAQ's", 'label': "FAQ's"},
+    {'icon': 'refund', 'label': 'Refund Policy'},
   ];
 
   void onMenuTap(String label) {
@@ -49,6 +50,7 @@ class ProfileController extends GetxController {
       'Privacy Policy': AppRoutes.privacyPolicy,
       'Terms & Conditions': AppRoutes.termsConditions,
       "FAQ's": AppRoutes.faq,
+      'Refund Policy': AppRoutes.refundPolicy,
     };
 
     final route = routes[label];

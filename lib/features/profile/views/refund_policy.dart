@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/profile/bloc/document_bloc/help_cubit.dart';
 import 'package:golidoli_app/features/profile/widgets/profile_page_scaffold.dart';
 import 'package:golidoli_app/utils/text_style.dart';
-import '../../../constants/enums.dart';
 
-class TermsConditionsScreen extends StatefulWidget {
-  const TermsConditionsScreen({super.key});
+class RefundPolicy extends StatefulWidget {
+  const RefundPolicy({super.key});
 
   @override
-  State<TermsConditionsScreen> createState() => _TermsConditionsScreenState();
+  State<RefundPolicy> createState() => _RefundPolicyState();
 }
 
-class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
+class _RefundPolicyState extends State<RefundPolicy> {
   @override
   void initState() {
     super.initState();
-    context.read<HelpCubit>().singleDocument(id: "terms-conditions");
+    context.read<HelpCubit>().singleDocument(id: "refund-policy");
   }
 
   @override
@@ -27,7 +27,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
         // Loading State
         if (state.singleDocumentStatus == Status.loading) {
           return ProfilePageScaffold(
-            title: 'Terms & Conditions',
+            title: 'Refund Policy',
             children: [
               const SizedBox(height: 100),
               const Center(
@@ -42,7 +42,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
         // Error State
         if (state.singleDocumentStatus == Status.error) {
           return ProfilePageScaffold(
-            title: 'Terms & Conditions',
+            title: 'Refund Policy',
             children: [
               const SizedBox(height: 100),
               Center(
@@ -55,7 +55,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Failed to load terms & conditions',
+                      'Failed to load refund policy',
                       style: text13(color: AppColors.secondaryTextColor),
                     ),
                     const SizedBox(height: 16),
@@ -63,7 +63,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                       onPressed: () {
                         context
                             .read<HelpCubit>()
-                            .singleDocument(id: "terms-conditions");
+                            .singleDocument(id: "refund-policy");
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryColor,
@@ -81,18 +81,19 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
         }
 
         // Success State
-        if (state.singleDocumentStatus == Status.success && state.singleDocument != null) {
+        if (state.singleDocumentStatus == Status.success &&
+            state.singleDocument != null) {
           final document = state.singleDocument!;
 
-          // If document is null or has no content
+          // If document has no content
           if (document.content.isEmpty) {
             return ProfilePageScaffold(
-              title: 'Terms & Conditions',
+              title: 'Refund Policy',
               children: [
                 const SizedBox(height: 100),
                 Center(
                   child: Text(
-                    'No terms & conditions available',
+                    'No refund policy available',
                     style: text13(color: AppColors.secondaryTextColor),
                   ),
                 ),
@@ -101,10 +102,10 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
           }
 
           return ProfilePageScaffold(
-            title: 'Terms & Conditions',
+            title: 'Refund Policy',
             children: [
               Text(
-                'Please read these terms before using GoliDoli.',
+                'Please read our refund policy carefully.',
                 style: text13(color: AppColors.secondaryTextColor),
               ),
               const SizedBox(height: 14),
@@ -137,12 +138,12 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
 
         // Default/Initial state
         return ProfilePageScaffold(
-          title: 'Terms & Conditions',
+          title: 'Refund Policy',
           children: [
             const SizedBox(height: 100),
             Center(
               child: Text(
-                'Loading terms & conditions...',
+                'Loading refund policy...',
                 style: text13(color: AppColors.secondaryTextColor),
               ),
             ),

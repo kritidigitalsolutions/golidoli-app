@@ -44,4 +44,5 @@ class AppRoutes {
   static const webSeriesDetail = '/web-series-detail';
 
   static const faq = '/faq';
+  static const refundPolicy = '/refund-policy';
 }
