@@ -7,6 +7,8 @@ abstract class HelpState with _$HelpState {
     @Default(Status.init) Status helpStatus,
     @Default(null)DocumentModel? documents,
     @Default(Status.init)Status documentStatus,
+    @Default(null)Document? singleDocument,
+    @Default(Status.init)Status singleDocumentStatus,
   }) = _HelpState;
 }
 

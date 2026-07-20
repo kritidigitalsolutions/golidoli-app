@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/features/web_series/bloc/series_bloc/series_bloc.dart';
-import 'package:golidoli_app/features/web_series/controllers/web_series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -650,8 +649,8 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
     );
   }
 
-  String _fmtNum(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
-    return '$n';
-  }
+  // String _fmtNum(int n) {
+  //   if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+  //   return '$n';
+  // }
 }

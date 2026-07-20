@@ -13,6 +13,11 @@ class InjectionBlock {
     allEpisodeUsecase: getIt<AllEpisodeUsecase>(),
     detailEpisodeUsecase: getIt<DetailEpisodeUsecase>(),
   );
-  static HelpCubit get helpCubit =>
-      HelpCubit(getHelpUsecase: getIt<GetHelpUsecase>(), getDocumentUsecase: getIt<GetDocumentUsecase>());
+  static HelpCubit get helpCubit => HelpCubit(
+        getHelpUsecase: getIt<GetHelpUsecase>(),
+        getDocumentUsecase: getIt<GetDocumentUsecase>(),
+        getSingleDocumentUsecase: getIt<SingleDocumentUsecase>(),
+      );
+
+      
 }

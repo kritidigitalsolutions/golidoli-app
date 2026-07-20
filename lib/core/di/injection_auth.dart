@@ -11,12 +11,10 @@ Future<void> _authDependency() async {
   final seriesDatasource = SeriesDatasource();
   getIt.registerLazySingleton<SeriesDatasource>(() => seriesDatasource);
 
-
   //PROFILE DATASOURCE
 
   final profileDatasource = ProfileDatasource();
   getIt.registerLazySingleton<ProfileDatasource>(() => profileDatasource);
-
 
   //All MOVIE USECASE
 
@@ -24,8 +22,6 @@ Future<void> _authDependency() async {
     movieDatasource: getIt<MovieDatasource>(),
   );
   getIt.registerLazySingleton<AllMovieUsecase>(() => allMovieUsecase);
-
-
 
   //MovieDetail Usecase
 
@@ -70,4 +66,12 @@ Future<void> _authDependency() async {
     profileDatasource: getIt<ProfileDatasource>(),
   );
   getIt.registerLazySingleton<GetDocumentUsecase>(() => getDocumentUsecase);
+
+  //Get Single Document Usecase
+  final getSingleDocumentUsecase = SingleDocumentUsecase(
+    datasource: getIt<ProfileDatasource>(),
+  );
+  getIt.registerLazySingleton<SingleDocumentUsecase>(
+    () => getSingleDocumentUsecase,
+  );
 }

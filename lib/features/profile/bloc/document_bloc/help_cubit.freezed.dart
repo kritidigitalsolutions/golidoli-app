@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$HelpState {
 
- HelpResponse? get helps; Status get helpStatus; DocumentModel? get documents; Status get documentStatus;
+ HelpResponse? get helps; Status get helpStatus; DocumentModel? get documents; Status get documentStatus; Document? get singleDocument; Status get singleDocumentStatus;
 /// Create a copy of HelpState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $HelpStateCopyWith<HelpState> get copyWith => _$HelpStateCopyWithImpl<HelpState>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HelpState&&(identical(other.helps, helps) || other.helps == helps)&&(identical(other.helpStatus, helpStatus) || other.helpStatus == helpStatus)&&(identical(other.documents, documents) || other.documents == documents)&&(identical(other.documentStatus, documentStatus) || other.documentStatus == documentStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HelpState&&(identical(other.helps, helps) || other.helps == helps)&&(identical(other.helpStatus, helpStatus) || other.helpStatus == helpStatus)&&(identical(other.documents, documents) || other.documents == documents)&&(identical(other.documentStatus, documentStatus) || other.documentStatus == documentStatus)&&(identical(other.singleDocument, singleDocument) || other.singleDocument == singleDocument)&&(identical(other.singleDocumentStatus, singleDocumentStatus) || other.singleDocumentStatus == singleDocumentStatus));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,helps,helpStatus,documents,documentStatus);
+int get hashCode => Object.hash(runtimeType,helps,helpStatus,documents,documentStatus,singleDocument,singleDocumentStatus);
 
 @override
 String toString() {
-  return 'HelpState(helps: $helps, helpStatus: $helpStatus, documents: $documents, documentStatus: $documentStatus)';
+  return 'HelpState(helps: $helps, helpStatus: $helpStatus, documents: $documents, documentStatus: $documentStatus, singleDocument: $singleDocument, singleDocumentStatus: $singleDocumentStatus)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $HelpStateCopyWith<$Res>  {
   factory $HelpStateCopyWith(HelpState value, $Res Function(HelpState) _then) = _$HelpStateCopyWithImpl;
 @useResult
 $Res call({
- HelpResponse? helps, Status helpStatus, DocumentModel? documents, Status documentStatus
+ HelpResponse? helps, Status helpStatus, DocumentModel? documents, Status documentStatus, Document? singleDocument, Status singleDocumentStatus
 });
 
 
@@ -62,12 +62,14 @@ class _$HelpStateCopyWithImpl<$Res>
 
 /// Create a copy of HelpState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? helps = freezed,Object? helpStatus = null,Object? documents = freezed,Object? documentStatus = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? helps = freezed,Object? helpStatus = null,Object? documents = freezed,Object? documentStatus = null,Object? singleDocument = freezed,Object? singleDocumentStatus = null,}) {
   return _then(_self.copyWith(
 helps: freezed == helps ? _self.helps : helps // ignore: cast_nullable_to_non_nullable
 as HelpResponse?,helpStatus: null == helpStatus ? _self.helpStatus : helpStatus // ignore: cast_nullable_to_non_nullable
 as Status,documents: freezed == documents ? _self.documents : documents // ignore: cast_nullable_to_non_nullable
 as DocumentModel?,documentStatus: null == documentStatus ? _self.documentStatus : documentStatus // ignore: cast_nullable_to_non_nullable
+as Status,singleDocument: freezed == singleDocument ? _self.singleDocument : singleDocument // ignore: cast_nullable_to_non_nullable
+as Document?,singleDocumentStatus: null == singleDocumentStatus ? _self.singleDocumentStatus : singleDocumentStatus // ignore: cast_nullable_to_non_nullable
 as Status,
   ));
 }
@@ -153,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( HelpResponse? helps,  Status helpStatus,  DocumentModel? documents,  Status documentStatus)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( HelpResponse? helps,  Status helpStatus,  DocumentModel? documents,  Status documentStatus,  Document? singleDocument,  Status singleDocumentStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _HelpState() when $default != null:
-return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatus);case _:
+return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatus,_that.singleDocument,_that.singleDocumentStatus);case _:
   return orElse();
 
 }
@@ -174,10 +176,10 @@ return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatu
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( HelpResponse? helps,  Status helpStatus,  DocumentModel? documents,  Status documentStatus)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( HelpResponse? helps,  Status helpStatus,  DocumentModel? documents,  Status documentStatus,  Document? singleDocument,  Status singleDocumentStatus)  $default,) {final _that = this;
 switch (_that) {
 case _HelpState():
-return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatus);case _:
+return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatus,_that.singleDocument,_that.singleDocumentStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -194,10 +196,10 @@ return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatu
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( HelpResponse? helps,  Status helpStatus,  DocumentModel? documents,  Status documentStatus)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( HelpResponse? helps,  Status helpStatus,  DocumentModel? documents,  Status documentStatus,  Document? singleDocument,  Status singleDocumentStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _HelpState() when $default != null:
-return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatus);case _:
+return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatus,_that.singleDocument,_that.singleDocumentStatus);case _:
   return null;
 
 }
@@ -209,13 +211,15 @@ return $default(_that.helps,_that.helpStatus,_that.documents,_that.documentStatu
 
 
 class _HelpState implements HelpState {
-  const _HelpState({this.helps = null, this.helpStatus = Status.init, this.documents = null, this.documentStatus = Status.init});
+  const _HelpState({this.helps = null, this.helpStatus = Status.init, this.documents = null, this.documentStatus = Status.init, this.singleDocument = null, this.singleDocumentStatus = Status.init});
   
 
 @override@JsonKey() final  HelpResponse? helps;
 @override@JsonKey() final  Status helpStatus;
 @override@JsonKey() final  DocumentModel? documents;
 @override@JsonKey() final  Status documentStatus;
+@override@JsonKey() final  Document? singleDocument;
+@override@JsonKey() final  Status singleDocumentStatus;
 
 /// Create a copy of HelpState
 /// with the given fields replaced by the non-null parameter values.
@@ -227,16 +231,16 @@ _$HelpStateCopyWith<_HelpState> get copyWith => __$HelpStateCopyWithImpl<_HelpSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HelpState&&(identical(other.helps, helps) || other.helps == helps)&&(identical(other.helpStatus, helpStatus) || other.helpStatus == helpStatus)&&(identical(other.documents, documents) || other.documents == documents)&&(identical(other.documentStatus, documentStatus) || other.documentStatus == documentStatus));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _HelpState&&(identical(other.helps, helps) || other.helps == helps)&&(identical(other.helpStatus, helpStatus) || other.helpStatus == helpStatus)&&(identical(other.documents, documents) || other.documents == documents)&&(identical(other.documentStatus, documentStatus) || other.documentStatus == documentStatus)&&(identical(other.singleDocument, singleDocument) || other.singleDocument == singleDocument)&&(identical(other.singleDocumentStatus, singleDocumentStatus) || other.singleDocumentStatus == singleDocumentStatus));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,helps,helpStatus,documents,documentStatus);
+int get hashCode => Object.hash(runtimeType,helps,helpStatus,documents,documentStatus,singleDocument,singleDocumentStatus);
 
 @override
 String toString() {
-  return 'HelpState(helps: $helps, helpStatus: $helpStatus, documents: $documents, documentStatus: $documentStatus)';
+  return 'HelpState(helps: $helps, helpStatus: $helpStatus, documents: $documents, documentStatus: $documentStatus, singleDocument: $singleDocument, singleDocumentStatus: $singleDocumentStatus)';
 }
 
 
@@ -247,7 +251,7 @@ abstract mixin class _$HelpStateCopyWith<$Res> implements $HelpStateCopyWith<$Re
   factory _$HelpStateCopyWith(_HelpState value, $Res Function(_HelpState) _then) = __$HelpStateCopyWithImpl;
 @override @useResult
 $Res call({
- HelpResponse? helps, Status helpStatus, DocumentModel? documents, Status documentStatus
+ HelpResponse? helps, Status helpStatus, DocumentModel? documents, Status documentStatus, Document? singleDocument, Status singleDocumentStatus
 });
 
 
@@ -264,12 +268,14 @@ class __$HelpStateCopyWithImpl<$Res>
 
 /// Create a copy of HelpState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? helps = freezed,Object? helpStatus = null,Object? documents = freezed,Object? documentStatus = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? helps = freezed,Object? helpStatus = null,Object? documents = freezed,Object? documentStatus = null,Object? singleDocument = freezed,Object? singleDocumentStatus = null,}) {
   return _then(_HelpState(
 helps: freezed == helps ? _self.helps : helps // ignore: cast_nullable_to_non_nullable
 as HelpResponse?,helpStatus: null == helpStatus ? _self.helpStatus : helpStatus // ignore: cast_nullable_to_non_nullable
 as Status,documents: freezed == documents ? _self.documents : documents // ignore: cast_nullable_to_non_nullable
 as DocumentModel?,documentStatus: null == documentStatus ? _self.documentStatus : documentStatus // ignore: cast_nullable_to_non_nullable
+as Status,singleDocument: freezed == singleDocument ? _self.singleDocument : singleDocument // ignore: cast_nullable_to_non_nullable
+as Document?,singleDocumentStatus: null == singleDocumentStatus ? _self.singleDocumentStatus : singleDocumentStatus // ignore: cast_nullable_to_non_nullable
 as Status,
   ));
 }

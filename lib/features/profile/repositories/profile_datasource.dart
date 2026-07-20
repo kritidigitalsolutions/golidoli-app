@@ -5,7 +5,6 @@ import 'package:golidoli_app/features/profile/models/response/DocumentModel.dart
 import 'package:golidoli_app/features/profile/models/response/help_response.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../core/services/storage_service.dart';
 
 class ProfileDatasource {
   Future<HelpResponse?> allHelp() async {
@@ -36,14 +35,14 @@ class ProfileDatasource {
 
   Future<DocumentModel?> getDocument() async {
     try {
-
       final url = Uri.parse(AppUrl.legalApi);
 
       final response = await http.get(
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',}
+          'Accept': 'application/json',
+        },
       );
 
       if (response.statusCode == 200) {
@@ -60,5 +59,20 @@ class ProfileDatasource {
       return null;
     }
   }
-  
+
+  Future<Document?> getSingleDocument({required String id}) async {
+    final url = Uri.parse(AppUrl.singleLegalApi(id: id));
+    var response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonData = jsonDecode(response.body);
+      return Document.fromJson(jsonData);
+    }
+    return null;
+  }
 }

@@ -4,6 +4,7 @@ import 'package:golidoli_app/features/movie/bloc/movie_bloc.dart';
 import 'package:golidoli_app/features/movie/repositories/movie_datasource.dart';
 import 'package:golidoli_app/features/movie/usecase/all_movie_usecase.dart';
 import 'package:golidoli_app/features/movie/usecase/movie_detail_usecase.dart';
+import 'package:golidoli_app/features/profile/usecase/single_document_usecase.dart';
 import 'package:golidoli_app/features/web_series/bloc/episode_bloc/episode_bloc.dart';
 import 'package:golidoli_app/features/web_series/bloc/series_bloc/series_bloc.dart';
 import 'package:golidoli_app/features/web_series/usecase/all_episode_usecase.dart';
