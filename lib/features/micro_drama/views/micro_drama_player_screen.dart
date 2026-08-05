@@ -1,66 +1,176 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:get/get.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_player_controller.dart';
+import 'package:golidoli_app/constants/app_url.dart';
+import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/micro_drama/bloc/micro_drama_bloc.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
 
-// Free public domain short video clips
-const List<String> _freeVideoUrls = [
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-  'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-];
+// ✅ Use the SAME model as the BLoC – from episode_response.dart
+import '../../web_series/model/episode_response.dart';
 
-class MicroDramaPlayerScreen extends StatelessWidget {
-  const MicroDramaPlayerScreen({super.key});
+String formatCount(int n) {
+  if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+  if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+  return '$n';
+}
+
+class MicroDramaPlayerScreen extends StatefulWidget {
+  final String dramaId;
+  final int initialIndex;
+
+  const MicroDramaPlayerScreen({
+    super.key,
+    required this.dramaId,
+    this.initialIndex = 0,
+  });
+
+  @override
+  State<MicroDramaPlayerScreen> createState() =>
+      _MicroDramaPlayerScreenState();
+}
+
+class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
+  late int currentIndex = widget.initialIndex;
+  final Set<int> likedIndices = {};
+  late final PageController _pageController = PageController(
+    initialPage: widget.initialIndex,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<MicroDramaBloc>().add(
+      MicroDramaEvent.episodeDetail(id: widget.dramaId),
+    );
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  void _onPageChanged(int index) {
+    setState(() => currentIndex = index);
+  }
+
+  void _toggleLike(int index) {
+    setState(() {
+      if (likedIndices.contains(index)) {
+        likedIndices.remove(index);
+      } else {
+        likedIndices.add(index);
+      }
+    });
+  }
+
+  void _onShowMore(Episode episode) {
+    // TODO: show a details bottom sheet
+  }
+
+  void _onBack() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    Navigator.of(context).maybePop();
+  }
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    final controller = Get.put(MicroDramaPlayerController());
-
     return Scaffold(
       backgroundColor: AppColors.black,
-      body: Obx(() {
-        return PageView.builder(
-          scrollDirection: Axis.vertical,
-          itemCount: controller.feed.length,
-          onPageChanged: controller.onPageChanged,
-          controller: PageController(
-            initialPage: controller.currentIndex.value,
-          ),
-          itemBuilder: (_, index) {
-            final drama = controller.feed[index];
-            return _DramaReelItem(
-              drama: drama,
-              playerController: controller,
-              isActive: controller.currentIndex.value == index,
-              videoUrl: _freeVideoUrls[index % _freeVideoUrls.length],
+      body: BlocBuilder<MicroDramaBloc, MicroDramaState>(
+        builder: (context, state) {
+          if (state.episodeDetailStatus == Status.loading) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.accentColor),
             );
-          },
-        );
-      }),
+          }
+
+          if (state.episodeDetailStatus == Status.error ||
+              state.episodeDetail == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Failed to load episodes',
+                    style: text15(color: AppColors.white),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      context.read<MicroDramaBloc>().add(
+                        MicroDramaEvent.episodeDetail(id: widget.dramaId),
+                      );
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final episodes = state.episodeDetail!.episodes; // List<Episode>
+          if (episodes.isEmpty) {
+            return const Center(
+              child: Text(
+                'No episodes available',
+                style: TextStyle(color: AppColors.white),
+              ),
+            );
+          }
+
+          if (widget.initialIndex >= episodes.length) {
+            currentIndex = episodes.length - 1;
+          }
+
+          return PageView.builder(
+            scrollDirection: Axis.vertical,
+            itemCount: episodes.length,
+            onPageChanged: _onPageChanged,
+            controller: _pageController,
+            itemBuilder: (_, index) {
+              final episode = episodes[index];
+              return _DramaReelItem(
+                episode: episode, // Episode type
+                isActive: currentIndex == index,
+                isLiked: likedIndices.contains(index),
+                onToggleLike: () => _toggleLike(index),
+                onShowMore: () => _onShowMore(episode),
+                onBack: _onBack,
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Individual Reel Item with video_player
+// Reel Item – uses Episode (not EpisodeModel)
 // ─────────────────────────────────────────────────────────────────────────────
 class _DramaReelItem extends StatefulWidget {
-  final dynamic drama;
-  final MicroDramaPlayerController playerController;
+  final Episode episode;
   final bool isActive;
-  final String videoUrl;
+  final bool isLiked;
+  final VoidCallback onToggleLike;
+  final VoidCallback onShowMore;
+  final VoidCallback onBack;
 
   const _DramaReelItem({
-    required this.drama,
-    required this.playerController,
+    required this.episode,
     required this.isActive,
-    required this.videoUrl,
+    required this.isLiked,
+    required this.onToggleLike,
+    required this.onShowMore,
+    required this.onBack,
   });
 
   @override
@@ -74,7 +184,8 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   @override
   void initState() {
     super.initState();
-    _vpc = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl))
+    final videoUrl = '${AppUrl.baseUrl}${widget.episode.videoUrl}';
+    _vpc = VideoPlayerController.networkUrl(Uri.parse(videoUrl))
       ..initialize().then((_) {
         if (mounted) {
           setState(() => _initialized = true);
@@ -104,6 +215,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
 
   @override
   Widget build(BuildContext context) {
+    final episode = widget.episode;
     final size = MediaQuery.of(context).size;
     return SizedBox(
       width: size.width,
@@ -111,30 +223,43 @@ class _DramaReelItemState extends State<_DramaReelItem> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Video or fallback image ───────────────────────────────────────
+          // ── Video or thumbnail ──────────────────────────────────────────
           _initialized
               ? FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _vpc.value.size.width,
-                    height: _vpc.value.size.height,
-                    child: VideoPlayer(_vpc),
-                  ),
-                )
+            fit: BoxFit.cover,
+            child: SizedBox(
+              width: _vpc.value.size.width,
+              height: _vpc.value.size.height,
+              child: VideoPlayer(_vpc),
+            ),
+          )
               : Image.network(
-                  widget.drama.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    color: AppColors.cardColor,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.accentColor,
-                      ),
-                    ),
-                  ),
+            '${AppUrl.baseUrl}${episode.thumbnail}',
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              color: AppColors.cardColor,
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.accentColor,
                 ),
+              ),
+            ),
+          ),
 
-          // ── Dark vignette gradient ────────────────────────────────────────
+         /* // ── Lock overlay ────────────────────────────────────────────────
+          if (episode)
+            Container(
+              color: Colors.black.withOpacity(0.5),
+              child: const Center(
+                child: Icon(
+                  Icons.lock_outline_rounded,
+                  color: Colors.white,
+                  size: 48,
+                ),
+              ),
+            ),*/
+
+          // ── Vignette ─────────────────────────────────────────────────────
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -151,20 +276,21 @@ class _DramaReelItemState extends State<_DramaReelItem> {
             ),
           ),
 
-          // ── Tap to play/pause ─────────────────────────────────────────────
-          GestureDetector(
-            onTap: () {
-              if (_initialized) {
-                setState(() {
-                  _vpc.value.isPlaying ? _vpc.pause() : _vpc.play();
-                });
-              }
-            },
-            behavior: HitTestBehavior.translucent,
-            child: const SizedBox.expand(),
-          ),
+          /*// ── Tap to play/pause (only if not locked) ────────────────────
+          if (!episode.isLocked)
+            GestureDetector(
+              onTap: () {
+                if (_initialized) {
+                  setState(() {
+                    _vpc.value.isPlaying ? _vpc.pause() : _vpc.play();
+                  });
+                }
+              },
+              behavior: HitTestBehavior.translucent,
+              child: const SizedBox.expand(),
+            ),*/
 
-          // ── Top bar ───────────────────────────────────────────────────────
+          // ── Top bar ─────────────────────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -172,12 +298,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
-                    onTap: () {
-                      SystemChrome.setEnabledSystemUIMode(
-                        SystemUiMode.edgeToEdge,
-                      );
-                      Get.back();
-                    },
+                    onTap: widget.onBack,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
@@ -198,51 +319,43 @@ class _DramaReelItemState extends State<_DramaReelItem> {
             ),
           ),
 
-          // ── Right side actions ────────────────────────────────────────────
+          // ── Right side actions ──────────────────────────────────────────
           Positioned(
             right: 12,
             bottom: 140,
-            child: Obx(
-              () => Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _ActionButton(
-                    icon: widget.playerController.isLiked.value
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    iconColor: widget.playerController.isLiked.value
-                        ? AppColors.accentColor
-                        : AppColors.white,
-                    label: widget.playerController.formatCount(
-                      widget.drama.likes,
-                    ),
-                    onTap: widget.playerController.toggleLike,
-                  ),
-                  const SizedBox(height: 20),
-                  _ActionButton(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    iconColor: AppColors.white,
-                    label: widget.playerController.formatCount(
-                      widget.drama.comments,
-                    ),
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: 20),
-                  _ActionButton(
-                    icon: Icons.reply_rounded,
-                    iconColor: AppColors.white,
-                    label: widget.playerController.formatCount(
-                      widget.drama.shares,
-                    ),
-                    onTap: () {},
-                    flipHorizontal: true,
-                  ),
-                ],
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _ActionButton(
+                  icon: widget.isLiked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  iconColor: widget.isLiked
+                      ? AppColors.accentColor
+                      : AppColors.white,
+                  label: formatCount(1),
+                  onTap: widget.onToggleLike,
+                ),
+                const SizedBox(height: 20),
+                _ActionButton(
+                  icon: Icons.remove_red_eye_outlined,
+                  iconColor: AppColors.white,
+                  label: formatCount(1),
+                  onTap: () {},
+                ),
+                const SizedBox(height: 20),
+                _ActionButton(
+                  icon: Icons.reply_rounded,
+                  iconColor: AppColors.white,
+                  label: 'Share',
+                  onTap: () {},
+                  flipHorizontal: true,
+                ),
+              ],
             ),
           ),
 
-          // ── Bottom info ───────────────────────────────────────────────────
+          // ── Bottom info ─────────────────────────────────────────────────
           Positioned(
             left: 16,
             right: 70,
@@ -252,24 +365,24 @@ class _DramaReelItemState extends State<_DramaReelItem> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  widget.drama.title,
+                  episode.title,
                   style: text18(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.drama.subtitle,
+                  'Episode ${episode.episodeNumber}',
                   style: text13(color: AppColors.secondaryTextColor),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  widget.drama.story,
+                  episode.description,
                   style: text12(color: AppColors.secondaryTextColor),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
-                  onTap: widget.playerController.onShowMore,
+                  onTap: widget.onShowMore,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -292,37 +405,37 @@ class _DramaReelItemState extends State<_DramaReelItem> {
             ),
           ),
 
-          // ── Video progress bar ────────────────────────────────────────────
+          // ── Progress bar ────────────────────────────────────────────────
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
             child: _initialized
                 ? ValueListenableBuilder<VideoPlayerValue>(
-                    valueListenable: _vpc,
-                    builder: (_, val, _) {
-                      final progress = val.duration.inMilliseconds > 0
-                          ? val.position.inMilliseconds /
-                                val.duration.inMilliseconds
-                          : 0.0;
-                      return LinearProgressIndicator(
-                        value: progress.clamp(0.0, 1.0),
-                        backgroundColor: Colors.white.withOpacity(0.2),
-                        valueColor: const AlwaysStoppedAnimation(
-                          AppColors.accentColor,
-                        ),
-                        minHeight: 3,
-                      );
-                    },
-                  )
-                : LinearProgressIndicator(
-                    value: 0,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    valueColor: const AlwaysStoppedAnimation(
-                      AppColors.accentColor,
-                    ),
-                    minHeight: 3,
+              valueListenable: _vpc,
+              builder: (_, val, _) {
+                final progress = val.duration.inMilliseconds > 0
+                    ? val.position.inMilliseconds /
+                    val.duration.inMilliseconds
+                    : 0.0;
+                return LinearProgressIndicator(
+                  value: progress.clamp(0.0, 1.0),
+                  backgroundColor: Colors.white.withOpacity(0.2),
+                  valueColor: const AlwaysStoppedAnimation(
+                    AppColors.accentColor,
                   ),
+                  minHeight: 3,
+                );
+              },
+            )
+                : LinearProgressIndicator(
+              value: 0,
+              backgroundColor: Colors.white.withOpacity(0.2),
+              valueColor: const AlwaysStoppedAnimation(
+                AppColors.accentColor,
+              ),
+              minHeight: 3,
+            ),
           ),
         ],
       ),
@@ -331,7 +444,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Action button widget
+// Action button
 // ─────────────────────────────────────────────────────────────────────────────
 class _ActionButton extends StatelessWidget {
   final IconData icon;

@@ -1,5 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:get_it/get_it.dart';
+import 'package:golidoli_app/features/home/bloc/category/category_bloc.dart';
+import 'package:golidoli_app/features/home/bloc/content/content_bloc.dart';
+import 'package:golidoli_app/features/profile/bloc/plans/plan_bloc.dart';
+import 'package:golidoli_app/features/micro_drama/bloc/micro_drama_bloc.dart';
 import 'package:golidoli_app/features/movie/bloc/movie_bloc.dart';
 import 'package:golidoli_app/features/movie/repositories/movie_datasource.dart';
 import 'package:golidoli_app/features/movie/usecase/all_movie_usecase.dart';
@@ -9,8 +13,17 @@ import 'package:golidoli_app/features/web_series/bloc/episode_bloc/episode_bloc.
 import 'package:golidoli_app/features/web_series/bloc/series_bloc/series_bloc.dart';
 import 'package:golidoli_app/features/web_series/usecase/all_episode_usecase.dart';
 
+import '../../features/home/repositories/home_datasource.dart';
+import '../../features/home/usecases/all_categories_usecase.dart';
+import '../../features/home/usecases/all_content_usecase.dart';
+import '../../features/home/usecases/category_detail_usecase.dart';
+import '../../features/micro_drama/datasource/micro_drama_datasource.dart';
+import '../../features/micro_drama/usecases/all_micro_drama_usecase.dart';
+import '../../features/micro_drama/usecases/detail_drama_usecase.dart';
+import '../../features/micro_drama/usecases/drama_episode_detail.dart';
 import '../../features/profile/bloc/document_bloc/help_cubit.dart';
 import '../../features/profile/repositories/profile_datasource.dart';
+import '../../features/profile/usecase/all_plan_usecase.dart';
 import '../../features/profile/usecase/get_document_usecase.dart';
 import '../../features/profile/usecase/get_help_usecase.dart';
 import '../../features/web_series/datasource/series_datasource.dart';

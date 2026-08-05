@@ -1,35 +1,33 @@
-class MicrodramasResponse {
+class MicrodramaDetailResponse {
   final bool success;
-  final List<Microdrama> microdramas;
+  final Microdrama microdrama;
 
-  const MicrodramasResponse({
+  const MicrodramaDetailResponse({
     required this.success,
-    required this.microdramas,
+    required this.microdrama,
   });
 
-  factory MicrodramasResponse.fromJson(Map<String, dynamic> json) {
-    return MicrodramasResponse(
+  factory MicrodramaDetailResponse.fromJson(Map<String, dynamic> json) {
+    return MicrodramaDetailResponse(
       success: json['success'] ?? false,
-      microdramas: (json['microdramas'] as List<dynamic>? ?? [])
-          .map((e) => Microdrama.fromJson(e))
-          .toList(),
+      microdrama: Microdrama.fromJson(json['microdrama'] ?? {}),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'success': success,
-      'microdramas': microdramas.map((e) => e.toJson()).toList(),
+      'microdrama': microdrama.toJson(),
     };
   }
 
-  MicrodramasResponse copyWith({
+  MicrodramaDetailResponse copyWith({
     bool? success,
-    List<Microdrama>? microdramas,
+    Microdrama? microdrama,
   }) {
-    return MicrodramasResponse(
+    return MicrodramaDetailResponse(
       success: success ?? this.success,
-      microdramas: microdramas ?? this.microdramas,
+      microdrama: microdrama ?? this.microdrama,
     );
   }
 }
@@ -58,7 +56,7 @@ class Microdrama {
   final String createdAt;
   final String updatedAt;
   final String slug;
-  final int v;
+  final int version;
   final bool isPublished;
 
   const Microdrama({
@@ -85,7 +83,7 @@ class Microdrama {
     required this.createdAt,
     required this.updatedAt,
     required this.slug,
-    required this.v,
+    required this.version,
     required this.isPublished,
   });
 
@@ -114,7 +112,7 @@ class Microdrama {
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       slug: json['slug'] ?? '',
-      v: json['__v'] ?? 0,
+      version: json['__v'] ?? 0,
       isPublished: json['isPublished'] ?? false,
     );
   }
@@ -144,7 +142,7 @@ class Microdrama {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'slug': slug,
-      '__v': v,
+      '__v': version,
       'isPublished': isPublished,
     };
   }
@@ -173,7 +171,7 @@ class Microdrama {
     String? createdAt,
     String? updatedAt,
     String? slug,
-    int? v,
+    int? version,
     bool? isPublished,
   }) {
     return Microdrama(
@@ -200,7 +198,7 @@ class Microdrama {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       slug: slug ?? this.slug,
-      v: v ?? this.v,
+      version: version ?? this.version,
       isPublished: isPublished ?? this.isPublished,
     );
   }

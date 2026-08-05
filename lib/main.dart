@@ -40,7 +40,11 @@ class MyApp extends StatelessWidget {
         BlocProvider(create: (context) => InjectionBlock.movieBloc),
         BlocProvider(create: (context) => InjectionBlock.seriesBloc),
         BlocProvider(create: (context) => InjectionBlock.episodeBloc),
-        BlocProvider(create: (context)=>InjectionBlock.helpCubit),
+        BlocProvider(create: (context) => InjectionBlock.helpCubit),
+        BlocProvider(create: (context) => InjectionBlock.microDramaBloc),
+        BlocProvider(create: (context) => InjectionBlock.categoryBloc),
+        BlocProvider(create: (context) => InjectionBlock.planBloc),
+        BlocProvider(create: (context) => InjectionBlock.contentBloc),
       ],
       child: GetMaterialApp(
         title: 'Golidoli App',
@@ -106,7 +110,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   List<Widget> _getPages() {
     return const [
-      HomeTap(),
+      HomeTab(),
       WatchlistScreen(),
       ReelsTab(),
       DiscoverTab(),

@@ -202,18 +202,18 @@ abstract class AppPages {
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 350),
     ),
-    GetPage(
-      name: AppRoutes.microDramaDetail,
-      page: () => const MicroDramaDetailScreen(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 350),
-    ),
-    GetPage(
-      name: AppRoutes.microDramaPlayer,
-      page: () => const MicroDramaPlayerScreen(),
-      transition: Transition.rightToLeft,
-      transitionDuration: const Duration(milliseconds: 350),
-    ),
+    // GetPage(
+    //   name: AppRoutes.microDramaDetail,
+    //   page: () => const MicroDramaDetailScreen(),
+    //   transition: Transition.rightToLeft,
+    //   transitionDuration: const Duration(milliseconds: 350),
+    // ),
+    // GetPage(
+    //   name: AppRoutes.microDramaPlayer,
+    //   page: () => const MicroDramaPlayerScreen(),
+    //   transition: Transition.rightToLeft,
+    //   transitionDuration: const Duration(milliseconds: 350),
+    // ),
     // ---------------------------------------------------
     // Watchlist
     // ---------------------------------------------------

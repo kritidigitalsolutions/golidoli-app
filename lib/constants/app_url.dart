@@ -1,5 +1,5 @@
 class AppUrl {
-  static const String baseUrl = 'http://192.168.1.17:5000';
+  static const String baseUrl = 'http://192.168.1.33:5000';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
   static const String logout = "$baseUrl/api/auth/logout";
@@ -15,4 +15,11 @@ class AppUrl {
   static String singleEpisode({required String id})=>"$baseUrl/api/episodes/$id";
   static String legalApi= "$baseUrl/api/legal";
   static String singleLegalApi({required String id})=>"$baseUrl/api/legal/$id";
+  static String allMicroDramaApis="$baseUrl/api/microdramas";
+  static String singleMicroDrama({required String id})=>"$baseUrl/api/microdramas/$id";
+  static String allCategories="$baseUrl/api/categories";
+  static String categoryDetail({required String id,int? page,int?size})=>"$baseUrl/api/categories/$id?page=$page&size=$size";
+  static String microDramaEpisodeDetail({required String id})=>"$baseUrl/api/microdramas-episodes/$id";
+  static String plan({required String name})=>"$baseUrl/api/plan/$name";
+  static String allContentApi="$baseUrl/api/content";
 }

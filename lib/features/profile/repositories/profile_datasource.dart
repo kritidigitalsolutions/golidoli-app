@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/features/profile/models/response/DocumentModel.dart';
 import 'package:golidoli_app/features/profile/models/response/help_response.dart';
+import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 import 'package:http/http.dart' as http;
 
 class ProfileDatasource {
@@ -102,5 +103,20 @@ class ProfileDatasource {
       print(stackTrace);
       return null;
     }
+  }
+  Future<SubscriptionPlansResponse?>allSubscriptionPlans({required String name}) async {
+    final url=Uri.parse(AppUrl.plan(name: name));
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    );
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonData = jsonDecode(response.body);
+      return SubscriptionPlansResponse.fromJson(jsonData);
+    }
+    return null;
   }
 }

@@ -6,6 +6,16 @@ Future<void> _authDependency() async {
   final movieDatasource = MovieDatasource();
   getIt.registerLazySingleton<MovieDatasource>(() => movieDatasource);
 
+  //MICRO DRAMA DATASOURCE
+
+  final microDramaDatasource = MicroDramaDatasource();
+  getIt.registerLazySingleton<MicroDramaDatasource>(() => microDramaDatasource);
+
+  //Home Datasource
+
+  final homeDatasource = HomeDatasource();
+  getIt.registerLazySingleton<HomeDatasource>(() => homeDatasource);
+
   //SERIES DATASOURCE
 
   final seriesDatasource = SeriesDatasource();
@@ -74,4 +84,51 @@ Future<void> _authDependency() async {
   getIt.registerLazySingleton<SingleDocumentUsecase>(
     () => getSingleDocumentUsecase,
   );
+
+  //ALL MICRO DRAMA
+  final allMicroDramaUsecase = AllMicroDramaUsecase(
+    microDramaDatasource: getIt<MicroDramaDatasource>(),
+  );
+  getIt.registerLazySingleton<AllMicroDramaUsecase>(() => allMicroDramaUsecase);
+
+  //MICRO DRAMA DETAIL
+  final detailMicroDramaUsecase = DetailDramaUsecase(
+    microDramaDatasource: getIt<MicroDramaDatasource>(),
+  );
+  getIt.registerLazySingleton<DetailDramaUsecase>(
+    () => detailMicroDramaUsecase,
+  );
+
+  //MICRO DRAMA EPISODE DETAIL
+  final dramaEpisodeDetail = DramaEpisodeDetail(
+    microDramaDatasource: getIt<MicroDramaDatasource>(),
+  );
+  getIt.registerLazySingleton<DramaEpisodeDetail>(() => dramaEpisodeDetail);
+
+  //ALL CATEGORIES
+  final allCategoriesUsecase = AllCategoriesUsecase(
+    homeDatasource: getIt<HomeDatasource>(),
+  );
+  getIt.registerLazySingleton<AllCategoriesUsecase>(() => allCategoriesUsecase);
+
+  //DEATIL CATEGORY
+
+  final categoryDetailUsecase = CategoryDetailUsecase(
+    homeDatasource: getIt<HomeDatasource>(),
+  );
+  getIt.registerLazySingleton<CategoryDetailUsecase>(
+    () => categoryDetailUsecase,
+  );
+
+  //ALL PLAN
+  final allPlanUsecase = AllPlanUsecase(
+    profileDatasource: getIt<ProfileDatasource>(),
+  );
+  getIt.registerLazySingleton<AllPlanUsecase>(() => allPlanUsecase);
+
+  //ALL CONTENT
+  final allContentUsecase = AllContentUsecase(
+    homeDatasource: getIt<HomeDatasource>(),
+  );
+  getIt.registerLazySingleton<AllContentUsecase>(() => allContentUsecase);
 }
