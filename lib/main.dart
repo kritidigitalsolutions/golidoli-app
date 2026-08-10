@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/core/di/injection.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
@@ -12,7 +12,6 @@ import 'package:golidoli_app/features/profile/views/profile_screen.dart';
 import 'package:golidoli_app/routes/app_pages.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/bottom_nav_bar.dart';
-import 'package:get/get.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,41 +34,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => InjectionBlock.movieBloc),
-        BlocProvider(create: (context) => InjectionBlock.seriesBloc),
-        BlocProvider(create: (context) => InjectionBlock.episodeBloc),
-        BlocProvider(create: (context) => InjectionBlock.helpCubit),
-        BlocProvider(create: (context) => InjectionBlock.microDramaBloc),
-        BlocProvider(create: (context) => InjectionBlock.categoryBloc),
-        BlocProvider(create: (context) => InjectionBlock.planBloc),
-        BlocProvider(create: (context) => InjectionBlock.contentBloc),
-      ],
-      child: GetMaterialApp(
-        title: 'Golidoli App',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          fontFamily: 'Poppins',
-          appBarTheme: const AppBarTheme(
-            backgroundColor: Colors.white,
-            foregroundColor: Colors.black,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            surfaceTintColor: Colors.transparent,
-          ),
+    return GetMaterialApp(
+      title: 'Golidoli',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        useMaterial3: true,
+        fontFamily: 'Poppins',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          surfaceTintColor: Colors.transparent,
         ),
-        initialRoute: AppRoutes.splash,
-        getPages: [
-          ...AppPages.pages,
-          GetPage(
-            name: AppRoutes.home,
-            page: () => const MyHomePage(),
-            transitionDuration: const Duration(milliseconds: 350),
-          ),
-        ],
       ),
+      initialRoute: AppRoutes.splash,
+      getPages: [
+        ...AppPages.pages,
+        GetPage(
+          name: AppRoutes.home,
+          page: () => const MyHomePage(),
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+      ],
     );
   }
 }

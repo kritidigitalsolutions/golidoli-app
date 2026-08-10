@@ -84,22 +84,15 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, index) {
           final isSelected = selectedCategoryIndex == index;
           return GestureDetector(
             onTap: () {
               setState(() {
-                selectedCategoryIndex = index;
+                selectedCategoryIndex =
+                    index; // 🔹 sirf index update — filtering build() me apply hogi
               });
-              // Handle category filter
-              final category = categories[index];
-              if (category == 'All') {
-                context.read<MovieBloc>().add(const MovieEvent.allMovies());
-              } else {
-                // Add filter event if you have one
-                // context.read<MovieBloc>().add(MovieEvent.filterMovies(category));
-              }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
@@ -133,6 +126,18 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
         },
       ),
     );
+  }
+
+  // 🔹 Filtering logic — genre list ke andar case-insensitive match
+  List<MovieModel> _filterMovies(List<MovieModel> movies) {
+    final selectedCategory = categories[selectedCategoryIndex];
+    if (selectedCategory == 'All') return movies;
+
+    return movies.where((movie) {
+      return movie.genre.any(
+        (g) => g.toLowerCase() == selectedCategory.toLowerCase(),
+      );
+    }).toList();
   }
 
   Widget _buildGrid(MovieState state) {
@@ -175,7 +180,8 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
       );
     }
 
-    final movies = state.allMovies;
+    // 🔹 Apply filter on top of the full list
+    final movies = _filterMovies(state.allMovies);
 
     // Handle empty state
     if (movies.isEmpty) {
@@ -214,9 +220,12 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
   Widget _buildCard(MovieModel movie) {
     return GestureDetector(
       onTap: () {
-       Navigator.of(context).push(MaterialPageRoute(builder: (context)=>MovieDetailsScreen(id: movie.id,)));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MovieDetailsScreen(id: movie.id),
+          ),
+        );
         context.read<MovieBloc>().add(MovieEvent.movieDetail(value: movie.id));
-
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
@@ -226,7 +235,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
             Image.network(
               "${AppUrl.baseUrl}${movie.poster}",
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 color: AppColors.cardColor,
                 child: Center(
                   child: Icon(

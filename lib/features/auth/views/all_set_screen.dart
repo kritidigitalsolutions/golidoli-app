@@ -7,7 +7,7 @@ import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AllSetScreen extends StatefulWidget {
-  AllSetScreen({super.key});
+  const AllSetScreen({super.key});
 
   @override
   State<AllSetScreen> createState() => _AllSetScreenState();

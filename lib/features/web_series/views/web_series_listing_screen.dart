@@ -5,7 +5,6 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/web_series/bloc/series_bloc/series_bloc.dart';
-import 'package:golidoli_app/features/web_series/controllers/web_series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -14,11 +13,24 @@ class WebSeriesListingScreen extends StatefulWidget {
   const WebSeriesListingScreen({super.key});
 
   @override
-  State<WebSeriesListingScreen> createState() =>
-      _WebSeriesListingScreenState();
+  State<WebSeriesListingScreen> createState() => _WebSeriesListingScreenState();
 }
 
 class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
+  int selectedCategoryIndex = 0;
+  final List<String> categories = [
+    'All',
+    'Action',
+    'Comedy',
+    'Drama',
+    'Horror',
+    'Sci-Fi',
+    'Romance',
+    'Thriller',
+  ];
+
+  List<Series> _allSeries = []; // 🔹 keep full list
+
   @override
   void initState() {
     super.initState();
@@ -27,17 +39,12 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Keeping controller only for category tabs
-    final controller = Get.put(WebSeriesListingController());
-
     return BlocBuilder<SeriesBloc, SeriesState>(
       builder: (context, state) {
         if (state.allSeriesStatus == Status.loading) {
           return const Scaffold(
             backgroundColor: AppColors.backgroundColor,
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -53,7 +60,11 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
           );
         }
 
-        final List<Series> series = state.allSeries?.series ?? [];
+        // 🔹 Update local copy whenever fresh data arrives
+        _allSeries = state.allSeries?.series ?? [];
+
+        // 🔹 Apply filter based on selected category
+        final List<Series> filteredSeries = _filterSeries(_allSeries);
 
         return Scaffold(
           backgroundColor: AppColors.backgroundColor,
@@ -61,18 +72,10 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
             child: Column(
               children: [
                 _buildTopBar(),
-
-                /// Keeping category tabs unchanged
-                _buildCategoryTabs(controller),
-
+                _buildCategoryTabs(),
                 const SizedBox(height: 12),
-
-                Expanded(
-                  child: _buildGrid(series),
-                ),
-
+                Expanded(child: _buildGrid(filteredSeries)),
                 _buildExploreMore(),
-
                 const SizedBox(height: 16),
               ],
             ),
@@ -80,6 +83,18 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
         );
       },
     );
+  }
+
+  // 🔹 Filtering logic
+  List<Series> _filterSeries(List<Series> series) {
+    final selectedCategory = categories[selectedCategoryIndex];
+    if (selectedCategory == 'All') return series;
+
+    return series.where((item) {
+      return item.genre.any(
+        (g) => g.toLowerCase() == selectedCategory.toLowerCase(),
+      );
+    }).toList();
   }
 
   Widget _buildTopBar() {
@@ -96,75 +111,67 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            'Web Series',
-            style: text18(fontWeight: FontWeight.bold),
-          ),
+          Text('Web Series', style: text18(fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
-  /// Keeping category tabs unchanged
-  Widget _buildCategoryTabs(WebSeriesListingController controller) {
+  Widget _buildCategoryTabs() {
     return SizedBox(
       height: 36,
-      child: Obx(() {
-        final sel = controller.selectedCategoryIndex.value;
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          itemCount: controller.categories.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            final isSelected = sel == i;
-            return GestureDetector(
-              onTap: () => controller.onCategorySelected(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: categories.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, index) {
+          final isSelected = selectedCategoryIndex == index;
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedCategoryIndex =
+                    index; // 🔹 sirf index update, filter build() me apply hoga
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.accentColor
+                    : AppColors.surfaceColor,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
                   color: isSelected
                       ? AppColors.accentColor
-                      : AppColors.surfaceColor,
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.accentColor
-                        : AppColors.borderColor.withOpacity(0.4),
-                  ),
+                      : AppColors.borderColor.withOpacity(0.4),
                 ),
-                child: Center(
-                  child: Text(
-                    controller.categories[i],
-                    style: text12(
-                      color: isSelected
-                          ? AppColors.black
-                          : AppColors.secondaryTextColor,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+              ),
+              child: Center(
+                child: Text(
+                  categories[index],
+                  style: text12(
+                    color: isSelected
+                        ? AppColors.black
+                        : AppColors.secondaryTextColor,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ),
-            );
-          },
-        );
-      }),
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildGrid(List<Series> series) {
     if (series.isEmpty) {
       return const Center(
-        child: Text(
-          "No Series Found",
-          style: TextStyle(color: Colors.white),
-        ),
+        child: Text("No Series Found", style: TextStyle(color: Colors.white)),
       );
     }
 
@@ -184,13 +191,14 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
   Widget _buildCard(Series item) {
     return GestureDetector(
       onTap: () {
-      Navigator.of(context).push(MaterialPageRoute(builder: (context)=>WebSeriesDetailScreen(id: item.id)));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => WebSeriesDetailScreen(id: item.id),
+          ),
+        );
         // context.read<SeriesBloc>().add(
         //   SeriesEvent.seriesDetail(id: item.id),
         // );
-
-
-
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),
@@ -200,7 +208,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
             Image.network(
               "${AppUrl.baseUrl}${item.poster}",
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 color: AppColors.cardColor,
                 child: Center(
                   child: Icon(
@@ -217,10 +225,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
               child: Container(
                 height: 50,
                 alignment: Alignment.bottomCenter,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
@@ -251,10 +256,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
 
   Widget _buildExploreMore() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: GestureDetector(
         onTap: () {},
         child: Container(
@@ -262,16 +264,12 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
           decoration: BoxDecoration(
             color: AppColors.surfaceColor,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.borderColor.withOpacity(0.4),
-            ),
+            border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
           ),
           child: Center(
             child: Text(
               'Explore More',
-              style: text13(
-                color: AppColors.secondaryTextColor,
-              ),
+              style: text13(color: AppColors.secondaryTextColor),
             ),
           ),
         ),

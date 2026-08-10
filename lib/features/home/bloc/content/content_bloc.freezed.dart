@@ -55,11 +55,12 @@ extension ContentEventPatterns on ContentEvent {
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( _AllContent value)?  allContent,required TResult orElse(),}){
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>({TResult Function( _AllContent value)?  allContent,TResult Function( _SearchContent value)?  searchContent,required TResult orElse(),}){
 final _that = this;
 switch (_that) {
 case _AllContent() when allContent != null:
-return allContent(_that);case _:
+return allContent(_that);case _SearchContent() when searchContent != null:
+return searchContent(_that);case _:
   return orElse();
 
 }
@@ -77,11 +78,12 @@ return allContent(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( _AllContent value)  allContent,}){
+@optionalTypeArgs TResult map<TResult extends Object?>({required TResult Function( _AllContent value)  allContent,required TResult Function( _SearchContent value)  searchContent,}){
 final _that = this;
 switch (_that) {
 case _AllContent():
-return allContent(_that);case _:
+return allContent(_that);case _SearchContent():
+return searchContent(_that);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -98,11 +100,12 @@ return allContent(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( _AllContent value)?  allContent,}){
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>({TResult? Function( _AllContent value)?  allContent,TResult? Function( _SearchContent value)?  searchContent,}){
 final _that = this;
 switch (_that) {
 case _AllContent() when allContent != null:
-return allContent(_that);case _:
+return allContent(_that);case _SearchContent() when searchContent != null:
+return searchContent(_that);case _:
   return null;
 
 }
@@ -119,10 +122,11 @@ return allContent(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  allContent,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function()?  allContent,TResult Function( String query)?  searchContent,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AllContent() when allContent != null:
-return allContent();case _:
+return allContent();case _SearchContent() when searchContent != null:
+return searchContent(_that.query);case _:
   return orElse();
 
 }
@@ -140,10 +144,11 @@ return allContent();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  allContent,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function()  allContent,required TResult Function( String query)  searchContent,}) {final _that = this;
 switch (_that) {
 case _AllContent():
-return allContent();case _:
+return allContent();case _SearchContent():
+return searchContent(_that.query);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -160,10 +165,11 @@ return allContent();case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  allContent,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function()?  allContent,TResult? Function( String query)?  searchContent,}) {final _that = this;
 switch (_that) {
 case _AllContent() when allContent != null:
-return allContent();case _:
+return allContent();case _SearchContent() when searchContent != null:
+return searchContent(_that.query);case _:
   return null;
 
 }
@@ -204,9 +210,75 @@ String toString() {
 
 
 /// @nodoc
+
+
+class _SearchContent implements ContentEvent {
+  const _SearchContent({required this.query});
+  
+
+ final  String query;
+
+/// Create a copy of ContentEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SearchContentCopyWith<_SearchContent> get copyWith => __$SearchContentCopyWithImpl<_SearchContent>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SearchContent&&(identical(other.query, query) || other.query == query));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,query);
+
+@override
+String toString() {
+  return 'ContentEvent.searchContent(query: $query)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SearchContentCopyWith<$Res> implements $ContentEventCopyWith<$Res> {
+  factory _$SearchContentCopyWith(_SearchContent value, $Res Function(_SearchContent) _then) = __$SearchContentCopyWithImpl;
+@useResult
+$Res call({
+ String query
+});
+
+
+
+
+}
+/// @nodoc
+class __$SearchContentCopyWithImpl<$Res>
+    implements _$SearchContentCopyWith<$Res> {
+  __$SearchContentCopyWithImpl(this._self, this._then);
+
+  final _SearchContent _self;
+  final $Res Function(_SearchContent) _then;
+
+/// Create a copy of ContentEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? query = null,}) {
+  return _then(_SearchContent(
+query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
 mixin _$ContentState {
 
- Status get allContentStatus; HomeContentResponse? get allContents;
+ Status get allContentStatus; HomeContentResponse? get allContents; Status get searchContentStatus; HomeContentResponse? get searchContents;
 /// Create a copy of ContentState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -217,16 +289,16 @@ $ContentStateCopyWith<ContentState> get copyWith => _$ContentStateCopyWithImpl<C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContentState&&(identical(other.allContentStatus, allContentStatus) || other.allContentStatus == allContentStatus)&&(identical(other.allContents, allContents) || other.allContents == allContents));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ContentState&&(identical(other.allContentStatus, allContentStatus) || other.allContentStatus == allContentStatus)&&(identical(other.allContents, allContents) || other.allContents == allContents)&&(identical(other.searchContentStatus, searchContentStatus) || other.searchContentStatus == searchContentStatus)&&(identical(other.searchContents, searchContents) || other.searchContents == searchContents));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,allContentStatus,allContents);
+int get hashCode => Object.hash(runtimeType,allContentStatus,allContents,searchContentStatus,searchContents);
 
 @override
 String toString() {
-  return 'ContentState(allContentStatus: $allContentStatus, allContents: $allContents)';
+  return 'ContentState(allContentStatus: $allContentStatus, allContents: $allContents, searchContentStatus: $searchContentStatus, searchContents: $searchContents)';
 }
 
 
@@ -237,7 +309,7 @@ abstract mixin class $ContentStateCopyWith<$Res>  {
   factory $ContentStateCopyWith(ContentState value, $Res Function(ContentState) _then) = _$ContentStateCopyWithImpl;
 @useResult
 $Res call({
- Status allContentStatus, HomeContentResponse? allContents
+ Status allContentStatus, HomeContentResponse? allContents, Status searchContentStatus, HomeContentResponse? searchContents
 });
 
 
@@ -254,10 +326,12 @@ class _$ContentStateCopyWithImpl<$Res>
 
 /// Create a copy of ContentState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? allContentStatus = null,Object? allContents = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? allContentStatus = null,Object? allContents = freezed,Object? searchContentStatus = null,Object? searchContents = freezed,}) {
   return _then(_self.copyWith(
 allContentStatus: null == allContentStatus ? _self.allContentStatus : allContentStatus // ignore: cast_nullable_to_non_nullable
 as Status,allContents: freezed == allContents ? _self.allContents : allContents // ignore: cast_nullable_to_non_nullable
+as HomeContentResponse?,searchContentStatus: null == searchContentStatus ? _self.searchContentStatus : searchContentStatus // ignore: cast_nullable_to_non_nullable
+as Status,searchContents: freezed == searchContents ? _self.searchContents : searchContents // ignore: cast_nullable_to_non_nullable
 as HomeContentResponse?,
   ));
 }
@@ -343,10 +417,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Status allContentStatus,  HomeContentResponse? allContents)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Status allContentStatus,  HomeContentResponse? allContents,  Status searchContentStatus,  HomeContentResponse? searchContents)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ContentState() when $default != null:
-return $default(_that.allContentStatus,_that.allContents);case _:
+return $default(_that.allContentStatus,_that.allContents,_that.searchContentStatus,_that.searchContents);case _:
   return orElse();
 
 }
@@ -364,10 +438,10 @@ return $default(_that.allContentStatus,_that.allContents);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Status allContentStatus,  HomeContentResponse? allContents)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Status allContentStatus,  HomeContentResponse? allContents,  Status searchContentStatus,  HomeContentResponse? searchContents)  $default,) {final _that = this;
 switch (_that) {
 case _ContentState():
-return $default(_that.allContentStatus,_that.allContents);case _:
+return $default(_that.allContentStatus,_that.allContents,_that.searchContentStatus,_that.searchContents);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -384,10 +458,10 @@ return $default(_that.allContentStatus,_that.allContents);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Status allContentStatus,  HomeContentResponse? allContents)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Status allContentStatus,  HomeContentResponse? allContents,  Status searchContentStatus,  HomeContentResponse? searchContents)?  $default,) {final _that = this;
 switch (_that) {
 case _ContentState() when $default != null:
-return $default(_that.allContentStatus,_that.allContents);case _:
+return $default(_that.allContentStatus,_that.allContents,_that.searchContentStatus,_that.searchContents);case _:
   return null;
 
 }
@@ -399,11 +473,13 @@ return $default(_that.allContentStatus,_that.allContents);case _:
 
 
 class _ContentState implements ContentState {
-  const _ContentState({this.allContentStatus = Status.init, this.allContents = null});
+  const _ContentState({this.allContentStatus = Status.init, this.allContents = null, this.searchContentStatus = Status.init, this.searchContents = null});
   
 
 @override@JsonKey() final  Status allContentStatus;
 @override@JsonKey() final  HomeContentResponse? allContents;
+@override@JsonKey() final  Status searchContentStatus;
+@override@JsonKey() final  HomeContentResponse? searchContents;
 
 /// Create a copy of ContentState
 /// with the given fields replaced by the non-null parameter values.
@@ -415,16 +491,16 @@ _$ContentStateCopyWith<_ContentState> get copyWith => __$ContentStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContentState&&(identical(other.allContentStatus, allContentStatus) || other.allContentStatus == allContentStatus)&&(identical(other.allContents, allContents) || other.allContents == allContents));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ContentState&&(identical(other.allContentStatus, allContentStatus) || other.allContentStatus == allContentStatus)&&(identical(other.allContents, allContents) || other.allContents == allContents)&&(identical(other.searchContentStatus, searchContentStatus) || other.searchContentStatus == searchContentStatus)&&(identical(other.searchContents, searchContents) || other.searchContents == searchContents));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,allContentStatus,allContents);
+int get hashCode => Object.hash(runtimeType,allContentStatus,allContents,searchContentStatus,searchContents);
 
 @override
 String toString() {
-  return 'ContentState(allContentStatus: $allContentStatus, allContents: $allContents)';
+  return 'ContentState(allContentStatus: $allContentStatus, allContents: $allContents, searchContentStatus: $searchContentStatus, searchContents: $searchContents)';
 }
 
 
@@ -435,7 +511,7 @@ abstract mixin class _$ContentStateCopyWith<$Res> implements $ContentStateCopyWi
   factory _$ContentStateCopyWith(_ContentState value, $Res Function(_ContentState) _then) = __$ContentStateCopyWithImpl;
 @override @useResult
 $Res call({
- Status allContentStatus, HomeContentResponse? allContents
+ Status allContentStatus, HomeContentResponse? allContents, Status searchContentStatus, HomeContentResponse? searchContents
 });
 
 
@@ -452,10 +528,12 @@ class __$ContentStateCopyWithImpl<$Res>
 
 /// Create a copy of ContentState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? allContentStatus = null,Object? allContents = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? allContentStatus = null,Object? allContents = freezed,Object? searchContentStatus = null,Object? searchContents = freezed,}) {
   return _then(_ContentState(
 allContentStatus: null == allContentStatus ? _self.allContentStatus : allContentStatus // ignore: cast_nullable_to_non_nullable
 as Status,allContents: freezed == allContents ? _self.allContents : allContents // ignore: cast_nullable_to_non_nullable
+as HomeContentResponse?,searchContentStatus: null == searchContentStatus ? _self.searchContentStatus : searchContentStatus // ignore: cast_nullable_to_non_nullable
+as Status,searchContents: freezed == searchContents ? _self.searchContents : searchContents // ignore: cast_nullable_to_non_nullable
 as HomeContentResponse?,
   ));
 }

@@ -13,7 +13,7 @@ import '../bloc/episode_bloc/episode_bloc.dart';
 import '../model/episode_response.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
-  const WebSeriesDetailScreen({super.key,required this.id});
+  const WebSeriesDetailScreen({super.key, required this.id});
 
   final String id;
 
@@ -40,9 +40,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           return Scaffold(
             backgroundColor: AppColors.backgroundColor,
             body: const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.accentColor,
-              ),
+              child: CircularProgressIndicator(color: AppColors.accentColor),
             ),
           );
         }
@@ -167,7 +165,6 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
 
   // ── Info row (poster + title/rating/tags/description) ─────────────────────
   Widget _buildInfo(Series series) {
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
@@ -181,13 +178,12 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
               width: 90,
               height: 120,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  Container(
-                    width: 90,
-                    height: 120,
-                    color: AppColors.cardColor,
-                    child: Icon(Icons.movie, color: AppColors.hintTextColor),
-                  ),
+              errorBuilder: (_, _, _) => Container(
+                width: 90,
+                height: 120,
+                color: AppColors.cardColor,
+                child: Icon(Icons.movie, color: AppColors.hintTextColor),
+              ),
             ),
           ),
           const SizedBox(width: 14),
@@ -225,7 +221,9 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
-                  children: series.genre.map((genre) => _buildTag(genre)).toList(),
+                  children: series.genre
+                      .map((genre) => _buildTag(genre))
+                      .toList(),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -250,92 +248,88 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
       ),
-      child: Text(
-        genre,
-        style: text10(color: AppColors.secondaryTextColor),
-      ),
+      child: Text(genre, style: text10(color: AppColors.secondaryTextColor)),
     );
   }
+
   // ── Action buttons ─────────────────────────────────────────────────────────
   Widget _buildActions(Series series) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child:
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: (){},
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.play_arrow_rounded,
-                            color: AppColors.black,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Watch Now',
-                            style: text13(
-                              color: AppColors.black,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {},
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.play_arrow_rounded,
+                      color: AppColors.black,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Watch Now',
+                      style: text13(
+                        color: AppColors.black,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: (){},
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: AppColors.borderColor.withOpacity(0.5),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-
-                                 Icons.bookmark_rounded,
-
-                            color:AppColors.primaryColor,
-
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            // controller.isInWatchlist.value
-                            //     ? 'Saved'
-                                '+ Watchlist',
-                            style: text13(
-                              color:
-                              // controller.isInWatchlist.value
-                                   AppColors.primaryColor
-                                  // : AppColors.secondaryTextColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {},
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: AppColors.borderColor.withOpacity(0.5),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.bookmark_rounded,
+
+                      color: AppColors.primaryColor,
+
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      // controller.isInWatchlist.value
+                      //     ? 'Saved'
+                      '+ Watchlist',
+                      style: text13(
+                        color:
+                            // controller.isInWatchlist.value
+                            AppColors.primaryColor,
+                        // : AppColors.secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -388,32 +382,27 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: List.generate(
-                series.seasons.length,
-                    (index) {
-                  // Handle both Map and Season object cases
-                  final season = series.seasons[index];
-                  String seasonName;
+              children: List.generate(series.seasons.length, (index) {
+                // Handle both Map and Season object cases
+                final season = series.seasons[index];
+                String seasonName;
 
-                  // Check if it's a Map or a Season object
-                  if (season is Map<String, dynamic>) {
-                    seasonName = season['name'] ?? 'Season ${index + 1}';
-                  } else {
-                    // Assuming it's a Season object with a 'name' property
-                    seasonName = (season as dynamic).name ?? 'Season ${index + 1}';
-                  }
+                // Check if it's a Map or a Season object
+                if (season is Map<String, dynamic>) {
+                  seasonName = season['name'] ?? 'Season ${index + 1}';
+                } else {
+                  // Assuming it's a Season object with a 'name' property
+                  seasonName =
+                      (season as dynamic).name ?? 'Season ${index + 1}';
+                }
 
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      right: index < series.seasons.length - 1 ? 16 : 0,
-                    ),
-                    child: _seasonTab(
-                      seasonName,
-                      index,
-                    ),
-                  );
-                },
-              ),
+                return Padding(
+                  padding: EdgeInsets.only(
+                    right: index < series.seasons.length - 1 ? 16 : 0,
+                  ),
+                  child: _seasonTab(seasonName, index),
+                );
+              }),
             ),
           );
         },
@@ -456,8 +445,6 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
     );
   }
 
-
-
   // ── Episode list with BLoC ──────────────────────────────────────────────
   Widget _buildEpisodeList(Series series) {
     // Get the selected season number (1-based index)
@@ -469,9 +456,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.accentColor,
-              ),
+              child: CircularProgressIndicator(color: AppColors.accentColor),
             ),
           );
         }
@@ -520,7 +505,9 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         }
 
         // Sort episodes by episode number
-        filteredEpisodes.sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+        filteredEpisodes.sort(
+          (a, b) => a.episodeNumber.compareTo(b.episodeNumber),
+        );
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -540,7 +527,11 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         // Handle episode tap
         // print('Episode tapped: ${ep.title}');
         // Navigate to video player
-        Navigator.of(context).push(MaterialPageRoute(builder: (context)=>MoviePlayerScreen( episodeId: ep.id,)));
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MoviePlayerScreen(episodeId: ep.id),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -555,11 +546,13 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
-                ep.thumbnail.isNotEmpty ? "${AppUrl.baseUrl}${ep.thumbnail}" : '',
+                ep.thumbnail.isNotEmpty
+                    ? "${AppUrl.baseUrl}${ep.thumbnail}"
+                    : '',
                 width: 70,
                 height: 46,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, __) => Container(
+                errorBuilder: (_, _, _) => Container(
                   width: 70,
                   height: 46,
                   color: AppColors.cardColor,

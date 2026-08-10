@@ -32,9 +32,11 @@ class LoginScreen extends StatelessWidget {
 
           // ── Main content ──
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 60),
 
@@ -50,7 +52,7 @@ class LoginScreen extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         'Welcome to',
-                        style: text13(color: AppColors.secondaryTextColor),
+                        style: text20(color: AppColors.secondaryTextColor),
                       ),
                       const SizedBox(width: 8),
                       Container(
@@ -115,15 +117,15 @@ class LoginScreen extends StatelessWidget {
                     label: 'Continue with Google',
                     onTap: () {},
                   ),
-                  const SizedBox(height: 12),
+                  // const SizedBox(height: 12),
 
-                  // Facebook
-                  _SocialButton(
-                    image: AppImages.facebook,
+                  // // Facebook
+                  // _SocialButton(
+                  //   image: AppImages.facebook,
 
-                    label: 'Continue with Facebook',
-                    onTap: () {},
-                  ),
+                  //   label: 'Continue with Facebook',
+                  //   onTap: () {},
+                  // ),
                   const SizedBox(height: 36),
 
                   // Already have an account

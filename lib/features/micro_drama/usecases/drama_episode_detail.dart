@@ -6,6 +6,7 @@ class DramaEpisodeDetail {
   final MicroDramaDatasource microDramaDatasource;
   DramaEpisodeDetail({required this.microDramaDatasource});
   Future<EpisodesResponse?> call({required String id}) async {
-     await microDramaDatasource.episodeDetail(id: id);
+    await microDramaDatasource.episodeDetail(id: id);
+    return null;
   }
 }

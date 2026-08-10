@@ -1,22 +1,22 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/home/bloc/category/category_bloc.dart';
+import 'package:golidoli_app/features/home/controllers/category_controller.dart';
 import 'package:golidoli_app/features/home/models/category_model.dart';
 import 'package:golidoli_app/features/home/models/category_detail_model.dart';
-import 'package:golidoli_app/features/movie/bloc/movie_bloc.dart';
+import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
+import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
-import '../../web_series/bloc/series_bloc/series_bloc.dart';
+import '../../web_series/controllers/series_controller.dart';
 
 // ─── Static banner data ────────────────────────────────────────────────────
 const List<Map<String, dynamic>> _heroBanners = [
@@ -49,9 +49,14 @@ class _HomeTabState extends State<HomeTab> {
     'For You',
     'Movies',
     'Web Series',
-    'Adult',
-    'Action',
+    // 'Adult',
+    // 'Action',
   ];
+
+  // ─── GetX Controllers ────────────────────────────────────────────────────
+  late final CategoryController _categoryController;
+  late final MovieController _movieController;
+  late final SeriesController _seriesController;
 
   // ─── Category state ──────────────────────────────────────────────────────
   List<CategoryModel> _allCategories = [];
@@ -67,7 +72,43 @@ class _HomeTabState extends State<HomeTab> {
   @override
   void initState() {
     super.initState();
-    context.read<CategoryBloc>().add(const CategoryEvent.allCategory());
+    _categoryController = Get.find<CategoryController>();
+    _movieController = Get.find<MovieController>();
+    _seriesController = Get.find<SeriesController>();
+    _categoryController.fetchAllCategories();
+
+    // Listen to category status changes to trigger detail fetches
+    ever(_categoryController.categoryStatus, (Status status) {
+      if (status == Status.success &&
+          _categoryController.allCategories.value != null &&
+          _allCategories.isEmpty) {
+        final allCats = _categoryController.allCategories.value!.categories
+            .where((cat) => cat.isActive)
+            .toList()
+          ..sort((a, b) => a.priority.compareTo(b.priority));
+        if (allCats.isNotEmpty) {
+          _allCategories = allCats;
+          for (final cat in _allCategories) {
+            _categoryController.fetchCategoryDetail(cat.id);
+          }
+        }
+      }
+    });
+
+    // Listen to detail category status
+    ever(_categoryController.detailCategoryStatus, (Status status) {
+      if (status == Status.success &&
+          _categoryController.categoryDetail.value != null) {
+        final detail = _categoryController.categoryDetail.value!;
+        final categoryId = detail.category.id;
+        _categoryDetails[categoryId] = detail;
+        if (detail.content.isNotEmpty) {
+          _categoriesWithContent.add(categoryId);
+        }
+        _processedCategories.add(categoryId);
+        _updateActiveCategories();
+      }
+    });
   }
 
   void _updateActiveCategories() {
@@ -87,128 +128,80 @@ class _HomeTabState extends State<HomeTab> {
     final label = _tabLabels[index];
 
     if (label == 'Movies' && !_moviesFetched) {
-      context.read<MovieBloc>().add(const MovieEvent.allMovies());
+      _movieController.fetchAllMovies();
       setState(() => _moviesFetched = true);
     } else if (label == 'Web Series' && !_seriesFetched) {
-      context.read<SeriesBloc>().add(const SeriesEvent.allSeries());
+      _seriesController.fetchAllSeries();
       setState(() => _seriesFetched = true);
     } else if (index > 0 && label != 'Movies' && label != 'Web Series') {
       final category = _getCategoryByName(label);
       if (category != null && !_categoryDetails.containsKey(category.id)) {
-        context.read<CategoryBloc>().add(
-          CategoryEvent.detailCategory(id: category.id),
-        );
+        _categoryController.fetchCategoryDetail(category.id);
       }
     }
   }
 
   // ─── Navigation helper ──────────────────────────────────────────────────
   void _navigateToDetail(String id, {String type = 'movie'}) {
-    // If you have separate screens for movies and series, use this:
-    // if (type == 'movie') {
-    //   Get.toNamed(AppRoutes.movieDetails, arguments: id);
-    // } else {
-    //   Get.toNamed(AppRoutes.seriesDetails, arguments: id);
-    // }
-
-    // For now, we use a common screen but pass the type as an extra parameter.
-    // The MovieDetailsScreen should read the 'type' argument and use the appropriate bloc.
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => MovieDetailsScreen(
-          id: id,
-        ),
-      ),
-    );
-    // If you're using GetX, you can also do:
-    // Get.toNamed(AppRoutes.movieDetails, arguments: {'id': id, 'type': type});
+    if (type == 'movie') {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => MovieDetailsScreen(id: id)));
+    } else {
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => WebSeriesDetailScreen(id: id)));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: BlocConsumer<CategoryBloc, CategoryState>(
-        listener: (context, state) {
-          if (state.detailCategoryStatus == Status.success &&
-              state.categoryDetail != null) {
-            final detail = state.categoryDetail!;
-            final categoryId = detail.category.id;
-            _categoryDetails[categoryId] = detail;
+      child: Obx(() {
+        final categoryStatus = _categoryController.categoryStatus.value;
 
-            if (detail.content.isNotEmpty) {
-              _categoriesWithContent.add(categoryId);
-            }
-            _processedCategories.add(categoryId);
-            _updateActiveCategories();
-          }
+        if (categoryStatus == Status.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          if (state.categoryStatus == Status.success &&
-              state.allCategories != null &&
-              _allCategories.isEmpty) {
-            final allCats =
-            state.allCategories!.categories
-                .where((cat) => cat.isActive)
-                .toList()
-              ..sort((a, b) => a.priority.compareTo(b.priority));
-
-            if (allCats.isNotEmpty) {
-              _allCategories = allCats;
-              for (final cat in _allCategories) {
-                context.read<CategoryBloc>().add(
-                  CategoryEvent.detailCategory(id: cat.id),
-                );
-              }
-            }
-          }
-        },
-        builder: (context, state) {
-          if (state.categoryStatus == Status.loading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (state.categoryStatus == Status.error ||
-              state.allCategories == null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load categories',
-                    style: text15(color: AppColors.secondaryTextColor),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<CategoryBloc>().add(
-                        const CategoryEvent.allCategory(),
-                      );
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (_selectedTabIndex >= _tabLabels.length) {
-            _selectedTabIndex = 0;
-          }
-
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildSearchBar()),
-              SliverToBoxAdapter(child: _buildHeroBanner()),
-              SliverToBoxAdapter(child: _buildAudioStoriesBanner()),
-              SliverToBoxAdapter(child: _buildTabRow()),
-              SliverToBoxAdapter(child: _buildContentForSelectedTab()),
-              const SliverToBoxAdapter(child: SizedBox(height: 20)),
-            ],
+        if (categoryStatus == Status.error ||
+            _categoryController.allCategories.value == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load categories',
+                  style: text15(color: AppColors.secondaryTextColor),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => _categoryController.fetchAllCategories(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
           );
-        },
-      ),
+        }
+
+        if (_selectedTabIndex >= _tabLabels.length) {
+          _selectedTabIndex = 0;
+        }
+
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildSearchBar()),
+            SliverToBoxAdapter(child: _buildHeroBanner()),
+            SliverToBoxAdapter(child: _buildAudioStoriesBanner()),
+            SliverToBoxAdapter(child: _buildTabRow()),
+            SliverToBoxAdapter(child: _buildContentForSelectedTab()),
+            const SliverToBoxAdapter(child: SizedBox(height: 20)),
+          ],
+        );
+      }),
     );
   }
 
@@ -246,101 +239,88 @@ class _HomeTabState extends State<HomeTab> {
 
   // ─── Movies Content ─────────────────────────────────────────────────────
   Widget _buildMoviesContent() {
-    return BlocBuilder<MovieBloc, MovieState>(
-      builder: (context, state) {
-        if (state.allMoviesStatus == Status.loading) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (state.allMoviesStatus == Status.error) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Text(
-                'Failed to load movies',
-                style: text14(color: AppColors.secondaryTextColor),
-              ),
-            ),
-          );
-        }
-        final movies = state.allMovies ?? [];
-        if (movies.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'No movies available',
-              style: TextStyle(color: AppColors.white),
-            ),
-          );
-        }
-
-        return _buildMediaSection(
-          title: 'Movies',
-          items: movies.map((m) => _toMap(m, 'movie')).toList(),
-          onViewAll: () {
-            Get.toNamed(AppRoutes.movieListing);
-          },
+    return Obx(() {
+      final status = _movieController.allMoviesStatus.value;
+      if (status == Status.loading) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
         );
-      },
-    );
+      }
+      if (status == Status.error) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Text(
+              'Failed to load movies',
+              style: text14(color: AppColors.secondaryTextColor),
+            ),
+          ),
+        );
+      }
+      final movies = _movieController.allMovies;
+      if (movies.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'No movies available',
+            style: TextStyle(color: AppColors.white),
+          ),
+        );
+      }
+
+      return _buildMediaSection(
+        title: 'Movies',
+        items: movies.map((m) => _toMap(m, 'movie')).toList(),
+        onViewAll: () {
+          Get.toNamed(AppRoutes.movieListing);
+        },
+      );
+    });
   }
 
   // ─── Web Series Content ─────────────────────────────────────────────────
   Widget _buildSeriesContent() {
-    return BlocBuilder<SeriesBloc, SeriesState>(
-      builder: (context, state) {
-        if (state.allSeriesStatus == Status.loading) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        if (state.allSeriesStatus == Status.error) {
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Text(
-                'Failed to load web series',
-                style: text14(color: AppColors.secondaryTextColor),
-              ),
-            ),
-          );
-        }
-
-        List<Series> series = [];
-        if (state.allSeries is SeriesResponse) {
-          series = (state.allSeries as SeriesResponse).series;
-        } else if (state.allSeries is List<Series>) {
-          series = state.allSeries as List<Series>;
-        } else if (state.allSeries != null) {
-          try {
-            series = (state.allSeries as dynamic).series ?? [];
-          } catch (_) {
-            series = [];
-          }
-        }
-
-        if (series.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'No web series available',
-              style: TextStyle(color: AppColors.white),
-            ),
-          );
-        }
-
-        return _buildMediaSection(
-          title: 'Web Series',
-          items: series.map((s) => _toMap(s, 'series')).toList(),
-          onViewAll: () {
-            Get.toNamed(AppRoutes.webSeries);
-          },
+    return Obx(() {
+      final status = _seriesController.allSeriesStatus.value;
+      if (status == Status.loading) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
         );
-      },
-    );
+      }
+      if (status == Status.error) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Center(
+            child: Text(
+              'Failed to load web series',
+              style: text14(color: AppColors.secondaryTextColor),
+            ),
+          ),
+        );
+      }
+
+      final series = _seriesController.allSeries.value?.series ?? [];
+
+      if (series.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'No web series available',
+            style: TextStyle(color: AppColors.white),
+          ),
+        );
+      }
+
+      return _buildMediaSection(
+        title: 'Web Series',
+        items: series.map((s) => _toMap(s, 'series')).toList(),
+        onViewAll: () {
+          Get.toNamed(AppRoutes.webSeries);
+        },
+      );
+    });
   }
 
   // ─── Helper to convert MovieModel / Series to Map with type ──────────
@@ -391,7 +371,10 @@ class _HomeTabState extends State<HomeTab> {
             final detail = _categoryDetails[cat.id];
             if (detail == null) {
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -503,13 +486,16 @@ class _HomeTabState extends State<HomeTab> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: content.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
                 final item = content[i];
                 return _buildContentCard(
                   title: item.title,
                   imageUrl: item.poster.isNotEmpty ? item.poster : item.banner,
-                  onTap: () => _navigateToDetail(item.id, type: 'movie'), // category items are treated as movies
+                  onTap: () => _navigateToDetail(
+                    item.id,
+                    type: item.type,
+                  ), // category items are treated as movies
                 );
               },
             ),
@@ -543,17 +529,14 @@ class _HomeTabState extends State<HomeTab> {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
                 final item = items[i];
                 final type = item['type'] ?? 'movie';
                 return _buildContentCard(
                   title: item['title'] ?? '',
                   imageUrl: item['image'] ?? '',
-                  onTap: () => _navigateToDetail(
-                    item['id'],
-                    type: type,
-                  ),
+                  onTap: () => _navigateToDetail(item['id'], type: type),
                 );
               },
             ),
@@ -572,7 +555,7 @@ class _HomeTabState extends State<HomeTab> {
     String processedUrl = imageUrl;
     if (processedUrl.isEmpty) {
       processedUrl =
-      'https://via.placeholder.com/90x135/333333/FFFFFF?text=No+Image';
+          'https://via.placeholder.com/90x135/333333/FFFFFF?text=No+Image';
     } else if (!processedUrl.startsWith('http')) {
       processedUrl = '${AppUrl.baseUrl}$processedUrl';
     }
@@ -625,7 +608,7 @@ class _HomeTabState extends State<HomeTab> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: _tabLabels.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final label = _tabLabels[i];
           final selected = _selectedTabIndex == i;

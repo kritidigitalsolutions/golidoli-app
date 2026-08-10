@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
-import 'package:golidoli_app/features/profile/controllers/update_profile_controller.dart';
+import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/profile/bloc/edit_profile/edit_profile_bloc.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_image_picker.dart';
@@ -20,43 +22,61 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final UpdateProfileController controller = Get.put(UpdateProfileController());
   final FetchProfileController fetchController = Get.put(
     FetchProfileController(),
   );
 
+  late final EditProfileBloc _editProfileBloc;
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+
   Worker? _userWorker;
   bool _seeded = false;
+  bool _isInit = false;
 
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      _editProfileBloc = context.read<EditProfileBloc>();
+      _isInit = true;
 
-    // Seed the form once from whatever user data is already available.
-    final existingUser = fetchController.user.value;
-    if (existingUser != null) {
-      controller.setUser(existingUser);
-      _seeded = true;
-    } else {
-      // Not loaded yet — wait for the first successful fetch, seed once,
-      // then stop listening so later refreshes don't clobber user edits.
-      _userWorker = ever<UserModel?>(fetchController.user, (userData) {
-        if (!_seeded && userData != null) {
-          controller.setUser(userData);
-          _seeded = true;
-          _userWorker?.dispose();
-          _userWorker = null;
-        }
-      });
+      // Seed the form once from whatever user data is already available.
+      final existingUser = fetchController.user.value;
+      if (existingUser != null) {
+        _editProfileBloc.add(EditProfileEvent.initialize(user: existingUser));
+        _nameController.text = existingUser.name;
+        _emailController.text = existingUser.email;
+        _phoneController.text = existingUser.phone;
+        _seeded = true;
+      } else {
+        // Not loaded yet — wait for the first successful fetch, seed once,
+        // then stop listening so later refreshes don't clobber user edits.
+        _userWorker = ever<UserModel?>(fetchController.user, (userData) {
+          if (!_seeded && userData != null) {
+            _editProfileBloc.add(EditProfileEvent.initialize(user: userData));
+            _nameController.text = userData.name;
+            _emailController.text = userData.email;
+            _phoneController.text = userData.phone;
+            _seeded = true;
+            _userWorker?.dispose();
+            _userWorker = null;
+          }
+        });
+      }
     }
   }
 
   @override
   void dispose() {
     _userWorker?.dispose();
-    // Drop these controllers when leaving the screen so a future visit
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    // Drop the fetch controller when leaving the screen so a future visit
     // starts clean instead of reusing stale state / re-registering.
-    Get.delete<UpdateProfileController>();
     Get.delete<FetchProfileController>();
     super.dispose();
   }
@@ -70,23 +90,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (picked == null) return;
 
-    // Just preview it locally — it's uploaded together with the rest of
-    // the form fields when the user taps "Save Changes".
-    controller.setLocalImage(File(picked.path));
+    // Dispatch event to bloc with picked image file
+    _editProfileBloc.add(EditProfileEvent.localImageChanged(
+      imageFile: File(picked.path),
+    ));
   }
 
-  Future<void> _onSave() async {
-    final success = await controller.updateProfile();
-
-    if (success) {
-      // Keep FetchProfileController in sync so any other screen reading
-      // the profile (e.g. the one we're about to pop back to) shows the
-      // freshly saved data instead of the stale pre-edit version.
-      if (controller.user.value != null) {
-        fetchController.updateUser(controller.user.value!);
-      }
-      Get.back();
-    }
+  void _onSave() {
+    _editProfileBloc.add(EditProfileEvent.saveProfile(
+      name: _nameController.text,
+      email: _emailController.text,
+      phone: _phoneController.text,
+    ));
   }
 
   @override
@@ -94,75 +109,86 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return ProfilePageScaffold(
       title: 'Edit Profile',
       children: [
-        Obx(() {
-          // Only block the whole form on the very first load, when there's
-          // no cached user yet to show.
-          if (fetchController.isLoading.value &&
-              fetchController.user.value == null) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Center(child: CircularProgressIndicator()),
-            );
-          }
+        BlocConsumer<EditProfileBloc, EditProfileState>(
+          listener: (context, state) {
+            if (state.status == Status.success) {
+              if (state.user != null) {
+                fetchController.updateUser(state.user!);
+              }
+              Get.back();
+            } else if (state.status == Status.error) {
+              Get.snackbar(
+                "Error",
+                state.errorMessage ?? "Failed to update profile",
+              );
+            }
+          },
+          builder: (context, state) {
+            final user = state.user;
 
-          if (fetchController.error.value.isNotEmpty &&
-              fetchController.user.value == null) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40),
-              child: Column(
-                children: [
-                  Text(
-                    fetchController.error.value,
-                    style: text14(color: AppColors.secondaryTextColor),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: fetchController.refreshProfile,
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+            // Only block the whole form on the very first load, when there's
+            // no cached user yet to show.
+            if (fetchController.isLoading.value && user == null) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 60),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-          return Column(
-            children: [
-              Center(
-                child: Obx(
-                  () => CustomImagePicker(
-                    imageFile: controller.localImageFile.value,
-                    imageUrl: controller.profileImage.value,
+            if (fetchController.error.value.isNotEmpty && user == null) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 40),
+                child: Column(
+                  children: [
+                    Text(
+                      fetchController.error.value,
+                      style: text14(color: AppColors.secondaryTextColor),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: fetchController.refreshProfile,
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return Column(
+              children: [
+                Center(
+                  child: CustomImagePicker(
+                    imageFile: state.localImageFile,
+                    imageUrl: user?.profileImage ?? "",
                     onTap: _pickAndUploadImage,
                     radius: 42,
                   ),
                 ),
-              ),
-              const SizedBox(height: 22),
-              _InputField(
-                label: 'Full Name',
-                controller: controller.nameController,
-              ),
-              _InputField(
-                label: 'Mobile Number',
-                controller: controller.phoneController,
-              ),
-              _InputField(
-                label: 'Email Address',
-                controller: controller.emailController,
-              ),
-              const SizedBox(height: 18),
-              Obx(
-                () => ProfilePrimaryButton(
-                  title: controller.isLoading.value
+                const SizedBox(height: 22),
+                _InputField(
+                  label: 'Full Name',
+                  controller: _nameController,
+                ),
+                _InputField(
+                  label: 'Mobile Number',
+                  controller: _phoneController,
+                ),
+                _InputField(
+                  label: 'Email Address',
+                  controller: _emailController,
+                ),
+                const SizedBox(height: 18),
+                ProfilePrimaryButton(
+                  title: state.status == Status.loading
                       ? 'Saving...'
                       : 'Save Changes',
-                  onTap: controller.isLoading.value ? () {} : _onSave,
+                  onTap: state.status == Status.loading ? () {} : _onSave,
                 ),
-              ),
-            ],
-          );
-        }),
+              ],
+            );
+          },
+        ),
       ],
     );
   }

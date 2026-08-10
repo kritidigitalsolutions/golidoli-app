@@ -45,4 +45,15 @@ class HomeDatasource {
       return null;
     }
   }
+
+  Future<HomeContentResponse?> searchContent(String query) async {
+    final url = Uri.parse(AppUrl.searchContent(query: query));
+    var response = await http.get(url);
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final Map<String, dynamic> json = jsonDecode(response.body);
+      return HomeContentResponse.fromJson(json);
+    } else {
+      return null;
+    }
+  }
 }

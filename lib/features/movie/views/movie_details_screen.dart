@@ -24,9 +24,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
   void initState() {
     super.initState();
     if (widget.id != null) {
-      context.read<MovieBloc>().add(
-        MovieEvent.movieDetail(value: widget.id!),
-      );
+      context.read<MovieBloc>().add(MovieEvent.movieDetail(value: widget.id!));
     }
   }
 
@@ -39,9 +37,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           return Scaffold(
             backgroundColor: AppColors.backgroundColor,
             body: const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.accentColor,
-              ),
+              child: CircularProgressIndicator(color: AppColors.accentColor),
             ),
           );
         }
@@ -89,9 +85,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         if (movie == null) {
           return Scaffold(
             backgroundColor: AppColors.backgroundColor,
-            body: const Center(
-              child: Text('No movie found'),
-            ),
+            body: const Center(child: Text('No movie found')),
           );
         }
 
@@ -121,7 +115,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           child: Image.network(
             "${AppUrl.baseUrl}${movie.banner}",
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               color: AppColors.cardColor,
               child: const Icon(
                 Icons.movie_outlined,
@@ -138,10 +132,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                AppColors.backgroundColor,
-              ],
+              colors: [Colors.transparent, AppColors.backgroundColor],
             ),
           ),
         ),
@@ -251,7 +242,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               width: 90,
               height: 120,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 width: 90,
                 height: 120,
                 color: AppColors.cardColor,
@@ -268,10 +259,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  movie.title,
-                  style: text20(fontWeight: FontWeight.bold),
-                ),
+                Text(movie.title, style: text20(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 6),
                 // Rating and year
                 Row(
@@ -345,10 +333,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         borderRadius: BorderRadius.circular(4),
         border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
       ),
-      child: Text(
-        label,
-        style: text10(color: AppColors.secondaryTextColor),
-      ),
+      child: Text(label, style: text10(color: AppColors.secondaryTextColor)),
     );
   }
 
@@ -503,10 +488,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'More Like This',
-            style: text16(fontWeight: FontWeight.bold),
-          ),
+          Text('More Like This', style: text16(fontWeight: FontWeight.bold)),
           const SizedBox(height: 14),
           GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
@@ -535,7 +517,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   child: Image.network(
                     "${AppUrl.baseUrl}${movie.poster}",
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       color: AppColors.cardColor,
                       child: const Center(
                         child: Icon(

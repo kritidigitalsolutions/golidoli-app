@@ -7,11 +7,8 @@ import 'package:golidoli_app/features/auth/views/select_interests_screen.dart';
 import 'package:golidoli_app/features/auth/views/splash_screen.dart';
 import 'package:golidoli_app/features/auth/views/verified_screen.dart';
 import 'package:golidoli_app/features/auth/views/verify_otp_screen.dart';
-import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
-import 'package:golidoli_app/features/micro_drama/views/micro_drama_player_screen.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_screen.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
-import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/views/content_preference_screen.dart';
 import 'package:golidoli_app/features/profile/views/downloads_screen.dart';
 import 'package:golidoli_app/features/profile/views/edit_profile_screen.dart';
@@ -30,7 +27,6 @@ import 'package:golidoli_app/features/audio_play/views/audio_player_screen.dart'
 import 'package:golidoli_app/features/home/views/watchlist_tab.dart';
 import 'package:golidoli_app/features/movie/views/movie_listing_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_listing_screen.dart';
-import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 
 import '../features/auth/views/create_account_screen.dart';

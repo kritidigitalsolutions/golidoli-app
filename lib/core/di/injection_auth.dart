@@ -1,6 +1,10 @@
 part of 'injection.dart';
 
 Future<void> _authDependency() async {
+  // AUTH DATASOURCE
+  final authDatasource = AuthDatasource();
+  getIt.registerLazySingleton<AuthDatasource>(() => authDatasource);
+
   //MOVIE DATASOURCE
 
   final movieDatasource = MovieDatasource();
@@ -131,4 +135,16 @@ Future<void> _authDependency() async {
     homeDatasource: getIt<HomeDatasource>(),
   );
   getIt.registerLazySingleton<AllContentUsecase>(() => allContentUsecase);
+
+  // UPDATE PROFILE USECASE
+  final updateProfileUsecase = UpdateProfileUsecase(
+    authDatasource: getIt<AuthDatasource>(),
+  );
+  getIt.registerLazySingleton<UpdateProfileUsecase>(() => updateProfileUsecase);
+
+  // Search Content USECASE
+  final searchontentUsecase = SearchcontentUsecase(
+    homeDatasource: getIt<HomeDatasource>(),
+  );
+  getIt.registerLazySingleton<SearchcontentUsecase>(() => searchontentUsecase);
 }

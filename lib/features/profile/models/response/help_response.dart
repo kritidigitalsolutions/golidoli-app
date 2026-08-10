@@ -29,11 +29,7 @@ class HelpResponse extends Equatable {
     };
   }
 
-  HelpResponse copyWith({
-    bool? success,
-    int? count,
-    List<HelpData>? helpData,
-  }) {
+  HelpResponse copyWith({bool? success, int? count, List<HelpData>? helpData}) {
     return HelpResponse(
       success: success ?? this.success,
       count: count ?? this.count,
@@ -51,6 +47,7 @@ class HelpData extends Equatable {
   final String question;
   final String answer;
   final String supportNumber;
+  final String supportEmail; // ✅ add this
   final bool isPublished;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -62,6 +59,7 @@ class HelpData extends Equatable {
     required this.question,
     required this.answer,
     required this.supportNumber,
+    required this.supportEmail, // ✅ add this
     required this.isPublished,
     required this.createdAt,
     required this.updatedAt,
@@ -75,6 +73,7 @@ class HelpData extends Equatable {
       question: json['question'] ?? '',
       answer: json['answer'] ?? '',
       supportNumber: json['supportNumber'] ?? '',
+      supportEmail: json['supportEmail'] ?? '', // ✅ add this
       isPublished: json['isPublished'] ?? false,
       createdAt: DateTime.parse(json['createdAt']),
       updatedAt: DateTime.parse(json['updatedAt']),
@@ -89,6 +88,7 @@ class HelpData extends Equatable {
       'question': question,
       'answer': answer,
       'supportNumber': supportNumber,
+      'supportEmail': supportEmail, // ✅ add this
       'isPublished': isPublished,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
@@ -102,6 +102,7 @@ class HelpData extends Equatable {
     String? question,
     String? answer,
     String? supportNumber,
+    String? supportEmail, // ✅ add this
     bool? isPublished,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -113,6 +114,7 @@ class HelpData extends Equatable {
       question: question ?? this.question,
       answer: answer ?? this.answer,
       supportNumber: supportNumber ?? this.supportNumber,
+      supportEmail: supportEmail ?? this.supportEmail, // ✅ add this
       isPublished: isPublished ?? this.isPublished,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -127,6 +129,7 @@ class HelpData extends Equatable {
     question,
     answer,
     supportNumber,
+    supportEmail, // ✅ add this
     isPublished,
     createdAt,
     updatedAt,

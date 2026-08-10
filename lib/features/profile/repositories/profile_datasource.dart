@@ -104,8 +104,11 @@ class ProfileDatasource {
       return null;
     }
   }
-  Future<SubscriptionPlansResponse?>allSubscriptionPlans({required String name}) async {
-    final url=Uri.parse(AppUrl.plan(name: name));
+
+  Future<SubscriptionPlansResponse?> allSubscriptionPlans({
+    required String name,
+  }) async {
+    final url = Uri.parse(AppUrl.plan(name: name));
     final response = await http.get(
       url,
       headers: {
@@ -119,4 +122,6 @@ class ProfileDatasource {
     }
     return null;
   }
+
+  // support page
 }

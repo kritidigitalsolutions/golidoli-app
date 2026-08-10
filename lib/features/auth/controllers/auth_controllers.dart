@@ -220,7 +220,9 @@ class AuthControllers extends GetxController {
     final result = await authDatasource.sendOtp(phone: mobileNumber.value);
 
     if (result) {
-      otpControllers.forEach((e) => e.clear());
+      for (var e in otpControllers) {
+        e.clear();
+      }
 
       otp.value = "";
       isOtpValid.value = false;

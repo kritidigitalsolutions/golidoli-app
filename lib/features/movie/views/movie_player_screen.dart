@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/features/web_series/bloc/episode_bloc/episode_bloc.dart';
-import 'package:golidoli_app/features/web_series/model/episode_model.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
 
@@ -100,7 +99,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   void _togglePlay() {
-    if (_videoController == null || !_videoController!.value.isInitialized) return;
+    if (_videoController == null || !_videoController!.value.isInitialized)
+      return;
     setState(() {
       if (_videoController!.value.isPlaying) {
         _videoController!.pause();
@@ -164,36 +164,37 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
       final fullUrl = _getFullUrl(videoUrl);
       debugPrint('🎬 Initializing player with URL: $fullUrl');
 
-      _videoController = VideoPlayerController.networkUrl(
-        Uri.parse(fullUrl),
-      )..initialize().then((_) {
-        if (mounted) {
-          setState(() {
-            _isInitialized = true;
-            _isLoading = false;
-            _duration = _videoController!.value.duration;
-          });
-          _videoController!.addListener(() {
-            if (mounted) {
-              setState(() {
-                _position = _videoController!.value.position;
-                _duration = _videoController!.value.duration;
-                _isPlaying = _videoController!.value.isPlaying;
-              });
-            }
-          });
-          _videoController!.play();
-          _isPlaying = true;
-        }
-      }).catchError((e) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = 'Failed to load video: ${e.toString()}';
-          });
-        }
-        debugPrint('❌ Error initializing video: $e');
-      });
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(fullUrl))
+        ..initialize()
+            .then((_) {
+              if (mounted) {
+                setState(() {
+                  _isInitialized = true;
+                  _isLoading = false;
+                  _duration = _videoController!.value.duration;
+                });
+                _videoController!.addListener(() {
+                  if (mounted) {
+                    setState(() {
+                      _position = _videoController!.value.position;
+                      _duration = _videoController!.value.duration;
+                      _isPlaying = _videoController!.value.isPlaying;
+                    });
+                  }
+                });
+                _videoController!.play();
+                _isPlaying = true;
+              }
+            })
+            .catchError((e) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                  _errorMessage = 'Failed to load video: ${e.toString()}';
+                });
+              }
+              debugPrint('❌ Error initializing video: $e');
+            });
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -207,7 +208,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final title = args?['title'] as String? ?? 'GoliDoli Player';
 
     return PopScope(
@@ -219,8 +221,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         backgroundColor: AppColors.black,
         body: BlocListener<EpisodeBloc, EpisodeState>(
           listener: (context, state) {
-            if (state.detailEpisode == Status.success && state.episodeDetail != null) {
-              final videoUrl = "${AppUrl.baseUrl}${state.episodeDetail!.episode.videoUrl}";
+            if (state.detailEpisode == Status.success &&
+                state.episodeDetail != null) {
+              final videoUrl =
+                  "${AppUrl.baseUrl}${state.episodeDetail!.episode.videoUrl}";
               if (videoUrl.isNotEmpty) {
                 _qualityUrls['Auto'] = videoUrl;
                 _selectedQuality = 'Auto';
@@ -254,10 +258,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
                 child: Column(
                   children: [
                     if (!isLandscape)
-                      _TopBar(
-                        title: title,
-                        onBack: _handleBack,
-                      ),
+                      _TopBar(title: title, onBack: _handleBack),
                     Expanded(
                       child: Center(
                         child: AspectRatio(
@@ -297,8 +298,11 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
                                   _isInitialized = false;
                                   _initializePlayer(newUrl);
                                   // Seek to previous position after initialization
-                                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                                    if (_videoController != null && _videoController!.value.isInitialized) {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    if (_videoController != null &&
+                                        _videoController!.value.isInitialized) {
                                       _videoController!.seekTo(currentPosition);
                                     }
                                   });
@@ -430,44 +434,34 @@ class _PlayerSurface extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(
-                      color: AppColors.primaryColor,
-                    ),
+                    CircularProgressIndicator(color: AppColors.primaryColor),
                     SizedBox(height: 16),
                     Text(
                       'Loading video...',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
                   ],
                 ),
               )
             else if (errorMessage != null)
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        color: Colors.red[400],
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        errorMessage!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red[400], size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      errorMessage!,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
+              ),
             // Buffering indicator
-            if (isInitialized && videoController != null && videoController!.value.isBuffering)
+            if (isInitialized &&
+                videoController != null &&
+                videoController!.value.isBuffering)
               const Center(
                 child: CircularProgressIndicator(
                   color: AppColors.primaryColor,
@@ -612,9 +606,7 @@ class _ControlsOverlay extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: AppColors.white,
                     size: 40,
                   ),
@@ -654,10 +646,9 @@ class _ControlsOverlay extends StatelessWidget {
                           ),
                         ),
                         child: Slider(
-                          value: position.inMilliseconds.clamp(
-                            0,
-                            duration.inMilliseconds,
-                          ).toDouble(),
+                          value: position.inMilliseconds
+                              .clamp(0, duration.inMilliseconds)
+                              .toDouble(),
                           min: 0,
                           max: duration.inMilliseconds <= 0
                               ? 1
@@ -718,14 +709,14 @@ class _ControlsOverlay extends StatelessWidget {
               Text('Quality', style: text18(fontWeight: FontWeight.w700)),
               const SizedBox(height: 12),
               ...qualityUrls.keys.map(
-                    (quality) => ListTile(
+                (quality) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(quality, style: text14()),
                   trailing: selectedQuality == quality
                       ? const Icon(
-                    Icons.check_rounded,
-                    color: AppColors.primaryColor,
-                  )
+                          Icons.check_rounded,
+                          color: AppColors.primaryColor,
+                        )
                       : null,
                   onTap: () {
                     Navigator.pop(context);
@@ -761,20 +752,20 @@ class _QualityMenu extends StatelessWidget {
       itemBuilder: (_) => qualityUrls.keys
           .map(
             (quality) => PopupMenuItem(
-          value: quality,
-          child: Row(
-            children: [
-              Expanded(child: Text(quality, style: text13())),
-              if (selectedQuality == quality)
-                const Icon(
-                  Icons.check,
-                  color: AppColors.primaryColor,
-                  size: 18,
-                ),
-            ],
-          ),
-        ),
-      )
+              value: quality,
+              child: Row(
+                children: [
+                  Expanded(child: Text(quality, style: text13())),
+                  if (selectedQuality == quality)
+                    const Icon(
+                      Icons.check,
+                      color: AppColors.primaryColor,
+                      size: 18,
+                    ),
+                ],
+              ),
+            ),
+          )
           .toList(),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

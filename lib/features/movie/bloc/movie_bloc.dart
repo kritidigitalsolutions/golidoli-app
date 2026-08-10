@@ -1,5 +1,4 @@
 import 'package:bloc/bloc.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
