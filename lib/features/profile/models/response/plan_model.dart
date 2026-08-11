@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class SubscriptionPlansResponse extends Equatable {
+class SubscriptionPlansResponse {
   final bool success;
   final String planType;
   final int count;
@@ -46,13 +44,9 @@ class SubscriptionPlansResponse extends Equatable {
       plans: plans ?? this.plans,
     );
   }
-
-  @override
-  // TODO: implement props
-  List<Object?> get props => [success, planType, count, plans];
 }
 
-class SubscriptionPlan extends Equatable {
+class SubscriptionPlan {
   final String id;
   final String name;
   final num price;
@@ -144,21 +138,4 @@ class SubscriptionPlan extends Equatable {
       version: version ?? this.version,
     );
   }
-
-  @override
-  // TODO: implement props
-  List<Object?> get props => [
-    id,
-    name,
-    price,
-    duration,
-    features,
-    isActive,
-    planType,
-    sortOrder,
-    isRecommended,
-    createdAt,
-    updatedAt,
-    version,
-  ];
 }

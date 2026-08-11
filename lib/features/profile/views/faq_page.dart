@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../constants/enums.dart';
-import '../bloc/document_bloc/help_cubit.dart';
 
 class FaqPage extends StatefulWidget {
   const FaqPage({super.key});
@@ -14,10 +14,13 @@ class FaqPage extends StatefulWidget {
 }
 
 class _FaqPageState extends State<FaqPage> {
+  late final HelpController _controller;
+
   @override
   void initState() {
-    context.read<HelpCubit>().allHelp();
     super.initState();
+    _controller = Get.find<HelpController>();
+    _controller.fetchAllHelp();
   }
 
   @override
@@ -40,95 +43,95 @@ class _FaqPageState extends State<FaqPage> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: BlocBuilder<HelpCubit, HelpState>(
-        builder: (context, state) {
-          if (state.helpStatus == Status.loading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor),
-            );
-          }
+      body: Obx(() {
+        final status = _controller.helpStatus.value;
 
-          if (state.helpStatus == Status.error) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, color: Colors.grey[400], size: 64),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load',
-                    style: TextStyle(color: Colors.grey[400], fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<HelpCubit>().allHelp();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final helps = state.helps;
-          if (helps == null || helps.helpData.isEmpty) {
-            return Center(
-              child: Text(
-                'No content available',
-                style: TextStyle(color: Colors.grey[400], fontSize: 16),
-              ),
-            );
-          }
-
-          // 🔹 Split data by category
-          final faqItems = helps.helpData
-              .where((e) => e.category == 'faq')
-              .toList();
-          final contactItems = helps.helpData
-              .where((e) => e.category == 'contact-support')
-              .toList();
-          final otherItems = helps.helpData
-              .where(
-                (e) => e.category != 'faq' && e.category != 'contact-support',
-              )
-              .toList();
-
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // 🔹 1. Contact support -> special card (icon + tap to call/email)
-              if (contactItems.isNotEmpty) ...[
-                _sectionTitle('Contact Us'),
-                const SizedBox(height: 8),
-                ...contactItems.map((item) => _buildContactTile(item)),
-                const SizedBox(height: 20),
-              ],
-
-              // 🔹 2. Other categories (e.g. cancel-subscription) -> highlighted info card
-              if (otherItems.isNotEmpty) ...[
-                _sectionTitle('Important Info'),
-                const SizedBox(height: 8),
-                ...otherItems.map((item) => _buildInfoCard(item)),
-                const SizedBox(height: 20),
-              ],
-
-              // 🔹 3. FAQ category -> expandable tiles
-              if (faqItems.isNotEmpty) ...[
-                _sectionTitle('Frequently Asked Questions'),
-                const SizedBox(height: 8),
-                ...faqItems.map((faq) => _buildFaqTile(faq)),
-              ],
-            ],
+        if (status == Status.loading) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryColor),
           );
-        },
-      ),
+        }
+
+        if (status == Status.error) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.grey[400], size: 64),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 16),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    _controller.fetchAllHelp();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final helps = _controller.helps.value;
+        if (helps == null || helps.helpData.isEmpty) {
+          return Center(
+            child: Text(
+              'No content available',
+              style: TextStyle(color: Colors.grey[400], fontSize: 16),
+            ),
+          );
+        }
+
+        // 🔹 Split data by category
+        final faqItems = helps.helpData
+            .where((e) => e.category == 'faq')
+            .toList();
+        final contactItems = helps.helpData
+            .where((e) => e.category == 'contact-support')
+            .toList();
+        final otherItems = helps.helpData
+            .where(
+              (e) => e.category != 'faq' && e.category != 'contact-support',
+            )
+            .toList();
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // 🔹 1. Contact support -> special card (icon + tap to call/email)
+            if (contactItems.isNotEmpty) ...[
+              _sectionTitle('Contact Us'),
+              const SizedBox(height: 8),
+              ...contactItems.map((item) => _buildContactTile(item)),
+              const SizedBox(height: 20),
+            ],
+
+            // 🔹 2. Other categories (e.g. cancel-subscription) -> highlighted info card
+            if (otherItems.isNotEmpty) ...[
+              _sectionTitle('Important Info'),
+              const SizedBox(height: 8),
+              ...otherItems.map((item) => _buildInfoCard(item)),
+              const SizedBox(height: 20),
+            ],
+
+            // 🔹 3. FAQ category -> expandable tiles
+            if (faqItems.isNotEmpty) ...[
+              _sectionTitle('Frequently Asked Questions'),
+              const SizedBox(height: 8),
+              ...faqItems.map((faq) => _buildFaqTile(faq)),
+            ],
+          ],
+        );
+      }),
     );
   }
 

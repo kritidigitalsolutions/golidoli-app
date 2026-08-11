@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
-import 'package:golidoli_app/features/movie/bloc/movie_bloc.dart';
+import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -19,90 +19,88 @@ class MovieDetailsScreen extends StatefulWidget {
 
 class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
   bool isInWatchlist = false;
+  late final MovieController _controller;
 
   @override
   void initState() {
     super.initState();
+    _controller = Get.find<MovieController>();
     if (widget.id != null) {
-      context.read<MovieBloc>().add(MovieEvent.movieDetail(value: widget.id!));
+      _controller.fetchMovieDetail(widget.id!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<MovieBloc, MovieState>(
-      builder: (context, state) {
-        // Handle loading state
-        if (state.movieDetailStatus == Status.loading) {
-          return Scaffold(
-            backgroundColor: AppColors.backgroundColor,
-            body: const Center(
-              child: CircularProgressIndicator(color: AppColors.accentColor),
-            ),
-          );
-        }
-
-        // Handle error state
-        if (state.movieDetailStatus == Status.error) {
-          return Scaffold(
-            backgroundColor: AppColors.backgroundColor,
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.error_outline_rounded,
-                    color: AppColors.errorColor,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Failed to load movie details',
-                    style: text14(color: AppColors.secondaryTextColor),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (widget.id != null) {
-                        context.read<MovieBloc>().add(
-                          MovieEvent.movieDetail(value: widget.id!),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentColor,
-                      foregroundColor: AppColors.black,
-                    ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        final movie = state.movieDetail;
-        if (movie == null) {
-          return Scaffold(
-            backgroundColor: AppColors.backgroundColor,
-            body: const Center(child: Text('No movie found')),
-          );
-        }
-
+    return Obx(() {
+      // Handle loading state
+      if (_controller.movieDetailStatus.value == Status.loading) {
         return Scaffold(
           backgroundColor: AppColors.backgroundColor,
-          body: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildHero(movie)),
-              SliverToBoxAdapter(child: _buildMovieInfo(movie)),
-              SliverToBoxAdapter(child: _buildActions(movie)),
-              SliverToBoxAdapter(child: _buildMoreLikeThis(state)),
-              const SliverToBoxAdapter(child: SizedBox(height: 30)),
-            ],
+          body: const Center(
+            child: CircularProgressIndicator(color: AppColors.accentColor),
           ),
         );
-      },
-    );
+      }
+
+      // Handle error state
+      if (_controller.movieDetailStatus.value == Status.error) {
+        return Scaffold(
+          backgroundColor: AppColors.backgroundColor,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.errorColor,
+                  size: 48,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Failed to load movie details',
+                  style: text14(color: AppColors.secondaryTextColor),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    if (widget.id != null) {
+                      _controller.fetchMovieDetail(widget.id!);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentColor,
+                    foregroundColor: AppColors.black,
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      final movie = _controller.movieDetail.value;
+      if (movie == null) {
+        return Scaffold(
+          backgroundColor: AppColors.backgroundColor,
+          body: const Center(child: Text('No movie found')),
+        );
+      }
+
+      return Scaffold(
+        backgroundColor: AppColors.backgroundColor,
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHero(movie)),
+            SliverToBoxAdapter(child: _buildMovieInfo(movie)),
+            SliverToBoxAdapter(child: _buildActions(movie)),
+            SliverToBoxAdapter(child: _buildMoreLikeThis()),
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildHero(MovieModel movie) {
@@ -471,8 +469,8 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
     );
   }
 
-  Widget _buildMoreLikeThis(MovieState state) {
-    final movies = state.allMovies;
+  Widget _buildMoreLikeThis() {
+    final movies = _controller.allMovies;
     // Filter out current movie and get random 6 movies
     final moreLikeThis = movies
         .where((m) => m.id != widget.id)

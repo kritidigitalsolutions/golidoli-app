@@ -1,48 +1,46 @@
-import 'dart:convert';
-
 import 'package:golidoli_app/constants/app_url.dart';
-import 'package:golidoli_app/core/services/storage_service.dart';
+import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
-import 'package:http/http.dart' as http;
 
 class MicroDramaDatasource {
+  final NetworkApiService _apiService;
+
+  MicroDramaDatasource(this._apiService);
+
   Future<MicrodramasResponse?> allMicroDrama() async {
-    final token = await StorageService.getToken();
-    final url = Uri.parse(AppUrl.allMicroDramaApis);
-
-    final response = await http.get(
-      url,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-      return MicrodramasResponse.fromJson(jsonData);
-    } else {
+    try {
+      final json = await _apiService.getApi(AppUrl.allMicroDramaApis);
+      if (json != null) {
+        return MicrodramasResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }
 
   Future<MicrodramaDetailResponse?> dramaDetail({required String id}) async {
-    final url = Uri.parse(AppUrl.singleMicroDrama(id: id));
-    var response = await http.get(url);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-      return MicrodramaDetailResponse.fromJson(jsonData);
-    } else {
+    try {
+      final json = await _apiService.getApi(AppUrl.singleMicroDrama(id: id));
+      if (json != null) {
+        return MicrodramaDetailResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }
 
   Future<EpisodesResponse?> episodeDetail({required String id}) async {
-    final url = Uri.parse(AppUrl.microDramaEpisodeDetail(id: id));
-    var response = await http.get(url);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final jsonData = jsonDecode(response.body) as Map<String, dynamic>;
-      return EpisodesResponse.fromJson(jsonData);
-    } else {
+    try {
+      final json = await _apiService.getApi(AppUrl.microDramaEpisodeDetail(id: id));
+      if (json != null) {
+        return EpisodesResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }

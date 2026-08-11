@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
-import 'package:golidoli_app/features/web_series/bloc/episode_bloc/episode_bloc.dart';
+import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
 
@@ -30,18 +30,49 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   final Map<String, String> _qualityUrls = {};
   bool _isLoading = true;
   String? _errorMessage;
+  late final EpisodeController _episodeController;
+  Worker? _statusWorker;
 
   @override
   void initState() {
     super.initState();
-    context.read<EpisodeBloc>().add(
-      EpisodeEvent.episodeDetail(id: widget.episodeId),
-    );
+    _episodeController = Get.find<EpisodeController>();
+
+    _statusWorker = ever(_episodeController.detailEpisodeStatus, (Status status) {
+      if (status == Status.success && _episodeController.episodeDetail.value != null) {
+        final episodeDetailVal = _episodeController.episodeDetail.value!;
+        final videoUrl = "${AppUrl.baseUrl}${episodeDetailVal.episode.videoUrl}";
+        if (videoUrl.isNotEmpty) {
+          _qualityUrls['Auto'] = videoUrl;
+          _selectedQuality = 'Auto';
+          _initializePlayer(videoUrl);
+        } else {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'No video URL available';
+          });
+        }
+      } else if (status == Status.error) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load episode details';
+        });
+        Get.snackbar(
+          "Error",
+          "Failed to load episode details",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    });
+
+    _episodeController.fetchEpisodeDetail(widget.episodeId);
     _lockPortrait();
   }
 
   @override
   void dispose() {
+    _statusWorker?.dispose();
     _videoController?.dispose();
     _restoreDefaults();
     super.dispose();
@@ -99,8 +130,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   void _togglePlay() {
-    if (_videoController == null || !_videoController!.value.isInitialized)
+    if (_videoController == null || !_videoController!.value.isInitialized) {
       return;
+    }
     setState(() {
       if (_videoController!.value.isPlaying) {
         _videoController!.pause();
@@ -149,12 +181,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   String _getFullUrl(String videoUrl) {
-    // If it's already a full URL, return as is
     if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
       return videoUrl;
     }
-    // Otherwise, prepend the base URL
-    // TODO: Replace with your actual base URL
     const baseUrl = 'http://192.168.1.17:5000';
     return '$baseUrl$videoUrl';
   }
@@ -219,105 +248,73 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.black,
-        body: BlocListener<EpisodeBloc, EpisodeState>(
-          listener: (context, state) {
-            if (state.detailEpisode == Status.success &&
-                state.episodeDetail != null) {
-              final videoUrl =
-                  "${AppUrl.baseUrl}${state.episodeDetail!.episode.videoUrl}";
-              if (videoUrl.isNotEmpty) {
-                _qualityUrls['Auto'] = videoUrl;
-                _selectedQuality = 'Auto';
-                _initializePlayer(videoUrl);
-              } else {
-                setState(() {
-                  _isLoading = false;
-                  _errorMessage = 'No video URL available';
-                });
-              }
-            }
-            if (state.detailEpisode == Status.error) {
-              setState(() {
-                _isLoading = false;
-                _errorMessage = 'Failed to load episode details';
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Failed to load episode'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          },
-          child: OrientationBuilder(
-            builder: (context, orientation) {
-              final isLandscape = orientation == Orientation.landscape;
-              return SafeArea(
-                top: !isLandscape,
-                bottom: !isLandscape,
-                child: Column(
-                  children: [
-                    if (!isLandscape)
-                      _TopBar(title: title, onBack: _handleBack),
-                    Expanded(
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: _PlayerSurface(
-                            title: title,
-                            showOverlayHeader: isLandscape,
-                            onBack: _handleBack,
-                            onToggleFullscreen: _toggleFullscreen,
-                            isFullscreen: _isFullscreen,
-                            isInitialized: _isInitialized,
-                            isLoading: _isLoading,
-                            errorMessage: _errorMessage,
-                            videoController: _videoController,
-                            showControls: _showControls,
-                            isPlaying: _isPlaying,
-                            isMuted: _isMuted,
-                            position: _position,
-                            duration: _duration,
-                            selectedQuality: _selectedQuality,
-                            qualityUrls: _qualityUrls,
-                            toggleControls: _toggleControls,
-                            togglePlay: _togglePlay,
-                            toggleMute: _toggleMute,
-                            rewind: _rewind,
-                            forward: _forward,
-                            seekTo: _seekTo,
-                            formatDuration: _formatDuration,
-                            changeQuality: (quality) {
-                              setState(() {
-                                _selectedQuality = quality;
-                                if (_qualityUrls.containsKey(quality)) {
-                                  final newUrl = _qualityUrls[quality]!;
-                                  final currentPosition = _position;
-                                  _videoController?.dispose();
-                                  _videoController = null;
-                                  _isInitialized = false;
-                                  _initializePlayer(newUrl);
-                                  // Seek to previous position after initialization
-                                  WidgetsBinding.instance.addPostFrameCallback((
-                                    _,
-                                  ) {
-                                    if (_videoController != null &&
-                                        _videoController!.value.isInitialized) {
-                                      _videoController!.seekTo(currentPosition);
-                                    }
-                                  });
-                                }
-                              });
-                            },
-                          ),
+        body: OrientationBuilder(
+          builder: (context, orientation) {
+            final isLandscape = orientation == Orientation.landscape;
+            return SafeArea(
+              top: !isLandscape,
+              bottom: !isLandscape,
+              child: Column(
+                children: [
+                  if (!isLandscape)
+                    _TopBar(title: title, onBack: _handleBack),
+                  Expanded(
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: _PlayerSurface(
+                          title: title,
+                          showOverlayHeader: isLandscape,
+                          onBack: _handleBack,
+                          onToggleFullscreen: _toggleFullscreen,
+                          isFullscreen: _isFullscreen,
+                          isInitialized: _isInitialized,
+                          isLoading: _isLoading,
+                          errorMessage: _errorMessage,
+                          videoController: _videoController,
+                          showControls: _showControls,
+                          isPlaying: _isPlaying,
+                          isMuted: _isMuted,
+                          position: _position,
+                          duration: _duration,
+                          selectedQuality: _selectedQuality,
+                          qualityUrls: _qualityUrls,
+                          toggleControls: _toggleControls,
+                          togglePlay: _togglePlay,
+                          toggleMute: _toggleMute,
+                          rewind: _rewind,
+                          forward: _forward,
+                          seekTo: _seekTo,
+                          formatDuration: _formatDuration,
+                          changeQuality: (quality) {
+                            setState(() {
+                              _selectedQuality = quality;
+                              if (_qualityUrls.containsKey(quality)) {
+                                final newUrl = _qualityUrls[quality]!;
+                                final currentPosition = _position;
+                                _videoController?.dispose();
+                                _videoController = null;
+                                _isInitialized = false;
+                                _initializePlayer(newUrl);
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  if (_videoController != null &&
+                                      _videoController!.value.isInitialized) {
+                                    _videoController!.seekTo(currentPosition);
+                                  }
+                                });
+                              }
+                            });
+                          },
                         ),
                       ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -419,7 +416,6 @@ class _PlayerSurface extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // Video Player
             if (isInitialized && videoController != null)
               FittedBox(
                 fit: BoxFit.contain,
@@ -458,7 +454,6 @@ class _PlayerSurface extends StatelessWidget {
                   ],
                 ),
               ),
-            // Buffering indicator
             if (isInitialized &&
                 videoController != null &&
                 videoController!.value.isBuffering)
@@ -468,7 +463,6 @@ class _PlayerSurface extends StatelessWidget {
                   strokeWidth: 3,
                 ),
               ),
-            // Controls
             if (showControls && isInitialized)
               _ControlsOverlay(
                 title: title,
@@ -798,8 +792,6 @@ class _SmallAction extends StatelessWidget {
     return IconButton(
       onPressed: onTap,
       icon: Icon(icon, color: AppColors.white, size: 21),
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
     );
   }
 }

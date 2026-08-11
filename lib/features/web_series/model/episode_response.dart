@@ -1,13 +1,8 @@
-import 'package:equatable/equatable.dart';
-
-class EpisodesResponse extends Equatable {
+class EpisodesResponse {
   final bool success;
   final List<Episode> episodes;
 
-  const EpisodesResponse({
-    required this.success,
-    required this.episodes,
-  });
+  const EpisodesResponse({required this.success, required this.episodes});
 
   factory EpisodesResponse.fromJson(Map<String, dynamic> json) {
     return EpisodesResponse(
@@ -25,21 +20,15 @@ class EpisodesResponse extends Equatable {
     };
   }
 
-  EpisodesResponse copyWith({
-    bool? success,
-    List<Episode>? episodes,
-  }) {
+  EpisodesResponse copyWith({bool? success, List<Episode>? episodes}) {
     return EpisodesResponse(
       success: success ?? this.success,
       episodes: episodes ?? this.episodes,
     );
   }
-
-  @override
-  List<Object?> get props => [success, episodes];
 }
 
-class Episode extends Equatable {
+class Episode {
   final String id;
   final String title;
   final String description;
@@ -131,20 +120,4 @@ class Episode extends Equatable {
       version: version ?? this.version,
     );
   }
-
-  @override
-  List<Object?> get props => [
-    id,
-    title,
-    description,
-    seriesId,
-    seasonNumber,
-    episodeNumber,
-    videoUrl,
-    thumbnail,
-    duration,
-    createdAt,
-    updatedAt,
-    version,
-  ];
 }

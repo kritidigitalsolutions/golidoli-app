@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/core/di/injection.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/views/discover_tab.dart';
 import 'package:golidoli_app/features/home/views/home_tab.dart';
@@ -15,7 +14,6 @@ import 'package:golidoli_app/shared/widgets/bottom_nav_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Injection.initial();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

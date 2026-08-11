@@ -2,19 +2,18 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/audio_play/views/audio_stories_screen.dart';
-import 'package:golidoli_app/features/home/bloc/content/content_bloc.dart';
+import 'package:golidoli_app/features/home/controllers/content_controller.dart';
 import 'package:golidoli_app/features/home/models/content_model.dart';
 import 'package:golidoli_app/features/home/controllers/discover_controller.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/utils/text_style.dart';
-import 'package:get/get.dart';
 
 class DiscoverTab extends StatefulWidget {
   const DiscoverTab({super.key});
@@ -25,6 +24,7 @@ class DiscoverTab extends StatefulWidget {
 
 class _DiscoverTabState extends State<DiscoverTab> {
   late final DiscoverController _controller;
+  late final ContentController _contentController;
   late final TextEditingController _searchController;
   Timer? _debounce;
   String _currentQuery = '';
@@ -33,6 +33,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
   void initState() {
     super.initState();
     _controller = Get.put(DiscoverController());
+    _contentController = Get.find<ContentController>();
     _searchController = _controller.searchController;
   }
 
@@ -48,7 +49,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
       final query = val.trim();
       if (query == _currentQuery) return;
       _currentQuery = query;
-      context.read<ContentBloc>().add(ContentEvent.searchContent(query: query));
+      _contentController.searchContent(query);
     });
   }
 
@@ -75,28 +76,25 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ContentBloc, ContentState>(
-      builder: (context, state) {
-        final bool isSearching = _currentQuery.isNotEmpty;
+    return Obx(() {
+      final bool isSearching = _currentQuery.isNotEmpty;
 
-        return SafeArea(
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildSearchBar()),
-              if (!isSearching) ...[
-                // SliverToBoxAdapter(child: _buildTrendingSearches()),
-                SliverToBoxAdapter(child: _buildCategoryGrid()),
-                SliverToBoxAdapter(child: _buildExcitingBanner()),
-              ] else ...[
-                SliverToBoxAdapter(child: _buildSearchResults(state)),
-              ],
-              const SliverToBoxAdapter(child: SizedBox(height: 24)),
+      return SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildSearchBar()),
+            if (!isSearching) ...[
+              SliverToBoxAdapter(child: _buildCategoryGrid()),
+              SliverToBoxAdapter(child: _buildExcitingBanner()),
+            ] else ...[
+              SliverToBoxAdapter(child: _buildSearchResults()),
             ],
-          ),
-        );
-      },
-    );
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildHeader() {
@@ -149,9 +147,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
               onTap: () {
                 _searchController.clear();
                 setState(() => _currentQuery = '');
-                context.read<ContentBloc>().add(
-                  const ContentEvent.searchContent(query: ''),
-                );
+                _contentController.searchContent('');
               },
               child: const Icon(
                 Icons.close,
@@ -166,15 +162,18 @@ class _DiscoverTabState extends State<DiscoverTab> {
     );
   }
 
-  Widget _buildSearchResults(ContentState state) {
-    if (state.searchContentStatus == Status.loading) {
+  Widget _buildSearchResults() {
+    final status = _contentController.searchContentStatus.value;
+    final items = _contentController.searchContents.value?.content ?? [];
+
+    if (status == Status.loading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 60),
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (state.searchContentStatus == Status.error) {
+    if (status == Status.error) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
@@ -186,9 +185,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
       );
     }
 
-    final items = state.searchContents?.content ?? [];
-
-    if (items.isEmpty && state.searchContentStatus == Status.success) {
+    if (items.isEmpty && status == Status.success) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 60),
         child: Center(
@@ -506,14 +503,13 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
   // 🔹 New: category tap ke liye alag, debounce-free handler
   void _onCategoryTap(String query) {
-    _debounce
-        ?.cancel(); // pending debounce cancel karo taaki wo baad me overwrite na kare
+    _debounce?.cancel();
     _searchController.text = query;
     _searchController.selection = TextSelection.fromPosition(
       TextPosition(offset: query.length),
     );
     setState(() => _currentQuery = query);
-    context.read<ContentBloc>().add(ContentEvent.searchContent(query: query));
+    _contentController.searchContent(query);
   }
 
   Widget _buildExcitingBanner() {

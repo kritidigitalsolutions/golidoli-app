@@ -1,19 +1,22 @@
-import 'dart:convert';
 import 'package:golidoli_app/constants/app_url.dart';
-import 'package:golidoli_app/features/home/models/content_model.dart';
-import 'package:http/http.dart' as http;
+import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import '../models/category_model.dart';
 import '../models/category_detail_model.dart';
+import '../models/content_model.dart';
 
 class HomeDatasource {
+  final NetworkApiService _apiService;
+
+  HomeDatasource(this._apiService);
+
   Future<CategoriesResponse?> allCategories() async {
-    final url = Uri.parse(AppUrl.allCategories);
-    final response = await http.get(url);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      // ✅ Decode the JSON body to a Map
-      final Map<String, dynamic> json = jsonDecode(response.body);
-      return CategoriesResponse.fromJson(json);
-    } else {
+    try {
+      final json = await _apiService.getApi(AppUrl.allCategories);
+      if (json != null) {
+        return CategoriesResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }
@@ -23,36 +26,39 @@ class HomeDatasource {
     required int page,
     required int size,
   }) async {
-    final url = Uri.parse(
-      AppUrl.categoryDetail(id: id, page: page, size: size),
-    );
-    final response = await http.get(url);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final Map<String, dynamic> json = jsonDecode(response.body);
-      return CategoryContentResponse.fromJson(json);
-    } else {
+    try {
+      final json = await _apiService.getApi(
+        AppUrl.categoryDetail(id: id, page: page, size: size),
+      );
+      if (json != null) {
+        return CategoryContentResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }
 
   Future<HomeContentResponse?> allContent() async {
-    final url = Uri.parse(AppUrl.allContentApi);
-    var response = await http.get(url);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final Map<String, dynamic> json = jsonDecode(response.body);
-      return HomeContentResponse.fromJson(json);
-    } else {
+    try {
+      final json = await _apiService.getApi(AppUrl.allContentApi);
+      if (json != null) {
+        return HomeContentResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }
 
   Future<HomeContentResponse?> searchContent(String query) async {
-    final url = Uri.parse(AppUrl.searchContent(query: query));
-    var response = await http.get(url);
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final Map<String, dynamic> json = jsonDecode(response.body);
-      return HomeContentResponse.fromJson(json);
-    } else {
+    try {
+      final json = await _apiService.getApi(AppUrl.searchContent(query: query));
+      if (json != null) {
+        return HomeContentResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
       return null;
     }
   }

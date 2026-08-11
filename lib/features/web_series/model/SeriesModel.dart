@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class SeriesResponse extends Equatable {
+class SeriesResponse {
   final bool success;
   final List<Series> series;
 
@@ -30,12 +28,9 @@ class SeriesResponse extends Equatable {
       series: series ?? this.series,
     );
   }
-
-  @override
-  List<Object?> get props => [success, series];
 }
 
-class Series extends Equatable {
+class Series {
   final String id;
   final String title;
   final String description;
@@ -211,34 +206,4 @@ class Series extends Equatable {
       seasons: seasons ?? this.seasons,
     );
   }
-
-  @override
-  List<Object?> get props => [
-    id,
-    title,
-    description,
-    genre,
-    releaseYear,
-    duration,
-    language,
-    poster,
-    banner,
-    isComingSoon,
-    releaseDate,
-    trailerUrl,
-    isPremium,
-    priority,
-    rating,
-    cast,
-    category,
-    likes,
-    dislikes,
-    totalSeasons,
-    totalEpisodes,
-    createdAt,
-    updatedAt,
-    slug,
-    v,
-    seasons,
-  ];
 }

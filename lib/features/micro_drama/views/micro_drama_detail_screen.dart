@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/micro_drama/bloc/micro_drama_bloc.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_player_screen.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -21,83 +21,78 @@ class MicroDramaDetailScreen extends StatefulWidget {
 class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
   bool isInWatchlist = false;
   int selectedEpisode = 0;
+  late final MicroDramaController _controller;
 
   static const int _freeEpisodeCount = 3;
 
   @override
   void initState() {
     super.initState();
-    final bloc = context.read<MicroDramaBloc>();
-    bloc.add(MicroDramaEvent.detailMicroDrama(id: widget.id));
-    bloc.add(const MicroDramaEvent.allMicroDrama());
+    _controller = Get.find<MicroDramaController>();
+    _controller.fetchDramaDetail(widget.id);
+    _controller.fetchAllMicroDrama();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      body: BlocBuilder<MicroDramaBloc, MicroDramaState>(
-        builder: (context, state) {
-          // Loading state
-          if (state.detailDramaStatus == Status.loading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      body: Obx(() {
+        // Loading state
+        if (_controller.detailDramaStatus.value == Status.loading) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-          // Error state
-          if (state.detailDramaStatus == Status.error ||
-              state.dramaDetail == null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load drama details',
-                    style: text15(color: AppColors.secondaryTextColor),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<MicroDramaBloc>().add(
-                          MicroDramaEvent.detailMicroDrama(id: widget.id));
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
+        // Error state
+        if (_controller.detailDramaStatus.value == Status.error ||
+            _controller.dramaDetail.value == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load drama details',
+                  style: text15(color: AppColors.secondaryTextColor),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    _controller.fetchDramaDetail(widget.id);
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
 
-          final drama = state.dramaDetail!.microdrama;
-
-          // ✅ Extract the list from the wrapper object.
-          // If the field name is different (e.g., 'data'), change it accordingly.
-          final allDramas = state.allMicroDrama?.microdramas ?? [];
-          final similarDramas = allDramas
-              .where(
-                (d) =>
+        final drama = _controller.dramaDetail.value!.microdrama;
+        final allDramas = _controller.allMicroDrama.value?.microdramas ?? [];
+        final similarDramas = allDramas
+            .where(
+              (d) =>
             d.id != drama.id &&
                 d.genre.any((g) => drama.genre.contains(g)),
           )
               .toList();
 
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _buildHero(drama)),
-              SliverToBoxAdapter(child: _buildRatingAndTags(drama)),
-              SliverToBoxAdapter(child: _buildStory(drama)),
-              SliverToBoxAdapter(child: _buildActions(drama)),
-              SliverToBoxAdapter(child: _buildEpisodes(drama)),
-              if (similarDramas.isNotEmpty)
-                SliverToBoxAdapter(
-                    child: _buildSimilarDramas(similarDramas.cast<Microdrama>(), drama.id)),
-              SliverToBoxAdapter(child: _buildExploreMore()),
-              const SliverToBoxAdapter(child: SizedBox(height: 30)),
-            ],
-          );
-        },
-      ),
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHero(drama)),
+            SliverToBoxAdapter(child: _buildRatingAndTags(drama)),
+            SliverToBoxAdapter(child: _buildStory(drama)),
+            SliverToBoxAdapter(child: _buildActions(drama)),
+            SliverToBoxAdapter(child: _buildEpisodes(drama)),
+            if (similarDramas.isNotEmpty)
+              SliverToBoxAdapter(
+                  child: _buildSimilarDramas(similarDramas.cast<Microdrama>(), drama.id)),
+            SliverToBoxAdapter(child: _buildExploreMore()),
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+          ],
+        );
+      }),
     );
   }
 

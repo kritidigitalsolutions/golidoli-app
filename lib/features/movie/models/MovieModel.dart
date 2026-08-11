@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class MovieModel extends Equatable {
+class MovieModel {
   final String id;
   final String title;
   final String description;

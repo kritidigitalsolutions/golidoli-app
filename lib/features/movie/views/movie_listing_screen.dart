@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/movie/bloc/movie_bloc.dart';
+import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -17,6 +17,7 @@ class MovieListingScreen extends StatefulWidget {
 
 class _MovieListingScreenState extends State<MovieListingScreen> {
   int selectedCategoryIndex = 0;
+  late final MovieController _controller;
   final List<String> categories = [
     'All',
     'Action',
@@ -31,30 +32,29 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<MovieBloc>().add(const MovieEvent.allMovies());
+    _controller = Get.find<MovieController>();
+    _controller.fetchAllMovies();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<MovieBloc, MovieState>(
-      builder: (context, state) {
-        return Scaffold(
-          backgroundColor: AppColors.backgroundColor,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(),
-                _buildCategoryTabs(),
-                const SizedBox(height: 12),
-                Expanded(child: _buildGrid(state)),
-                _buildExploreMore(),
-                const SizedBox(height: 16),
-              ],
-            ),
+    return Obx(() {
+      return Scaffold(
+        backgroundColor: AppColors.backgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildTopBar(),
+              _buildCategoryTabs(),
+              const SizedBox(height: 12),
+              Expanded(child: _buildGrid()),
+              _buildExploreMore(),
+              const SizedBox(height: 16),
+            ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    });
   }
 
   Widget _buildTopBar() {
@@ -140,16 +140,17 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
     }).toList();
   }
 
-  Widget _buildGrid(MovieState state) {
+  Widget _buildGrid() {
+    final status = _controller.allMoviesStatus.value;
     // Handle loading state
-    if (state.allMoviesStatus == Status.loading) {
+    if (status == Status.loading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.accentColor),
       );
     }
 
     // Handle error state
-    if (state.allMoviesStatus == Status.error) {
+    if (status == Status.error) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -167,7 +168,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                context.read<MovieBloc>().add(const MovieEvent.allMovies());
+                _controller.fetchAllMovies();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentColor,
@@ -181,7 +182,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
     }
 
     // 🔹 Apply filter on top of the full list
-    final movies = _filterMovies(state.allMovies);
+    final movies = _filterMovies(_controller.allMovies.toList());
 
     // Handle empty state
     if (movies.isEmpty) {
@@ -225,7 +226,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
             builder: (context) => MovieDetailsScreen(id: movie.id),
           ),
         );
-        context.read<MovieBloc>().add(MovieEvent.movieDetail(value: movie.id));
+        _controller.fetchMovieDetail(movie.id);
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),

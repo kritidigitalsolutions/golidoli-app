@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
-import 'package:golidoli_app/features/web_series/bloc/series_bloc/series_bloc.dart';
+import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
+import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
+import 'package:golidoli_app/features/web_series/model/episode_response.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 import '../../../constants/enums.dart';
 import '../../movie/views/movie_player_screen.dart';
-import '../bloc/episode_bloc/episode_bloc.dart';
-import '../model/episode_response.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
   const WebSeriesDetailScreen({super.key, required this.id});
@@ -23,30 +22,37 @@ class WebSeriesDetailScreen extends StatefulWidget {
 
 class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
   int _selectedSeasonIndex = 0;
+  late final SeriesController _seriesController;
+  late final EpisodeController _episodeController;
+
   @override
   void initState() {
-    context.read<SeriesBloc>().add(SeriesEvent.seriesDetail(id: widget.id));
-    context.read<EpisodeBloc>().add(EpisodeEvent.allEpisode(id: widget.id));
-
     super.initState();
+    _seriesController = Get.find<SeriesController>();
+    _episodeController = Get.find<EpisodeController>();
+    _seriesController.fetchSeriesDetail(widget.id);
+    _episodeController.fetchAllEpisodes(widget.id);
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SeriesBloc, SeriesState>(
-      builder: (context, state) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
+      body: Obx(() {
+        final seriesStatus = _seriesController.seriesDetailStatus.value;
+
         // Check for loading state
-        if (state.seriesDetail == Status.loading) {
-          return Scaffold(
+        if (seriesStatus == Status.loading) {
+          return const Scaffold(
             backgroundColor: AppColors.backgroundColor,
-            body: const Center(
+            body: Center(
               child: CircularProgressIndicator(color: AppColors.accentColor),
             ),
           );
         }
 
         // Check for error state
-        if (state.seriesDetailStatus == Status.error) {
+        if (seriesStatus == Status.error) {
           return Scaffold(
             backgroundColor: AppColors.backgroundColor,
             body: Center(
@@ -66,9 +72,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<SeriesBloc>().add(
-                        SeriesEvent.seriesDetail(id: widget.id),
-                      );
+                      _seriesController.fetchSeriesDetail(widget.id);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accentColor,
@@ -82,13 +86,13 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         }
 
         // Get series detail with null safety
-        final seriesDetail = state.seriesDetail;
+        final seriesDetail = _seriesController.seriesDetail.value;
 
         // Check if series detail is null
         if (seriesDetail == null) {
-          return Scaffold(
+          return const Scaffold(
             backgroundColor: AppColors.backgroundColor,
-            body: const Center(
+            body: Center(
               child: Text(
                 "No data available",
                 style: TextStyle(color: Colors.white),
@@ -113,7 +117,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
             ],
           ),
         );
-      },
+      }),
     );
   }
 
@@ -182,7 +186,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 width: 90,
                 height: 120,
                 color: AppColors.cardColor,
-                child: Icon(Icons.movie, color: AppColors.hintTextColor),
+                child: const Icon(Icons.movie, color: AppColors.hintTextColor),
               ),
             ),
           ),
@@ -196,7 +200,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 // Rating
                 Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.star_rounded,
                       color: AppColors.ratingColor,
                       size: 16,
@@ -304,23 +308,16 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.bookmark_rounded,
-
                       color: AppColors.primaryColor,
-
                       size: 18,
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      // controller.isInWatchlist.value
-                      //     ? 'Saved'
                       '+ Watchlist',
                       style: text13(
-                        color:
-                            // controller.isInWatchlist.value
-                            AppColors.primaryColor,
-                        // : AppColors.secondaryTextColor,
+                        color: AppColors.primaryColor,
                       ),
                     ),
                   ],
@@ -348,7 +345,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.download_outlined,
                 color: AppColors.secondaryTextColor,
                 size: 18,
@@ -370,42 +367,33 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
 
   // ── Season tabs ────────────────────────────────────────────────────────────
   Widget _buildSeasonTabs(Series series) {
+    if (series.seasons.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: BlocBuilder<SeriesBloc, SeriesState>(
-        builder: (context, state) {
-          // Check if seasons exist and have data
-          if (series.seasons.isEmpty) {
-            return const SizedBox.shrink();
-          }
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(series.seasons.length, (index) {
+            final season = series.seasons[index];
+            String seasonName;
 
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(series.seasons.length, (index) {
-                // Handle both Map and Season object cases
-                final season = series.seasons[index];
-                String seasonName;
+            if (season is Map<String, dynamic>) {
+              seasonName = season['name'] ?? 'Season ${index + 1}';
+            } else {
+              seasonName = (season as dynamic).name ?? 'Season ${index + 1}';
+            }
 
-                // Check if it's a Map or a Season object
-                if (season is Map<String, dynamic>) {
-                  seasonName = season['name'] ?? 'Season ${index + 1}';
-                } else {
-                  // Assuming it's a Season object with a 'name' property
-                  seasonName =
-                      (season as dynamic).name ?? 'Season ${index + 1}';
-                }
-
-                return Padding(
-                  padding: EdgeInsets.only(
-                    right: index < series.seasons.length - 1 ? 16 : 0,
-                  ),
-                  child: _seasonTab(seasonName, index),
-                );
-              }),
-            ),
-          );
-        },
+            return Padding(
+              padding: EdgeInsets.only(
+                right: index < series.seasons.length - 1 ? 16 : 0,
+              ),
+              child: _seasonTab(seasonName, index),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -418,8 +406,6 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         setState(() {
           _selectedSeasonIndex = index;
         });
-        // Refresh episodes for the new season
-        // No need to call BLoC again as we're filtering from existing data
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -445,88 +431,79 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
     );
   }
 
-  // ── Episode list with BLoC ──────────────────────────────────────────────
+  // ── Episode list with GetX ──────────────────────────────────────────────
   Widget _buildEpisodeList(Series series) {
-    // Get the selected season number (1-based index)
     final seasonNumber = _selectedSeasonIndex + 1;
+    final status = _episodeController.allEpisodeStatus.value;
 
-    return BlocBuilder<EpisodeBloc, EpisodeState>(
-      builder: (context, state) {
-        if (state.allEpisodeStatus == Status.loading) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: const Center(
-              child: CircularProgressIndicator(color: AppColors.accentColor),
-            ),
-          );
-        }
+    if (status == Status.loading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.accentColor),
+        ),
+      );
+    }
 
-        if (state.allEpisodeStatus == Status.error) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Center(
-              child: Text(
-                'Failed to load episodes',
-                style: text14(color: AppColors.errorColor),
-              ),
-            ),
-          );
-        }
-
-        final allEpisodes = state.allEpisode;
-
-        if (allEpisodes == null || allEpisodes.episodes.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Center(
-              child: Text(
-                'No episodes available',
-                style: text14(color: AppColors.secondaryTextColor),
-              ),
-            ),
-          );
-        }
-
-        // Filter episodes by season number
-        final filteredEpisodes = allEpisodes.episodes
-            .where((ep) => ep.seasonNumber == seasonNumber)
-            .toList();
-
-        if (filteredEpisodes.isEmpty) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Center(
-              child: Text(
-                'No episodes available for Season $seasonNumber',
-                style: text14(color: AppColors.secondaryTextColor),
-              ),
-            ),
-          );
-        }
-
-        // Sort episodes by episode number
-        filteredEpisodes.sort(
-          (a, b) => a.episodeNumber.compareTo(b.episodeNumber),
-        );
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-          child: Column(
-            children: filteredEpisodes
-                .map((ep) => _buildEpisodeTile(ep))
-                .toList(),
+    if (status == Status.error) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Center(
+          child: Text(
+            'Failed to load episodes',
+            style: text14(color: AppColors.errorColor),
           ),
-        );
-      },
+        ),
+      );
+    }
+
+    final allEpisodes = _episodeController.allEpisode.value;
+
+    if (allEpisodes == null || allEpisodes.episodes.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Center(
+          child: Text(
+            'No episodes available',
+            style: text14(color: AppColors.secondaryTextColor),
+          ),
+        ),
+      );
+    }
+
+    final filteredEpisodes = allEpisodes.episodes
+        .where((ep) => ep.seasonNumber == seasonNumber)
+        .toList();
+
+    if (filteredEpisodes.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Center(
+          child: Text(
+            'No episodes available for Season $seasonNumber',
+            style: text14(color: AppColors.secondaryTextColor),
+          ),
+        ),
+      );
+    }
+
+    filteredEpisodes.sort(
+      (a, b) => a.episodeNumber.compareTo(b.episodeNumber),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        children: filteredEpisodes
+            .map((ep) => _buildEpisodeTile(ep))
+            .toList(),
+      ),
     );
   }
 
   Widget _buildEpisodeTile(Episode ep) {
     return GestureDetector(
       onTap: () {
-        // Handle episode tap
-        // print('Episode tapped: ${ep.title}');
-        // Navigate to video player
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => MoviePlayerScreen(episodeId: ep.id),
@@ -556,7 +533,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                   width: 70,
                   height: 46,
                   color: AppColors.cardColor,
-                  child: Icon(
+                  child: const Icon(
                     Icons.play_circle,
                     color: AppColors.hintTextColor,
                   ),
@@ -594,7 +571,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
             Container(
               width: 32,
               height: 32,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.primaryColor,
                 shape: BoxShape.circle,
               ),
@@ -633,7 +610,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.overlayColor,
           shape: BoxShape.circle,
         ),
@@ -641,9 +618,4 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
       ),
     );
   }
-
-  // String _fmtNum(int n) {
-  //   if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
-  //   return '$n';
-  // }
 }

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/web_series/bloc/series_bloc/series_bloc.dart';
+import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -18,6 +17,7 @@ class WebSeriesListingScreen extends StatefulWidget {
 
 class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
   int selectedCategoryIndex = 0;
+  late final SeriesController _controller;
   final List<String> categories = [
     'All',
     'Action',
@@ -29,63 +29,52 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
     'Thriller',
   ];
 
-  List<Series> _allSeries = []; // 🔹 keep full list
-
   @override
   void initState() {
     super.initState();
-    context.read<SeriesBloc>().add(const SeriesEvent.allSeries());
+    _controller = Get.find<SeriesController>();
+    _controller.fetchAllSeries();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<SeriesBloc, SeriesState>(
-      builder: (context, state) {
-        if (state.allSeriesStatus == Status.loading) {
-          return const Scaffold(
-            backgroundColor: AppColors.backgroundColor,
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
+      body: SafeArea(
+        child: Obx(() {
+          final status = _controller.allSeriesStatus.value;
 
-        if (state.allSeriesStatus == Status.error) {
-          return const Scaffold(
-            backgroundColor: AppColors.backgroundColor,
-            body: Center(
+          if (status == Status.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (status == Status.error) {
+            return const Center(
               child: Text(
                 "Something went wrong",
                 style: TextStyle(color: Colors.white),
               ),
-            ),
+            );
+          }
+
+          final allSeries = _controller.allSeries.value?.series ?? [];
+          final filteredSeries = _filterSeries(allSeries);
+
+          return Column(
+            children: [
+              _buildTopBar(),
+              _buildCategoryTabs(),
+              const SizedBox(height: 12),
+              Expanded(child: _buildGrid(filteredSeries)),
+              _buildExploreMore(),
+              const SizedBox(height: 16),
+            ],
           );
-        }
-
-        // 🔹 Update local copy whenever fresh data arrives
-        _allSeries = state.allSeries?.series ?? [];
-
-        // 🔹 Apply filter based on selected category
-        final List<Series> filteredSeries = _filterSeries(_allSeries);
-
-        return Scaffold(
-          backgroundColor: AppColors.backgroundColor,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _buildTopBar(),
-                _buildCategoryTabs(),
-                const SizedBox(height: 12),
-                Expanded(child: _buildGrid(filteredSeries)),
-                _buildExploreMore(),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        );
-      },
+        }),
+      ),
     );
   }
 
-  // 🔹 Filtering logic
   List<Series> _filterSeries(List<Series> series) {
     final selectedCategory = categories[selectedCategoryIndex];
     if (selectedCategory == 'All') return series;
@@ -130,8 +119,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
           return GestureDetector(
             onTap: () {
               setState(() {
-                selectedCategoryIndex =
-                    index; // 🔹 sirf index update, filter build() me apply hoga
+                selectedCategoryIndex = index;
               });
             },
             child: AnimatedContainer(
@@ -196,9 +184,6 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
             builder: (context) => WebSeriesDetailScreen(id: item.id),
           ),
         );
-        // context.read<SeriesBloc>().add(
-        //   SeriesEvent.seriesDetail(id: item.id),
-        // );
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(10),

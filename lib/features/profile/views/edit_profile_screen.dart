@@ -1,10 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/profile/bloc/edit_profile/edit_profile_bloc.dart';
+import 'package:golidoli_app/features/profile/controllers/edit_profile_controller.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_image_picker.dart';
@@ -26,7 +25,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     FetchProfileController(),
   );
 
-  late final EditProfileBloc _editProfileBloc;
+  late final EditProfileController _editController;
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -34,39 +33,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Worker? _userWorker;
   bool _seeded = false;
-  bool _isInit = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_isInit) {
-      _editProfileBloc = context.read<EditProfileBloc>();
-      _isInit = true;
+  void initState() {
+    super.initState();
+    _editController = Get.find<EditProfileController>();
 
-      // Seed the form once from whatever user data is already available.
-      final existingUser = fetchController.user.value;
-      if (existingUser != null) {
-        _editProfileBloc.add(EditProfileEvent.initialize(user: existingUser));
-        _nameController.text = existingUser.name;
-        _emailController.text = existingUser.email;
-        _phoneController.text = existingUser.phone;
-        _seeded = true;
-      } else {
-        // Not loaded yet — wait for the first successful fetch, seed once,
-        // then stop listening so later refreshes don't clobber user edits.
-        _userWorker = ever<UserModel?>(fetchController.user, (userData) {
-          if (!_seeded && userData != null) {
-            _editProfileBloc.add(EditProfileEvent.initialize(user: userData));
-            _nameController.text = userData.name;
-            _emailController.text = userData.email;
-            _phoneController.text = userData.phone;
-            _seeded = true;
-            _userWorker?.dispose();
-            _userWorker = null;
-          }
-        });
-      }
+    // Seed the form once from whatever user data is already available.
+    final existingUser = fetchController.user.value;
+    if (existingUser != null) {
+      _editController.initialize(existingUser);
+      _nameController.text = existingUser.name;
+      _emailController.text = existingUser.email;
+      _phoneController.text = existingUser.phone;
+      _seeded = true;
+    } else {
+      // Not loaded yet — wait for the first successful fetch, seed once,
+      // then stop listening so later refreshes don't clobber user edits.
+      _userWorker = ever<UserModel?>(fetchController.user, (userData) {
+        if (!_seeded && userData != null) {
+          _editController.initialize(userData);
+          _nameController.text = userData.name;
+          _emailController.text = userData.email;
+          _phoneController.text = userData.phone;
+          _seeded = true;
+          _userWorker?.dispose();
+          _userWorker = null;
+        }
+      });
     }
+
+    // Set up a listener for controller status to go back on success
+    ever(_editController.status, (Status status) {
+      if (status == Status.success) {
+        final updatedUser = _editController.user.value;
+        if (updatedUser != null) {
+          fetchController.updateUser(updatedUser);
+        }
+        Get.back();
+      } else if (status == Status.error) {
+        Get.snackbar(
+          "Error",
+          _editController.errorMessage.value.isNotEmpty
+              ? _editController.errorMessage.value
+              : "Failed to update profile",
+        );
+      }
+    });
   }
 
   @override
@@ -75,8 +88,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    // Drop the fetch controller when leaving the screen so a future visit
-    // starts clean instead of reusing stale state / re-registering.
     Get.delete<FetchProfileController>();
     super.dispose();
   }
@@ -90,18 +101,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (picked == null) return;
 
-    // Dispatch event to bloc with picked image file
-    _editProfileBloc.add(EditProfileEvent.localImageChanged(
-      imageFile: File(picked.path),
-    ));
+    _editController.changeLocalImage(File(picked.path));
   }
 
   void _onSave() {
-    _editProfileBloc.add(EditProfileEvent.saveProfile(
+    _editController.saveProfile(
       name: _nameController.text,
       email: _emailController.text,
       phone: _phoneController.text,
-    ));
+    );
   }
 
   @override
@@ -109,86 +117,69 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return ProfilePageScaffold(
       title: 'Edit Profile',
       children: [
-        BlocConsumer<EditProfileBloc, EditProfileState>(
-          listener: (context, state) {
-            if (state.status == Status.success) {
-              if (state.user != null) {
-                fetchController.updateUser(state.user!);
-              }
-              Get.back();
-            } else if (state.status == Status.error) {
-              Get.snackbar(
-                "Error",
-                state.errorMessage ?? "Failed to update profile",
-              );
-            }
-          },
-          builder: (context, state) {
-            final user = state.user;
+        Obx(() {
+          final user = _editController.user.value;
+          final localImageFile = _editController.localImageFile.value;
+          final status = _editController.status.value;
 
-            // Only block the whole form on the very first load, when there's
-            // no cached user yet to show.
-            if (fetchController.isLoading.value && user == null) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 60),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            if (fetchController.error.value.isNotEmpty && user == null) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40),
-                child: Column(
-                  children: [
-                    Text(
-                      fetchController.error.value,
-                      style: text14(color: AppColors.secondaryTextColor),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: fetchController.refreshProfile,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Column(
-              children: [
-                Center(
-                  child: CustomImagePicker(
-                    imageFile: state.localImageFile,
-                    imageUrl: user?.profileImage ?? "",
-                    onTap: _pickAndUploadImage,
-                    radius: 42,
-                  ),
-                ),
-                const SizedBox(height: 22),
-                _InputField(
-                  label: 'Full Name',
-                  controller: _nameController,
-                ),
-                _InputField(
-                  label: 'Mobile Number',
-                  controller: _phoneController,
-                ),
-                _InputField(
-                  label: 'Email Address',
-                  controller: _emailController,
-                ),
-                const SizedBox(height: 18),
-                ProfilePrimaryButton(
-                  title: state.status == Status.loading
-                      ? 'Saving...'
-                      : 'Save Changes',
-                  onTap: state.status == Status.loading ? () {} : _onSave,
-                ),
-              ],
+          if (fetchController.isLoading.value && user == null) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 60),
+              child: Center(child: CircularProgressIndicator()),
             );
-          },
-        ),
+          }
+
+          if (fetchController.error.value.isNotEmpty && user == null) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Column(
+                children: [
+                  Text(
+                    fetchController.error.value,
+                    style: text14(color: AppColors.secondaryTextColor),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: fetchController.refreshProfile,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Center(
+                child: CustomImagePicker(
+                  imageFile: localImageFile,
+                  imageUrl: user?.profileImage ?? "",
+                  onTap: _pickAndUploadImage,
+                  radius: 42,
+                ),
+              ),
+              const SizedBox(height: 22),
+              _InputField(
+                label: 'Full Name',
+                controller: _nameController,
+              ),
+              _InputField(
+                label: 'Mobile Number',
+                controller: _phoneController,
+              ),
+              _InputField(
+                label: 'Email Address',
+                controller: _emailController,
+              ),
+              const SizedBox(height: 18),
+              ProfilePrimaryButton(
+                title: status == Status.loading ? 'Saving...' : 'Save Changes',
+                onTap: status == Status.loading ? () {} : _onSave,
+              ),
+            ],
+          );
+        }),
       ],
     );
   }

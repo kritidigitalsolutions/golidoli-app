@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class HelpResponse extends Equatable {
+class HelpResponse {
   final bool success;
   final int count;
   final List<HelpData> helpData;
@@ -36,12 +34,9 @@ class HelpResponse extends Equatable {
       helpData: helpData ?? this.helpData,
     );
   }
-
-  @override
-  List<Object?> get props => [success, count, helpData];
 }
 
-class HelpData extends Equatable {
+class HelpData {
   final String id;
   final String category;
   final String question;
@@ -121,18 +116,4 @@ class HelpData extends Equatable {
       version: version ?? this.version,
     );
   }
-
-  @override
-  List<Object?> get props => [
-    id,
-    category,
-    question,
-    answer,
-    supportNumber,
-    supportEmail, // ✅ add this
-    isPublished,
-    createdAt,
-    updatedAt,
-    version,
-  ];
 }

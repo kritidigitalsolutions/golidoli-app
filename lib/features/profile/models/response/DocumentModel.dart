@@ -1,13 +1,8 @@
-import 'package:equatable/equatable.dart';
-
-class DocumentModel extends Equatable {
+class DocumentModel {
   final bool success;
   final List<Document> documents;
 
-  const DocumentModel({
-    required this.success,
-    required this.documents,
-  });
+  const DocumentModel({required this.success, required this.documents});
 
   factory DocumentModel.fromJson(Map<String, dynamic> json) {
     return DocumentModel(
@@ -25,21 +20,15 @@ class DocumentModel extends Equatable {
     };
   }
 
-  DocumentModel copyWith({
-    bool? success,
-    List<Document>? documents,
-  }) {
+  DocumentModel copyWith({bool? success, List<Document>? documents}) {
     return DocumentModel(
       success: success ?? this.success,
       documents: documents ?? this.documents,
     );
   }
-
-  @override
-  List<Object?> get props => [success, documents];
 }
 
-class Document extends Equatable {
+class Document {
   final String id;
   final String type;
   final String title;
@@ -113,17 +102,4 @@ class Document extends Equatable {
       version: version ?? this.version,
     );
   }
-
-  @override
-  List<Object?> get props => [
-    id,
-    type,
-    title,
-    content,
-    lastUpdatedBy,
-    isPublished,
-    createdAt,
-    updatedAt,
-    version,
-  ];
 }

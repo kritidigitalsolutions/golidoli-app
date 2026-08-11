@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/micro_drama/bloc/micro_drama_bloc.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -17,6 +17,7 @@ class MicroDramaScreen extends StatefulWidget {
 
 class _MicroDramaScreenState extends State<MicroDramaScreen> {
   int selectedCategoryIndex = 0;
+  late final MicroDramaController _controller;
 
   final List<String> categories = [
     'All',
@@ -44,14 +45,14 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   }
 
   void _onDramaTap(Microdrama drama) {
-    // TODO: navigate to drama detail, e.g.
-    // Get.toNamed(AppRoutes.microDramaDetail, arguments: drama);
+    // TODO: navigate to drama detail
   }
 
   @override
   void initState() {
     super.initState();
-    context.read<MicroDramaBloc>().add(const MicroDramaEvent.allMicroDrama());
+    _controller = Get.find<MicroDramaController>();
+    _controller.fetchAllMicroDrama();
   }
 
   @override
@@ -59,49 +60,47 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
-        child: BlocBuilder<MicroDramaBloc, MicroDramaState>(
-          builder: (context, state) {
-            if (state.allMicroDramaStatus == Status.loading) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.accentColor,
-                ),
-              );
-            }
+        child: Obx(() {
+          if (_controller.allMicroDramaStatus.value == Status.loading) {
+            return const Center(
+              child: CircularProgressIndicator(
+                color: AppColors.accentColor,
+              ),
+            );
+          }
 
-            final allDramas = state.allMicroDrama?.microdramas ?? [];
+          final allDramas = _controller.allMicroDrama.value?.microdramas ?? [];
 
-            if (allDramas.isEmpty) {
-              return Column(
-                children: [
-                  _buildTopBar(),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        'No micro dramas found',
-                        style: text13(color: AppColors.secondaryTextColor),
-                      ),
+          if (allDramas.isEmpty) {
+            return Column(
+              children: [
+                _buildTopBar(),
+                Expanded(
+                  child: Center(
+                    child: Text(
+                      'No micro dramas found',
+                      style: text13(color: AppColors.secondaryTextColor),
                     ),
                   ),
-                ],
-              );
-            }
-
-            final dramas = _filteredDramas(allDramas);
-            final heroDrama = allDramas.first;
-
-            return CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildTopBar()),
-                SliverToBoxAdapter(child: _buildCategoryTabs()),
-                SliverToBoxAdapter(child: _buildHeroBanner(heroDrama)),
-                SliverToBoxAdapter(child: _buildDramaGrid(dramas)),
-                SliverToBoxAdapter(child: _buildExploreMore()),
-                const SliverToBoxAdapter(child: SizedBox(height: 30)),
+                ),
               ],
             );
-          },
-        ),
+          }
+
+          final dramas = _filteredDramas(allDramas);
+          final heroDrama = allDramas.first;
+
+          return CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildTopBar()),
+              SliverToBoxAdapter(child: _buildCategoryTabs()),
+              SliverToBoxAdapter(child: _buildHeroBanner(heroDrama)),
+              SliverToBoxAdapter(child: _buildDramaGrid(dramas)),
+              SliverToBoxAdapter(child: _buildExploreMore()),
+              const SliverToBoxAdapter(child: SizedBox(height: 30)),
+            ],
+          );
+        }),
       ),
     );
   }

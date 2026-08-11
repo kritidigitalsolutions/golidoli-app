@@ -1,6 +1,4 @@
-import 'package:equatable/equatable.dart';
-
-class CategoryContentResponse extends Equatable {
+class CategoryContentResponse {
   final bool success;
   final Category category;
   final List<ContentModel> content;
@@ -40,13 +38,9 @@ class CategoryContentResponse extends Equatable {
       content: content ?? this.content,
     );
   }
-
-  @override
-  // TODO: implement props
-  List<Object?> get props => [success, category, content];
 }
 
-class Category extends Equatable {
+class Category {
   final String id;
   final String name;
   final String slug;
@@ -114,22 +108,9 @@ class Category extends Equatable {
       version: version ?? this.version,
     );
   }
-
-  @override
-  // TODO: implement props
-  List<Object?> get props => [
-    id,
-    name,
-    slug,
-    priority,
-    isActive,
-    createdAt,
-    updatedAt,
-    version,
-  ];
 }
 
-class ContentModel extends Equatable {
+class ContentModel {
   final String id;
   final String title;
   final String description;
@@ -287,32 +268,4 @@ class ContentModel extends Equatable {
       type: type ?? this.type,
     );
   }
-
-  @override
-  // TODO: implement props
-  List<Object?> get props => [
-    id,
-    title,
-    description,
-    genre,
-    releaseYear,
-    duration,
-    language,
-    poster,
-    banner,
-    isComingSoon,
-    releaseDate,
-    priority,
-    isPremium,
-    rating,
-    cast,
-    category,
-    likes,
-    dislikes,
-    createdAt,
-    updatedAt,
-    slug,
-    isPublished,
-    type,
-  ];
 }

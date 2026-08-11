@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/micro_drama/bloc/micro_drama_bloc.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
 
@@ -38,13 +38,13 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   late final PageController _pageController = PageController(
     initialPage: widget.initialIndex,
   );
+  late final MicroDramaController _controller;
 
   @override
   void initState() {
     super.initState();
-    context.read<MicroDramaBloc>().add(
-      MicroDramaEvent.episodeDetail(id: widget.dramaId),
-    );
+    _controller = Get.find<MicroDramaController>();
+    _controller.fetchEpisodeDetail(widget.dramaId);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
@@ -82,73 +82,69 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.black,
-      body: BlocBuilder<MicroDramaBloc, MicroDramaState>(
-        builder: (context, state) {
-          if (state.episodeDetailStatus == Status.loading) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.accentColor),
-            );
-          }
-
-          if (state.episodeDetailStatus == Status.error ||
-              state.episodeDetail == null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load episodes',
-                    style: text15(color: AppColors.white),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<MicroDramaBloc>().add(
-                        MicroDramaEvent.episodeDetail(id: widget.dramaId),
-                      );
-                    },
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          final episodes = state.episodeDetail!.episodes; // List<Episode>
-          if (episodes.isEmpty) {
-            return const Center(
-              child: Text(
-                'No episodes available',
-                style: TextStyle(color: AppColors.white),
-              ),
-            );
-          }
-
-          if (widget.initialIndex >= episodes.length) {
-            currentIndex = episodes.length - 1;
-          }
-
-          return PageView.builder(
-            scrollDirection: Axis.vertical,
-            itemCount: episodes.length,
-            onPageChanged: _onPageChanged,
-            controller: _pageController,
-            itemBuilder: (_, index) {
-              final episode = episodes[index];
-              return _DramaReelItem(
-                episode: episode, // Episode type
-                isActive: currentIndex == index,
-                isLiked: likedIndices.contains(index),
-                onToggleLike: () => _toggleLike(index),
-                onShowMore: () => _onShowMore(episode),
-                onBack: _onBack,
-              );
-            },
+      body: Obx(() {
+        if (_controller.episodeDetailStatus.value == Status.loading) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.accentColor),
           );
-        },
-      ),
+        }
+
+        if (_controller.episodeDetailStatus.value == Status.error ||
+            _controller.episodeDetail.value == null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  'Failed to load episodes',
+                  style: text15(color: AppColors.white),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    _controller.fetchEpisodeDetail(widget.dramaId);
+                  },
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final episodes = _controller.episodeDetail.value!.episodes;
+        if (episodes.isEmpty) {
+          return const Center(
+            child: Text(
+              'No episodes available',
+              style: TextStyle(color: AppColors.white),
+            ),
+          );
+        }
+
+        if (widget.initialIndex >= episodes.length) {
+          currentIndex = episodes.length - 1;
+        }
+
+        return PageView.builder(
+          scrollDirection: Axis.vertical,
+          itemCount: episodes.length,
+          onPageChanged: _onPageChanged,
+          controller: _pageController,
+          itemBuilder: (_, index) {
+            final episode = episodes[index];
+            return _DramaReelItem(
+              episode: episode,
+              isActive: currentIndex == index,
+              isLiked: likedIndices.contains(index),
+              onToggleLike: () => _toggleLike(index),
+              onShowMore: () => _onShowMore(episode),
+              onBack: _onBack,
+            );
+          },
+        );
+      }),
     );
   }
 }
