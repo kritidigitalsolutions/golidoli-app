@@ -25,7 +25,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     FetchProfileController(),
   );
 
-  late final EditProfileController _editController;
+  late final EditProfileController _editController = Get.put(
+    EditProfileController(),
+  );
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -37,7 +39,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _editController = Get.find<EditProfileController>();
+    // _editController = Get.find<EditProfileController>();
 
     // Seed the form once from whatever user data is already available.
     final existingUser = fetchController.user.value;
@@ -160,18 +162,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
               const SizedBox(height: 22),
-              _InputField(
-                label: 'Full Name',
-                controller: _nameController,
-              ),
-              _InputField(
-                label: 'Mobile Number',
-                controller: _phoneController,
-              ),
-              _InputField(
-                label: 'Email Address',
-                controller: _emailController,
-              ),
+              _InputField(label: 'Full Name', controller: _nameController),
+              _InputField(label: 'Mobile Number', controller: _phoneController),
+              _InputField(label: 'Email Address', controller: _emailController),
               const SizedBox(height: 18),
               ProfilePrimaryButton(
                 title: status == Status.loading ? 'Saving...' : 'Save Changes',

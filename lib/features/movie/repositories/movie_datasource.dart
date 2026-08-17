@@ -3,9 +3,7 @@ import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 
 class MovieDatasource {
-  final NetworkApiService _apiService;
-
-  MovieDatasource(this._apiService);
+  final NetworkApiService _apiService = NetworkApiService();
 
   Future<List<MovieModel>> allMovie() async {
     try {

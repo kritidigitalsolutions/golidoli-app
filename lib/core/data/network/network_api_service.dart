@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:golidoli_app/core/data/exception/app_exception.dart';
 import 'package:golidoli_app/core/data/network/base_api_service.dart';
+import 'package:golidoli_app/core/services/storage_service.dart';
 
 class NetworkApiService extends BaseApiService {
   late Dio _dio;
@@ -15,10 +16,17 @@ class NetworkApiService extends BaseApiService {
       ),
     );
 
-    /// Interceptor for logging
+    /// Interceptor for logging + auto-attaching the auth token
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
+        onRequest: (options, handler) async {
+          // 🔽 Auto-attach token from storage on every request, so callers
+          // never need to manually call setToken() before making a call.
+          final token = await StorageService.getToken();
+          if (token != null && token.isNotEmpty) {
+            options.headers["Authorization"] = "Bearer $token";
+          }
+
           debugPrint("➡️ REQUEST [${options.method}] => ${options.uri}");
           final safeHeaders = Map<String, dynamic>.from(options.headers);
           if (safeHeaders.containsKey("Authorization")) {
@@ -41,6 +49,9 @@ class NetworkApiService extends BaseApiService {
   }
 
   /// 🔑 Set Authorization Token
+  /// Optional now — useful right after login to force the new token into
+  /// this session immediately, but requests will also pick it up
+  /// automatically from StorageService on their own.
   void setToken(String token) {
     _dio.options.headers["Authorization"] = "Bearer $token";
     debugPrint("🔐 Authorization token set");

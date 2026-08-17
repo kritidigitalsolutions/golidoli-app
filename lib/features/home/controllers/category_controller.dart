@@ -2,20 +2,11 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/home/models/category_detail_model.dart';
 import 'package:golidoli_app/features/home/models/category_model.dart';
-import 'package:golidoli_app/features/home/usecases/all_categories_usecase.dart';
-import 'package:golidoli_app/features/home/usecases/category_detail_usecase.dart';
+import 'package:golidoli_app/features/home/repositories/home_datasource.dart';
 
 class CategoryController extends GetxController {
-  final AllCategoriesUsecase _allCategoriesUsecase;
-  final CategoryDetailUsecase _categoryDetailUsecase;
-
-  CategoryController({
-    required AllCategoriesUsecase allCategoriesUsecase,
-    required CategoryDetailUsecase categoryDetailUsecase,
-  })  : _allCategoriesUsecase = allCategoriesUsecase,
-        _categoryDetailUsecase = categoryDetailUsecase;
-
   // ── State ─────────────────────────────────────────────────────────────────
+  final _api = HomeDatasource();
   final categoryStatus = Status.init.obs;
   final Rx<CategoriesResponse?> allCategories = Rx(null);
 
@@ -29,7 +20,7 @@ class CategoryController extends GetxController {
   // ── Actions ───────────────────────────────────────────────────────────────
   Future<void> fetchAllCategories() async {
     categoryStatus.value = Status.loading;
-    final result = await _allCategoriesUsecase();
+    final result = await _api.allCategories();
     if (result != null) {
       allCategories.value = result;
       categoryStatus.value = Status.success;
@@ -43,11 +34,7 @@ class CategoryController extends GetxController {
     pageNo.value = 0;
     hasMore.value = true;
 
-    final result = await _categoryDetailUsecase(
-      id: id,
-      page: 0,
-      size: pageSize,
-    );
+    final result = await _api.categoryDetail(id: id, page: 0, size: pageSize);
 
     if (result != null) {
       categoryDetail.value = result;
@@ -65,7 +52,7 @@ class CategoryController extends GetxController {
     detailCategoryStatus.value = Status.loading;
     final nextPage = pageNo.value + 1;
 
-    final result = await _categoryDetailUsecase(
+    final result = await _api.categoryDetail(
       id: id,
       page: nextPage,
       size: pageSize,

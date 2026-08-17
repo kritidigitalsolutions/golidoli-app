@@ -1,18 +1,17 @@
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
-import 'package:golidoli_app/features/movie/usecase/all_movie_usecase.dart';
-import 'package:golidoli_app/features/movie/usecase/movie_detail_usecase.dart';
+import 'package:golidoli_app/features/movie/repositories/movie_datasource.dart';
 
 class MovieController extends GetxController {
-  final AllMovieUsecase _allMovieUsecase;
-  final MovieDetailUsecase _movieDetailUsecase;
+  // final AllMovieUsecase _allMovieUsecase;
+  // final MovieDetailUsecase _movieDetailUsecase;
 
-  MovieController({
-    required AllMovieUsecase allMovieUsecase,
-    required MovieDetailUsecase movieDetailUsecase,
-  })  : _allMovieUsecase = allMovieUsecase,
-        _movieDetailUsecase = movieDetailUsecase;
+  // MovieController({
+  //   required AllMovieUsecase allMovieUsecase,
+  //   required MovieDetailUsecase movieDetailUsecase,
+  // })  : _allMovieUsecase = allMovieUsecase,
+  //       _movieDetailUsecase = movieDetailUsecase;
 
   // ── State ─────────────────────────────────────────────────────────────────
   final allMoviesStatus = Status.init.obs;
@@ -21,10 +20,12 @@ class MovieController extends GetxController {
   final movieDetailStatus = Status.init.obs;
   final Rx<MovieModel?> movieDetail = Rx(null);
 
+  final MovieDatasource _api = MovieDatasource();
+
   // ── Actions ───────────────────────────────────────────────────────────────
   Future<void> fetchAllMovies() async {
     allMoviesStatus.value = Status.loading;
-    final result = await _allMovieUsecase();
+    final result = await _api.allMovie();
     if (result.isNotEmpty) {
       allMovies.assignAll(result);
       allMoviesStatus.value = Status.success;
@@ -37,7 +38,7 @@ class MovieController extends GetxController {
 
   Future<void> fetchMovieDetail(String id) async {
     movieDetailStatus.value = Status.loading;
-    final result = await _movieDetailUsecase(id: id);
+    final result = await _api.movieDetail(id: id);
     if (result != null) {
       movieDetail.value = result;
       movieDetailStatus.value = Status.success;

@@ -3,13 +3,13 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/auth/models/request/user_payload.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
-import 'package:golidoli_app/features/profile/usecase/update_profile_usecase.dart';
+import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 
 class EditProfileController extends GetxController {
-  final UpdateProfileUsecase _updateProfileUsecase;
+  // final UpdateProfileUsecase _updateProfileUsecase;
 
-  EditProfileController({required UpdateProfileUsecase updateProfileUsecase})
-      : _updateProfileUsecase = updateProfileUsecase;
+  // EditProfileController({required UpdateProfileUsecase updateProfileUsecase})
+  //     : _updateProfileUsecase = updateProfileUsecase;
 
   // ── State ─────────────────────────────────────────────────────────────────
   final Rx<UserModel?> user = Rx(null);
@@ -28,6 +28,8 @@ class EditProfileController extends GetxController {
   void changeLocalImage(File imageFile) {
     localImageFile.value = imageFile;
   }
+
+  final AuthDatasource _api = AuthDatasource();
 
   Future<void> saveProfile({
     required String name,
@@ -54,7 +56,7 @@ class EditProfileController extends GetxController {
         profileImage: newImagePath,
       );
 
-      final result = await _updateProfileUsecase(userPayload: payload);
+      final result = await _api.updateProfile(userPayload: payload);
 
       if (result != null) {
         user.value = result;

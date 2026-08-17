@@ -5,9 +5,7 @@ import 'package:golidoli_app/features/profile/models/response/help_response.dart
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 
 class ProfileDatasource {
-  final NetworkApiService _apiService;
-
-  ProfileDatasource(this._apiService);
+  final NetworkApiService _apiService = NetworkApiService();
 
   Future<HelpResponse?> allHelp() async {
     try {

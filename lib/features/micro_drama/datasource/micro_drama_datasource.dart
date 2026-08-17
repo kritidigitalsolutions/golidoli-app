@@ -5,9 +5,7 @@ import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_resp
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 
 class MicroDramaDatasource {
-  final NetworkApiService _apiService;
-
-  MicroDramaDatasource(this._apiService);
+  final NetworkApiService _apiService = NetworkApiService();
 
   Future<MicrodramasResponse?> allMicroDrama() async {
     try {
@@ -35,7 +33,9 @@ class MicroDramaDatasource {
 
   Future<EpisodesResponse?> episodeDetail({required String id}) async {
     try {
-      final json = await _apiService.getApi(AppUrl.microDramaEpisodeDetail(id: id));
+      final json = await _apiService.getApi(
+        AppUrl.microDramaEpisodeDetail(id: id),
+      );
       if (json != null) {
         return EpisodesResponse.fromJson(json);
       }

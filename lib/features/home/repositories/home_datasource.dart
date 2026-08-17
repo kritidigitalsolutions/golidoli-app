@@ -5,9 +5,7 @@ import '../models/category_detail_model.dart';
 import '../models/content_model.dart';
 
 class HomeDatasource {
-  final NetworkApiService _apiService;
-
-  HomeDatasource(this._apiService);
+  final NetworkApiService _apiService = NetworkApiService();
 
   Future<CategoriesResponse?> allCategories() async {
     try {

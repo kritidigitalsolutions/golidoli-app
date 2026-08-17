@@ -19,7 +19,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = Get.find<PlanController>();
+    _controller = Get.put(PlanController());
     _controller.fetchAllPlans(name: 'monthly');
   }
 
@@ -65,10 +65,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            'Choose your plan',
-            style: text18(fontWeight: FontWeight.bold),
-          ),
+          Text('Choose your plan', style: text18(fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -82,9 +79,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.borderColor.withOpacity(0.4),
-        ),
+        border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
       ),
       child: Row(
         children: [
@@ -123,28 +118,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.borderColor.withOpacity(0.4),
-        ),
+        border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
       ),
       child: Row(
         children: [
-          _toggleOption(
-            'Monthly',
-            !_isYearly,
-            () {
-              setState(() => _isYearly = false);
-              _controller.fetchAllPlans(name: 'monthly');
-            },
-          ),
-          _toggleOption(
-            'Yearly',
-            _isYearly,
-            () {
-              setState(() => _isYearly = true);
-              _controller.fetchAllPlans(name: 'yearly');
-            },
-          ),
+          _toggleOption('Monthly', !_isYearly, () {
+            setState(() => _isYearly = false);
+            _controller.fetchAllPlans(name: 'monthly');
+          }),
+          _toggleOption('Yearly', _isYearly, () {
+            setState(() => _isYearly = true);
+            _controller.fetchAllPlans(name: 'yearly');
+          }),
         ],
       ),
     );
@@ -165,7 +150,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             child: Text(
               label,
               style: text12(
-                color: selected ? AppColors.black : AppColors.secondaryTextColor,
+                color: selected
+                    ? AppColors.black
+                    : AppColors.secondaryTextColor,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -185,7 +172,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       // Determine price from state
       String priceText = '0';
       bool isLoading = status == Status.loading;
-      bool hasError = status == Status.error ||
+      bool hasError =
+          status == Status.error ||
           _controller.allPlans.value == null ||
           _controller.allPlans.value!.plans.isEmpty;
 
@@ -241,10 +229,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   ),
                 const SizedBox(width: 4),
-                Text(
-                  periodText,
-                  style: text11(color: AppColors.hintTextColor),
-                ),
+                Text(periodText, style: text11(color: AppColors.hintTextColor)),
               ],
             ),
             const SizedBox(height: 14),
@@ -319,10 +304,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         child: Center(
           child: Text(
             'Continue',
-            style: text13(
-              color: AppColors.black,
-              fontWeight: FontWeight.bold,
-            ),
+            style: text13(color: AppColors.black, fontWeight: FontWeight.bold),
           ),
         ),
       ),

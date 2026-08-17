@@ -22,14 +22,12 @@ class WebSeriesDetailScreen extends StatefulWidget {
 
 class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
   int _selectedSeasonIndex = 0;
-  late final SeriesController _seriesController;
-  late final EpisodeController _episodeController;
+  final SeriesController _seriesController = Get.put(SeriesController());
+  final EpisodeController _episodeController = Get.put(EpisodeController());
 
   @override
   void initState() {
     super.initState();
-    _seriesController = Get.find<SeriesController>();
-    _episodeController = Get.find<EpisodeController>();
     _seriesController.fetchSeriesDetail(widget.id);
     _episodeController.fetchAllEpisodes(widget.id);
   }
@@ -316,9 +314,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                     const SizedBox(width: 6),
                     Text(
                       '+ Watchlist',
-                      style: text13(
-                        color: AppColors.primaryColor,
-                      ),
+                      style: text13(color: AppColors.primaryColor),
                     ),
                   ],
                 ),
@@ -487,16 +483,12 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
       );
     }
 
-    filteredEpisodes.sort(
-      (a, b) => a.episodeNumber.compareTo(b.episodeNumber),
-    );
+    filteredEpisodes.sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
-        children: filteredEpisodes
-            .map((ep) => _buildEpisodeTile(ep))
-            .toList(),
+        children: filteredEpisodes.map((ep) => _buildEpisodeTile(ep)).toList(),
       ),
     );
   }

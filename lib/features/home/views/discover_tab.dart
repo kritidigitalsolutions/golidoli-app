@@ -33,7 +33,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
   void initState() {
     super.initState();
     _controller = Get.put(DiscoverController());
-    _contentController = Get.find<ContentController>();
+    _contentController = Get.put(ContentController());
     _searchController = _controller.searchController;
   }
 
@@ -75,26 +75,25 @@ class _DiscoverTabState extends State<DiscoverTab> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
-    return Obx(() {
-      final bool isSearching = _currentQuery.isNotEmpty;
+    final bool isSearching = _currentQuery.isNotEmpty;
 
-      return SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildSearchBar()),
-            if (!isSearching) ...[
-              SliverToBoxAdapter(child: _buildCategoryGrid()),
-              SliverToBoxAdapter(child: _buildExcitingBanner()),
-            ] else ...[
-              SliverToBoxAdapter(child: _buildSearchResults()),
-            ],
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+    return SafeArea(
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: _buildHeader()),
+          SliverToBoxAdapter(child: _buildSearchBar()),
+          if (!isSearching) ...[
+            SliverToBoxAdapter(child: _buildCategoryGrid()),
+            SliverToBoxAdapter(child: _buildExcitingBanner()),
+          ] else ...[
+            SliverToBoxAdapter(child: Obx(() => _buildSearchResults())),
           ],
-        ),
-      );
-    });
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
+    );
   }
 
   Widget _buildHeader() {

@@ -35,8 +35,8 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
         .where(
           (d) => d.genre.any(
             (g) => g.toString().toLowerCase() == genre.toLowerCase(),
-      ),
-    )
+          ),
+        )
         .toList();
   }
 
@@ -51,7 +51,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = Get.find<MicroDramaController>();
+    _controller = Get.put(MicroDramaController());
     _controller.fetchAllMicroDrama();
   }
 
@@ -63,9 +63,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
         child: Obx(() {
           if (_controller.allMicroDramaStatus.value == Status.loading) {
             return const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.accentColor,
-              ),
+              child: CircularProgressIndicator(color: AppColors.accentColor),
             );
           }
 
@@ -151,10 +149,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
             onTap: () => _onCategorySelected(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 3,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.accentColor
@@ -235,7 +230,10 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(drama.title, style: text20(fontWeight: FontWeight.bold)),
+                    Text(
+                      drama.title,
+                      style: text20(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       '${drama.totalEpisodes} Episodes',

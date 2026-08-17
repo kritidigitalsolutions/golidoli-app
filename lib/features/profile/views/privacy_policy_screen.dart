@@ -14,12 +14,11 @@ class PrivacyPolicyScreen extends StatefulWidget {
 }
 
 class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
-  late final HelpController _controller;
-
+  final HelpController _controller = Get.put(HelpController());
   @override
   void initState() {
     super.initState();
-    _controller = Get.find<HelpController>();
+
     _controller.fetchSingleDocument(id: "privacy-policy");
   }
 
@@ -35,9 +34,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           children: [
             const SizedBox(height: 100),
             const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryColor,
-              ),
+              child: CircularProgressIndicator(color: AppColors.primaryColor),
             ),
           ],
         );
@@ -52,11 +49,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
             Center(
               child: Column(
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: Colors.grey[400],
-                    size: 48,
-                  ),
+                  Icon(Icons.error_outline, color: Colors.grey[400], size: 48),
                   const SizedBox(height: 16),
                   Text(
                     'Failed to load privacy policy',
@@ -83,7 +76,8 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
       }
 
       // Success State
-      if (status == Status.success && _controller.singleDocument.value != null) {
+      if (status == Status.success &&
+          _controller.singleDocument.value != null) {
         final document = _controller.singleDocument.value!;
 
         // If document has no content
@@ -155,8 +149,18 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
 
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }

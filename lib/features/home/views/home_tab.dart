@@ -54,9 +54,9 @@ class _HomeTabState extends State<HomeTab> {
   ];
 
   // ─── GetX Controllers ────────────────────────────────────────────────────
-  late final CategoryController _categoryController;
-  late final MovieController _movieController;
-  late final SeriesController _seriesController;
+  final CategoryController _categoryController = Get.put(CategoryController());
+  final MovieController _movieController = Get.put(MovieController());
+  final SeriesController _seriesController = Get.put(SeriesController());
 
   // ─── Category state ──────────────────────────────────────────────────────
   List<CategoryModel> _allCategories = [];
@@ -72,9 +72,7 @@ class _HomeTabState extends State<HomeTab> {
   @override
   void initState() {
     super.initState();
-    _categoryController = Get.find<CategoryController>();
-    _movieController = Get.find<MovieController>();
-    _seriesController = Get.find<SeriesController>();
+
     _categoryController.fetchAllCategories();
 
     // Listen to category status changes to trigger detail fetches
@@ -82,10 +80,11 @@ class _HomeTabState extends State<HomeTab> {
       if (status == Status.success &&
           _categoryController.allCategories.value != null &&
           _allCategories.isEmpty) {
-        final allCats = _categoryController.allCategories.value!.categories
-            .where((cat) => cat.isActive)
-            .toList()
-          ..sort((a, b) => a.priority.compareTo(b.priority));
+        final allCats =
+            _categoryController.allCategories.value!.categories
+                .where((cat) => cat.isActive)
+                .toList()
+              ..sort((a, b) => a.priority.compareTo(b.priority));
         if (allCats.isNotEmpty) {
           _allCategories = allCats;
           for (final cat in _allCategories) {

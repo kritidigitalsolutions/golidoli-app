@@ -14,12 +14,11 @@ class FaqPage extends StatefulWidget {
 }
 
 class _FaqPageState extends State<FaqPage> {
-  late final HelpController _controller;
+  final HelpController _controller = Get.put(HelpController());
 
   @override
   void initState() {
     super.initState();
-    _controller = Get.find<HelpController>();
     _controller.fetchAllHelp();
   }
 

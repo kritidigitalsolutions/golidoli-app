@@ -5,9 +5,7 @@ import 'package:golidoli_app/features/web_series/model/episode_model.dart';
 import 'package:golidoli_app/features/web_series/model/episode_response.dart';
 
 class SeriesDatasource {
-  final NetworkApiService _apiService;
-
-  SeriesDatasource(this._apiService);
+  final NetworkApiService _apiService = NetworkApiService();
 
   Future<SeriesResponse?> allSeries() async {
     try {
