@@ -4,11 +4,6 @@ import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 import 'package:golidoli_app/features/profile/repositories/profile_datasource.dart';
 
 class PlanController extends GetxController {
-  // final AllPlanUsecase _allPlanUsecase;
-
-  // PlanController({required AllPlanUsecase allPlanUsecase})
-  //     : _allPlanUsecase = allPlanUsecase;
-
   // ── State ─────────────────────────────────────────────────────────────────
   final allPlanStatus = Status.init.obs;
   final Rx<SubscriptionPlansResponse?> allPlans = Rx(null);

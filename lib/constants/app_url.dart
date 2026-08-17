@@ -29,4 +29,7 @@ class AppUrl {
   static String allContentApi = "$baseUrl/api/content";
   static String searchContent({required String query}) =>
       "$baseUrl/api/content/?search=$query";
+
+  static String createOrder = "$baseUrl/api/payment/create-order";
+  static String verifyPayment = "$baseUrl/api/payment/verify";
 }

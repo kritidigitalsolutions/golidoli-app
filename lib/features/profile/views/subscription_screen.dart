@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/payment_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import '../controllers/plan_controller.dart';
 
@@ -15,12 +17,40 @@ class SubscriptionScreen extends StatefulWidget {
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isYearly = false;
   late final PlanController _controller;
+  late final PaymentController _paymentController;
+  late final FetchProfileController _profileController;
 
   @override
   void initState() {
     super.initState();
     _controller = Get.put(PlanController());
+    _paymentController = Get.put(PaymentController());
+    _profileController = Get.put(FetchProfileController());
     _controller.fetchAllPlans(name: 'monthly');
+  }
+
+  void startPayment() {
+    final plans = _controller.allPlans.value?.plans;
+    if (plans == null || plans.isEmpty) {
+      Get.snackbar(
+        'Notice',
+        'No subscription plan available to purchase.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final selectedPlan = plans.first;
+    final user = _profileController.user.value;
+
+    _paymentController.startPayment(
+      plan: selectedPlan,
+      userContact: user?.phone,
+      userEmail: user?.email,
+      userName: user?.name,
+    );
   }
 
   @override
@@ -242,9 +272,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
             const SizedBox(height: 18),
             GestureDetector(
-              onTap: () {
-                // Handle upgrade
-              },
+              onTap: startPayment,
               child: Container(
                 height: 40,
                 width: double.infinity,
@@ -253,13 +281,25 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
-                  child: Text(
-                    'Upgrade Now',
-                    style: text13(
-                      color: AppColors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: Obx(() {
+                    if (_paymentController.isProcessing.value) {
+                      return const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.black,
+                        ),
+                      );
+                    }
+                    return Text(
+                      'Upgrade Now',
+                      style: text13(
+                        color: AppColors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  }),
                 ),
               ),
             ),
@@ -292,9 +332,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   // ─── Continue Button ──────────────────────────────────────────────
   Widget _buildContinueButton() {
     return GestureDetector(
-      onTap: () {
-        // Handle continue
-      },
+      onTap: startPayment,
       child: Container(
         height: 44,
         decoration: BoxDecoration(
@@ -302,10 +340,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Center(
-          child: Text(
-            'Continue',
-            style: text13(color: AppColors.black, fontWeight: FontWeight.bold),
-          ),
+          child: Obx(() {
+            if (_paymentController.isProcessing.value) {
+              return const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.black,
+                ),
+              );
+            }
+            return Text(
+              'Continue',
+              style: text13(color: AppColors.black, fontWeight: FontWeight.bold),
+            );
+          }),
         ),
       ),
     );
