@@ -21,20 +21,18 @@ class PaymentRepo {
     }
   }
 
-  /// Verifies the payment signature Razorpay returns after a successful
-  /// checkout, against the backend. Returns null on a network/unexpected
-  /// failure; check `.success` on the result for a completed-but-invalid
-  /// payment.
   Future<VerifyPaymentResponse?> verifyPayment({
     required String razorpayOrderId,
     required String razorpayPaymentId,
     required String razorpaySignature,
+    required String planId,
   }) async {
     try {
       final response = await _apiService.postApi(AppUrl.verifyPayment, {
         'razorpay_order_id': razorpayOrderId,
         'razorpay_payment_id': razorpayPaymentId,
         'razorpay_signature': razorpaySignature,
+        "planId": planId,
       });
       return VerifyPaymentResponse.fromJson(response);
     } catch (e) {
@@ -76,22 +74,25 @@ class CreateOrderResponse {
         ? json['order'] as Map<String, dynamic>
         : null;
 
-    final String orderId = (order != null
-            ? (order['id'] ?? order['orderId'] ?? order['order_id'])
-            : (json['orderId'] ?? json['order_id'] ?? json['id'] ?? ''))
-        .toString();
+    final String orderId =
+        (order != null
+                ? (order['id'] ?? order['orderId'] ?? order['order_id'])
+                : (json['orderId'] ?? json['order_id'] ?? json['id'] ?? ''))
+            .toString();
 
     final dynamic rawAmount = order != null ? order['amount'] : json['amount'];
     final int amount = rawAmount is int
         ? rawAmount
         : int.tryParse('$rawAmount') ?? 0;
 
-    final String currency = (order != null
-            ? (order['currency'] ?? 'INR')
-            : (json['currency'] ?? 'INR'))
-        .toString();
+    final String currency =
+        (order != null
+                ? (order['currency'] ?? 'INR')
+                : (json['currency'] ?? 'INR'))
+            .toString();
 
-    final String razorpayKey = (json['key'] ?? json['razorpayKey'] ?? '').toString();
+    final String razorpayKey = (json['key'] ?? json['razorpayKey'] ?? '')
+        .toString();
 
     return CreateOrderResponse(
       orderId: orderId,

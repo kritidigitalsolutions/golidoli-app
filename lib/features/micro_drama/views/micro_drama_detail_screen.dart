@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_player_screen.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
+import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 
 class MicroDramaDetailScreen extends StatefulWidget {
   final String id;
@@ -14,23 +15,28 @@ class MicroDramaDetailScreen extends StatefulWidget {
   const MicroDramaDetailScreen({super.key, required this.id});
 
   @override
-  State<MicroDramaDetailScreen> createState() =>
-      _MicroDramaDetailScreenState();
+  State<MicroDramaDetailScreen> createState() => _MicroDramaDetailScreenState();
 }
 
 class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
-  bool isInWatchlist = false;
-  int selectedEpisode = 0;
+  final WatchlistController _watchlistController =
+      Get.isRegistered<WatchlistController>()
+          ? Get.find<WatchlistController>()
+          : Get.put(WatchlistController());
+  final RxInt selectedEpisode = 0.obs;
   late final MicroDramaController _controller;
-
-  static const int _freeEpisodeCount = 3;
 
   @override
   void initState() {
     super.initState();
-    _controller = Get.find<MicroDramaController>();
-    _controller.fetchDramaDetail(widget.id);
-    _controller.fetchAllMicroDrama();
+    _controller = Get.isRegistered<MicroDramaController>()
+        ? Get.find<MicroDramaController>()
+        : Get.put(MicroDramaController());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchDramaDetail(widget.id);
+      _controller.fetchAllMicroDrama();
+      _controller.fetchEpisodeDetail(widget.id);
+    });
   }
 
   @override
@@ -73,10 +79,10 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
         final similarDramas = allDramas
             .where(
               (d) =>
-            d.id != drama.id &&
-                d.genre.any((g) => drama.genre.contains(g)),
-          )
-              .toList();
+                  d.id != drama.id &&
+                  d.genre.any((g) => drama.genre.contains(g)),
+            )
+            .toList();
 
         return CustomScrollView(
           slivers: [
@@ -87,7 +93,8 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
             SliverToBoxAdapter(child: _buildEpisodes(drama)),
             if (similarDramas.isNotEmpty)
               SliverToBoxAdapter(
-                  child: _buildSimilarDramas(similarDramas.cast<Microdrama>(), drama.id)),
+                child: _buildSimilarDramas(similarDramas, drama.id),
+              ),
             SliverToBoxAdapter(child: _buildExploreMore()),
             const SliverToBoxAdapter(child: SizedBox(height: 30)),
           ],
@@ -98,14 +105,14 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
 
   // ── Hero cover ─────────────────────────────────────────────────────────────
   Widget _buildHero(Microdrama drama) {
-
+    final bannerUrl = formatMediaUrl(drama.banner);
     return Stack(
       children: [
         SizedBox(
           height: 280,
           width: double.infinity,
           child: Image.network(
-            "${AppUrl.baseUrl}${drama.banner}",
+            bannerUrl,
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(
               height: 280,
@@ -144,7 +151,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                 children: [
                   _iconBtn(
                     Icons.arrow_back_ios_new_rounded,
-                        () => Navigator.of(context).maybePop(),
+                    () => Navigator.of(context).maybePop(),
                   ),
                   // AI label
                   Container(
@@ -188,10 +195,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
           bottom: 14,
           left: 16,
           right: 16,
-          child: Text(
-            drama.title,
-            style: text22(fontWeight: FontWeight.bold),
-          ),
+          child: Text(drama.title, style: text22(fontWeight: FontWeight.bold)),
         ),
       ],
     );
@@ -308,118 +312,63 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
           const SizedBox(width: 10),
           // Watchlist
           Expanded(
-            child: GestureDetector(
-              onTap: _toggleWatchlist,
-              child: Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.borderColor.withOpacity(0.5),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isInWatchlist
-                          ? Icons.bookmark_rounded
-                          : Icons.bookmark_add_outlined,
-                      color: isInWatchlist
-                          ? AppColors.primaryColor
-                          : AppColors.secondaryTextColor,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isInWatchlist ? 'Saved' : '+ Watchlist',
-                      style: text13(
-                        color: isInWatchlist
-                            ? AppColors.primaryColor
-                            : AppColors.secondaryTextColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            child: Builder(builder: (_) {
+              final bool isInWatchlist =
+                  widget.id.isNotEmpty &&
+                  _watchlistController.isItemInWatchlist(widget.id);
+              final bool isLoading =
+                  widget.id.isNotEmpty &&
+                  _watchlistController.isItemLoading(widget.id);
 
-  // ── Episodes grid ──────────────────────────────────────────────────────────
-  Widget _buildEpisodes(Microdrama drama) {
-    final totalEpisodes = drama.totalEpisodes;
-    final episodes = List.generate(
-      totalEpisodes,
-          (i) => {
-        'episodeNumber': i + 1,
-        'isLocked': i >= _freeEpisodeCount,
-      },
-    );
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Episodes', style: text15(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: List.generate(episodes.length, (i) {
-              final ep = episodes[i];
-              final isLocked = ep['isLocked'] as bool;
-              final isSelected = selectedEpisode == i;
               return GestureDetector(
-                onTap: () => _onEpisodeTap(i, isLocked),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 52,
-                  height: 36,
+                onTap: () {
+                  if (widget.id.isNotEmpty && !isLoading) {
+                    _watchlistController.toggleWatchlist(widget.id);
+                  }
+                },
+                child: Container(
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.accentColor
-                        : isLocked
-                        ? AppColors.cardColor
-                        : AppColors.surfaceColor,
-                    borderRadius: BorderRadius.circular(6),
+                    color: AppColors.surfaceColor,
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: isSelected
-                          ? AppColors.accentColor
-                          : AppColors.borderColor.withOpacity(0.4),
+                      color: AppColors.borderColor.withOpacity(0.5),
                     ),
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Text(
-                        'E${ep['episodeNumber']}',
-                        style: text12(
-                          fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? AppColors.white
-                              : isLocked
-                              ? AppColors.disabledColor
-                              : AppColors.textColor,
-                        ),
-                      ),
-                      if (isLocked)
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: Icon(
-                            Icons.lock_rounded,
-                            size: 8,
-                            color: AppColors.disabledColor,
+                  child: Center(
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primaryColor,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isInWatchlist
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_add_outlined,
+                                color: isInWatchlist
+                                    ? AppColors.primaryColor
+                                    : AppColors.secondaryTextColor,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isInWatchlist ? 'Saved' : '+ Watchlist',
+                                style: text13(
+                                  color: isInWatchlist
+                                      ? AppColors.primaryColor
+                                      : AppColors.secondaryTextColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                    ],
                   ),
                 ),
               );
@@ -430,8 +379,278 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
     );
   }
 
+  // ── Episodes list & grid ───────────────────────────────────────────────────
+  Widget _buildEpisodes(Microdrama drama) {
+    final status = _controller.episodeDetailStatus.value;
+    final episodes = _controller.episodeDetail.value?.episodes ?? [];
+
+    if (status == Status.loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.accentColor),
+        ),
+      );
+    }
+
+      if (episodes.isEmpty) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Episodes', style: text15(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    'No episodes available yet',
+                    style: text13(color: AppColors.secondaryTextColor),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Episodes (${episodes.length})',
+                  style: text15(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  'Tap to play',
+                  style: text12(color: AppColors.hintTextColor),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // ── Quick-Select Chips ────────────────────────────────────────
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: List.generate(episodes.length, (i) {
+                final ep = episodes[i];
+                final isSelected = selectedEpisode.value == i;
+
+                return GestureDetector(
+                  onTap: () => _onEpisodeTap(i, ep.isLocked),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.accentColor
+                          : ep.isLocked
+                              ? AppColors.cardColor
+                              : AppColors.surfaceColor,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.accentColor
+                            : AppColors.borderColor.withOpacity(0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'E${ep.episodeNumber}',
+                          style: text12(
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? AppColors.black
+                                : ep.isLocked
+                                    ? AppColors.disabledColor
+                                    : AppColors.textColor,
+                          ),
+                        ),
+                        if (ep.isLocked) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.lock_rounded,
+                            size: 11,
+                            color: isSelected
+                                ? AppColors.black
+                                : AppColors.disabledColor,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Detailed Episode Cards ────────────────────────────────────
+            ListView.separated(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: episodes.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
+              itemBuilder: (context, i) {
+                final ep = episodes[i];
+                final isSelected = selectedEpisode.value == i;
+                final thumbUrl = formatMediaUrl(ep.thumbnail);
+
+                return GestureDetector(
+                  onTap: () => _onEpisodeTap(i, ep.isLocked),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.accentColor.withOpacity(0.12)
+                          : AppColors.surfaceColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.accentColor
+                            : AppColors.borderColor.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Episode Thumbnail with Play icon or Lock
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Stack(
+                            children: [
+                              Image.network(
+                                thumbUrl,
+                                width: 100,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  width: 100,
+                                  height: 60,
+                                  color: AppColors.cardColor,
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.movie_outlined,
+                                      color: AppColors.hintTextColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: Center(
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.55),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      ep.isLocked
+                                          ? Icons.lock_rounded
+                                          : Icons.play_arrow_rounded,
+                                      color: ep.isLocked
+                                          ? AppColors.disabledColor
+                                          : AppColors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (ep.duration.isNotEmpty)
+                                Positioned(
+                                  bottom: 4,
+                                  right: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.7),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      ep.duration,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Episode Title, Number & Description
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'EP ${ep.episodeNumber}: ${ep.title}',
+                                style: text13(
+                                  fontWeight: FontWeight.bold,
+                                  color: isSelected
+                                      ? AppColors.accentColor
+                                      : AppColors.textColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (ep.description.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  ep.description,
+                                  style: text11(
+                                    color: AppColors.secondaryTextColor,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Right Action
+                        Icon(
+                          Icons.play_circle_fill_rounded,
+                          color: isSelected
+                              ? AppColors.accentColor
+                              : AppColors.hintTextColor,
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      );
+  }
+
   // ── Similar dramas ─────────────────────────────────────────────────────────
-  Widget _buildSimilarDramas(List<Microdrama> similarDramas, String currentId) {
+  Widget _buildSimilarDramas(List<dynamic> similarDramas, String currentId) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: Column(
@@ -451,6 +670,12 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
             ),
             itemBuilder: (_, i) {
               final item = similarDramas[i];
+              final rawPoster =
+                  (item.poster != null && item.poster.toString().isNotEmpty)
+                  ? item.poster.toString()
+                  : (item.banner != null ? item.banner.toString() : '');
+              final imageUrl = formatMediaUrl(rawPoster);
+
               return GestureDetector(
                 onTap: () => _onSimilarDramaTap(item),
                 child: ClipRRect(
@@ -459,11 +684,11 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                     fit: StackFit.expand,
                     children: [
                       Image.network(
-                        item.poster.isNotEmpty ? item.poster : item.banner,
+                        imageUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => Container(
                           color: AppColors.cardColor,
-                          child: Center(
+                          child: const Center(
                             child: Icon(
                               Icons.movie_outlined,
                               color: AppColors.hintTextColor,
@@ -495,7 +720,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                         left: 6,
                         right: 6,
                         child: Text(
-                          item.title.toUpperCase(),
+                          (item.title ?? '').toString().toUpperCase(),
                           style: text8(fontWeight: FontWeight.bold),
                           maxLines: 2,
                         ),
@@ -517,7 +742,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: GestureDetector(
         onTap: () {
-          // TODO: navigate to explore screen
+          // Navigate to explore screen
         },
         child: Center(
           child: Text(
@@ -538,7 +763,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.overlayColor,
           shape: BoxShape.circle,
         ),
@@ -554,41 +779,60 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
 
   // ── Callbacks ──────────────────────────────────────────────────────────────
 
-  // "Start Watching" always begins from the second episode (index 1),
-  // matching the free-preview-first-episode pattern used elsewhere.
+  // "Start Watching" begins from Episode 1 (index 0)
   void _onStartWatching() {
-    _openPlayer(initialIndex: 1);
+    final drama = _controller.dramaDetail.value?.microdrama;
+    final isDramaPremium = drama?.isPremium ?? false;
+    if (checkPlayable(
+      context,
+      isPremium: isDramaPremium,
+      title: drama?.title,
+    )) {
+      _openPlayer(initialIndex: 0);
+    }
   }
 
   void _toggleWatchlist() {
-    setState(() => isInWatchlist = !isInWatchlist);
+    _watchlistController.toggleWatchlist(widget.id);
   }
 
   // Tapping a specific episode chip both highlights it and opens the
   // player starting exactly at that episode.
   void _onEpisodeTap(int index, bool isLocked) {
-    setState(() => selectedEpisode = index);
+    selectedEpisode.value = index;
 
-    if (isLocked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unlock this episode to watch it.')),
-      );
-      return;
+    final drama = _controller.dramaDetail.value?.microdrama;
+    final isDramaPremium = drama?.isPremium ?? false;
+    final requiresSub = isDramaPremium || isLocked;
+
+    if (requiresSub) {
+      if (checkPlayable(context, isPremium: true, title: drama?.title)) {
+        _openPlayer(initialIndex: index);
+      }
+    } else {
+      _openPlayer(initialIndex: index);
     }
-
-    _openPlayer(initialIndex: index);
   }
 
   void _openPlayer({required int initialIndex}) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => MicroDramaPlayerScreen(dramaId: widget.id)
+        builder: (_) => MicroDramaPlayerScreen(
+          dramaId: widget.id,
+          initialIndex: initialIndex,
+        ),
       ),
     );
   }
 
-  void _onSimilarDramaTap(Microdrama item) {
-    // TODO: navigate to that drama's detail screen
+  void _onSimilarDramaTap(dynamic item) {
+    final dramaId = item.id?.toString() ?? '';
+    if (dramaId.isNotEmpty) {
+      Get.to(
+        () => MicroDramaDetailScreen(id: dramaId),
+        preventDuplicates: false,
+      );
+    }
   }
 }
 

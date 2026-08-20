@@ -27,7 +27,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
   late final ContentController _contentController;
   late final TextEditingController _searchController;
   Timer? _debounce;
-  String _currentQuery = '';
+  final RxString _currentQuery = ''.obs;
 
   @override
   void initState() {
@@ -47,8 +47,8 @@ class _DiscoverTabState extends State<DiscoverTab> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
       final query = val.trim();
-      if (query == _currentQuery) return;
-      _currentQuery = query;
+      if (query == _currentQuery.value) return;
+      _currentQuery.value = query;
       _contentController.searchContent(query);
     });
   }
@@ -75,24 +75,25 @@ class _DiscoverTabState extends State<DiscoverTab> {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
-    final bool isSearching = _currentQuery.isNotEmpty;
-
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildHeader()),
-          SliverToBoxAdapter(child: _buildSearchBar()),
-          if (!isSearching) ...[
-            SliverToBoxAdapter(child: _buildCategoryGrid()),
-            SliverToBoxAdapter(child: _buildExcitingBanner()),
-          ] else ...[
-            SliverToBoxAdapter(child: Obx(() => _buildSearchResults())),
+      child: Obx(() {
+        final bool isSearching = _currentQuery.value.isNotEmpty;
+
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildSearchBar()),
+            if (!isSearching) ...[
+              SliverToBoxAdapter(child: _buildCategoryGrid()),
+              SliverToBoxAdapter(child: _buildExcitingBanner()),
+            ] else ...[
+              SliverToBoxAdapter(child: _buildSearchResults()),
+            ],
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
-      ),
+        );
+      }),
     );
   }
 
@@ -145,7 +146,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
             GestureDetector(
               onTap: () {
                 _searchController.clear();
-                setState(() => _currentQuery = '');
+                _currentQuery.value = '';
                 _contentController.searchContent('');
               },
               child: const Icon(
@@ -197,7 +198,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
               ),
               const SizedBox(height: 12),
               Text(
-                'No results for "$_currentQuery"',
+                'No results for "${_currentQuery.value}"',
                 style: text14(color: AppColors.secondaryTextColor),
               ),
             ],
@@ -212,7 +213,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${items.length} result${items.length == 1 ? '' : 's'} for "$_currentQuery"',
+            '${items.length} result${items.length == 1 ? '' : 's'} for "${_currentQuery.value}"',
             style: text13(color: AppColors.secondaryTextColor),
           ),
           const SizedBox(height: 14),
@@ -507,7 +508,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     _searchController.selection = TextSelection.fromPosition(
       TextPosition(offset: query.length),
     );
-    setState(() => _currentQuery = query);
+    _currentQuery.value = query;
     _contentController.searchContent(query);
   }
 

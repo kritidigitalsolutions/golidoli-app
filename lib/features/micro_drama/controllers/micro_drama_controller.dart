@@ -3,7 +3,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/micro_drama/datasource/micro_drama_datasource.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart';
-import 'package:golidoli_app/features/web_series/model/episode_response.dart';
+import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
 
 class MicroDramaController extends GetxController {
   // ── State ─────────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ class MicroDramaController extends GetxController {
   final Rx<MicrodramaDetailResponse?> dramaDetail = Rx(null);
 
   final episodeDetailStatus = Status.init.obs;
-  final Rx<EpisodesResponse?> episodeDetail = Rx(null);
+  final Rx<MicroDramaEpisodesResponse?> episodeDetail = Rx(null);
 
   final _api = MicroDramaDatasource();
 
@@ -41,7 +41,7 @@ class MicroDramaController extends GetxController {
     episodeDetailStatus.value = Status.loading;
     final result = await _api.episodeDetail(id: id);
     if (result != null) {
-      episodeDetail.value = result as EpisodesResponse?;
+      episodeDetail.value = result;
       episodeDetailStatus.value = Status.success;
     } else {
       episodeDetailStatus.value = Status.error;

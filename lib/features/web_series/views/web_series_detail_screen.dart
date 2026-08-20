@@ -6,10 +6,12 @@ import 'package:golidoli_app/features/web_series/controllers/series_controller.d
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/model/episode_response.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 import '../../../constants/enums.dart';
 import '../../movie/views/movie_player_screen.dart';
+import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
   const WebSeriesDetailScreen({super.key, required this.id});
@@ -21,6 +23,7 @@ class WebSeriesDetailScreen extends StatefulWidget {
 }
 
 class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
+  final WatchlistController _watchlistController = Get.put(WatchlistController());
   int _selectedSeasonIndex = 0;
   final SeriesController _seriesController = Get.put(SeriesController());
   final EpisodeController _episodeController = Get.put(EpisodeController());
@@ -262,7 +265,34 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () {},
+              onTap: () {
+                final episodes = _episodeController.allEpisode.value?.episodes;
+                if (episodes != null && episodes.isNotEmpty) {
+                  final sorted = List<Episode>.from(episodes)
+                    ..sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+                  final firstEp = sorted.first;
+                  final isPremium = series.isPremium;
+                  final title = series.title;
+                  if (checkPlayable(context, isPremium: isPremium, title: title)) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => MoviePlayerScreen(
+                          episodeId: firstEp.id,
+                          title: "${series.title} - EP ${firstEp.episodeNumber}",
+                        ),
+                      ),
+                    );
+                  }
+                } else {
+                  Get.snackbar(
+                    'Notice',
+                    'No episodes available yet',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: Colors.black87,
+                    colorText: Colors.white,
+                  );
+                }
+              },
               child: Container(
                 height: 44,
                 decoration: BoxDecoration(
@@ -292,34 +322,65 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: GestureDetector(
-              onTap: () {},
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.borderColor.withOpacity(0.5),
+            child: Obx(() {
+              final bool isInWatchlist =
+                  widget.id.isNotEmpty && _watchlistController.isItemInWatchlist(widget.id);
+              final bool isLoading =
+                  widget.id.isNotEmpty && _watchlistController.isItemLoading(widget.id);
+
+              return GestureDetector(
+                onTap: () {
+                  if (widget.id.isNotEmpty && !isLoading) {
+                    _watchlistController.toggleWatchlist(widget.id);
+                  }
+                },
+                child: Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.borderColor.withOpacity(0.5),
+                    ),
+                  ),
+                  child: Center(
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primaryColor,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isInWatchlist
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_add_outlined,
+                                color: isInWatchlist
+                                    ? AppColors.primaryColor
+                                    : AppColors.secondaryTextColor,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isInWatchlist ? 'Saved' : '+ Watchlist',
+                                style: text13(
+                                  color: isInWatchlist
+                                      ? AppColors.primaryColor
+                                      : AppColors.secondaryTextColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.bookmark_rounded,
-                      color: AppColors.primaryColor,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      '+ Watchlist',
-                      style: text13(color: AppColors.primaryColor),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+              );
+            }),
           ),
         ],
       ),
@@ -496,11 +557,16 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
   Widget _buildEpisodeTile(Episode ep) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => MoviePlayerScreen(episodeId: ep.id),
-          ),
-        );
+        final series = _seriesController.seriesDetail.value;
+        final isPremium = series?.isPremium ?? false;
+        final title = series?.title;
+        if (checkPlayable(context, isPremium: isPremium, title: title)) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => MoviePlayerScreen(episodeId: ep.id),
+            ),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),

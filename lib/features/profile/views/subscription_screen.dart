@@ -4,6 +4,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/payment_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import '../controllers/plan_controller.dart';
 
@@ -30,6 +31,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void startPayment() {
+    if (Get.find<SubscriptionStatusController>().isPremiumUser.value) {
+      Get.snackbar(
+        'Subscription Active',
+        'You already have an active subscription plan.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.accentColor.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     final plans = _controller.allPlans.value?.plans;
     if (plans == null || plans.isEmpty) {
       Get.snackbar(
@@ -292,6 +304,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                       );
                     }
+                    final isSubscribed = Get.find<SubscriptionStatusController>().isPremiumUser.value;
+                    if (isSubscribed) {
+                      return Text(
+                        'Active Plan',
+                        style: text13(
+                          color: AppColors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    }
                     return Text(
                       'Upgrade Now',
                       style: text13(
@@ -351,8 +373,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               );
             }
+            final isSubscribed = Get.find<SubscriptionStatusController>().isPremiumUser.value;
             return Text(
-              'Continue',
+              isSubscribed ? 'Active Plan' : 'Continue',
               style: text13(color: AppColors.black, fontWeight: FontWeight.bold),
             );
           }),

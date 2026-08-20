@@ -14,7 +14,8 @@ class MovieModel {
   final String videoUrl;
   final String trailerUrl;
   final bool isPremium;
-  final int rating;
+  final double rating;
+  final bool isPopular;
   final List<dynamic> cast;
   final List<dynamic> category;
   final List<dynamic> likes;
@@ -40,6 +41,7 @@ class MovieModel {
     required this.trailerUrl,
     required this.isPremium,
     required this.rating,
+    this.isPopular = false,
     required this.cast,
     required this.category,
     required this.likes,
@@ -65,7 +67,8 @@ class MovieModel {
     String? videoUrl,
     String? trailerUrl,
     bool? isPremium,
-    int? rating,
+    double? rating,
+    bool? isPopular,
     List<dynamic>? cast,
     List<dynamic>? category,
     List<dynamic>? likes,
@@ -91,6 +94,7 @@ class MovieModel {
       trailerUrl: trailerUrl ?? this.trailerUrl,
       isPremium: isPremium ?? this.isPremium,
       rating: rating ?? this.rating,
+      isPopular: isPopular ?? this.isPopular,
       cast: cast ?? this.cast,
       category: category ?? this.category,
       likes: likes ?? this.likes,
@@ -114,19 +118,32 @@ class MovieModel {
       banner: json['banner'] ?? '',
       isComingSoon: json['isComingSoon'] ?? false,
       releaseDate: json['releaseDate'] != null
-          ? DateTime.parse(json['releaseDate'])
+          ? DateTime.tryParse(json['releaseDate'].toString())
           : null,
-      priority: json['priority'] ?? 0,
+      priority: (json['priority'] is num)
+          ? (json['priority'] as num).toInt()
+          : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
       videoUrl: json['videoUrl'] ?? '',
       trailerUrl: json['trailerUrl'] ?? '',
       isPremium: json['isPremium'] ?? false,
-      rating: json['rating'] ?? 0,
+      rating: (json['rating'] is num)
+          ? (json['rating'] as num).toDouble()
+          : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      isPopular:
+          json['isPopular'] ??
+          json['popularMovie'] ??
+          json['isPopularMovie'] ??
+          false,
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<dynamic>.from(json['category'] ?? []),
       likes: List<dynamic>.from(json['likes'] ?? []),
       dislikes: List<dynamic>.from(json['dislikes'] ?? []),
-      createdAt: DateTime.parse(json['createdAt']),
-      updatedAt: DateTime.parse(json['updatedAt']),
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       slug: json['slug'] ?? '',
     );
   }
@@ -149,6 +166,7 @@ class MovieModel {
       'trailerUrl': trailerUrl,
       'isPremium': isPremium,
       'rating': rating,
+      'isPopular': isPopular,
       'cast': cast,
       'category': category,
       'likes': likes,
@@ -158,31 +176,4 @@ class MovieModel {
       'slug': slug,
     };
   }
-
-  @override
-  List<Object?> get props => [
-    id,
-    title,
-    description,
-    genre,
-    releaseYear,
-    duration,
-    language,
-    poster,
-    banner,
-    isComingSoon,
-    releaseDate,
-    priority,
-    videoUrl,
-    trailerUrl,
-    isPremium,
-    rating,
-    cast,
-    category,
-    likes,
-    dislikes,
-    createdAt,
-    updatedAt,
-    slug,
-  ];
 }

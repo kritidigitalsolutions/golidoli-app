@@ -7,13 +7,27 @@ import 'package:golidoli_app/features/home/views/discover_tab.dart';
 import 'package:golidoli_app/features/home/views/home_tab.dart';
 import 'package:golidoli_app/features/home/views/reels_tab.dart';
 import 'package:golidoli_app/features/home/views/watchlist_tab.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/views/profile_screen.dart';
 import 'package:golidoli_app/routes/app_pages.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/bottom_nav_bar.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:golidoli_app/core/services/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Hive storage
+  await Hive.initFlutter();
+  await Hive.openBox('appBox');
+
+  // Initialize global subscription status controller
+  Get.put(SubscriptionStatusController(), permanent: true);
+
+  // Initialize Notification Service
+  final notificationService = Get.put(NotificationService(), permanent: true);
+  await notificationService.init();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

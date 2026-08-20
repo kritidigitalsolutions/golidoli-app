@@ -46,6 +46,7 @@ class Series {
   final bool isPremium;
   final int priority;
   final double rating;
+  final bool isTop;
   final List<dynamic> cast;
   final List<dynamic> category;
   final List<dynamic> likes;
@@ -74,6 +75,7 @@ class Series {
     required this.isPremium,
     required this.priority,
     required this.rating,
+    this.isTop = false,
     required this.cast,
     required this.category,
     required this.likes,
@@ -103,7 +105,13 @@ class Series {
       trailerUrl: json['trailerUrl'] ?? '',
       isPremium: json['isPremium'] ?? false,
       priority: json['priority'] ?? 0,
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: (json['rating'] is num)
+          ? (json['rating'] as num).toDouble()
+          : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      isTop: json['isTop'] ??
+          json['topWebseries'] ??
+          json['isTopWebseries'] ??
+          false,
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<dynamic>.from(json['category'] ?? []),
       likes: List<dynamic>.from(json['likes'] ?? []),

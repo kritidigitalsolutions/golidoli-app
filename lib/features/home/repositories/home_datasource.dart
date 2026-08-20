@@ -4,8 +4,22 @@ import '../models/category_model.dart';
 import '../models/category_detail_model.dart';
 import '../models/content_model.dart';
 
+import '../models/home_banner_model.dart';
+
 class HomeDatasource {
   final NetworkApiService _apiService = NetworkApiService();
+
+  Future<HomeBannerResponse?> fetchHomeBanners() async {
+    try {
+      final json = await _apiService.getApi(AppUrl.homeBanners);
+      if (json != null) {
+        return HomeBannerResponse.fromJson(json);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 
   Future<CategoriesResponse?> allCategories() async {
     try {

@@ -4,6 +4,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -19,12 +20,14 @@ class OnboardingScreen extends StatelessWidget {
       body: Stack(
         children: [
           // Page view
-          PageView.builder(
-            controller: controller.pageController,
-            itemCount: controller.totalPages,
-            onPageChanged: controller.onPageChanged,
-            itemBuilder: (_, i) =>
-                _OnboardingPageView(page: controller.pages[i]),
+          Obx(
+            () => PageView.builder(
+              controller: controller.pageController,
+              itemCount: controller.totalPages,
+              onPageChanged: controller.onPageChanged,
+              itemBuilder: (_, i) =>
+                  _OnboardingPageView(page: controller.pages[i]),
+            ),
           ),
 
           Positioned(
@@ -70,8 +73,19 @@ class _OnboardingPageView extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Background — swap with Image.asset(page.imagePath) when assets ready
-        Image.asset(page.imagePath),
+        // Background image
+        if (page.imageUrl != null && page.imageUrl.toString().isNotEmpty)
+          Image.network(
+            formatMediaUrl(page.imageUrl.toString()),
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => page.imagePath != null
+                ? Image.asset(page.imagePath, fit: BoxFit.cover)
+                : Container(color: Colors.black),
+          )
+        else if (page.imagePath != null)
+          Image.asset(page.imagePath, fit: BoxFit.cover)
+        else
+          Container(color: Colors.black),
 
         // Bottom gradient
         Container(

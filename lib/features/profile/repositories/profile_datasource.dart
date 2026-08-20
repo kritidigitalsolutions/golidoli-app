@@ -3,9 +3,22 @@ import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import 'package:golidoli_app/features/profile/models/response/DocumentModel.dart';
 import 'package:golidoli_app/features/profile/models/response/help_response.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
+import 'package:golidoli_app/features/profile/models/response/subscription_status_model.dart';
 
 class ProfileDatasource {
   final NetworkApiService _apiService = NetworkApiService();
+
+  Future<SubscriptionStatusResponse?> fetchSubscriptionStatus() async {
+    try {
+      final jsonData = await _apiService.getApi(AppUrl.subscriptionStatus);
+      if (jsonData != null) {
+        return SubscriptionStatusResponse.fromJson(jsonData);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 
   Future<HelpResponse?> allHelp() async {
     try {

@@ -31,7 +31,7 @@ class ProfileController extends GetxController {
     {'icon': 'subscription', 'label': 'Subscription'},
     {'icon': 'language', 'label': 'Language', 'trailing': 'English'},
     {'icon': 'download', 'label': 'Downloads'},
-    {'icon': 'content', 'label': 'Content Preference'},
+    //{'icon': 'content', 'label': 'Content Preference'},
     {'icon': 'settings', 'label': 'Notifications Settings'},
     {'icon': 'privacy', 'label': 'Privacy Policy'},
     {'icon': 'terms', 'label': 'Terms & Conditions'},
@@ -45,7 +45,7 @@ class ProfileController extends GetxController {
       'Subscription': AppRoutes.subscription,
       'Language': AppRoutes.language,
       'Downloads': AppRoutes.downloads,
-      'Content Preference': AppRoutes.contentPreference,
+      //'Content Preference': AppRoutes.contentPreference,
       'Notifications Settings': AppRoutes.notificationSettings,
       'Privacy Policy': AppRoutes.privacyPolicy,
       'Terms & Conditions': AppRoutes.termsConditions,
@@ -292,52 +292,6 @@ class LanguageController extends GetxController {
 }
 
 // =================================────────────────────────────────────────────
-// 6. Notification Settings Controller
-// =================================────────────────────────────────────────────
-class NotificationSettingsController extends GetxController {
-  final RxBool newEpisodes = true.obs;
-  final RxBool newMovies = true.obs;
-  final RxBool recommendations = true.obs;
-  final RxBool downloads = true.obs;
-  final RxBool continueWatchingReminder = false.obs;
-  final RxBool subscriptionAlerts = true.obs;
-  final RxBool promotionalOffers = true.obs;
-
-  void saveChanges() {
-    Get.snackbar(
-      'Saved',
-      'Notification settings updated successfully.',
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-}
-
-// =================================────────────────────────────────────────────
-// 7. Notifications Controller
-// =================================────────────────────────────────────────────
-class NotificationsController extends GetxController {
-  final RxList<Map<String, String>> notifications = <Map<String, String>>[
-    {
-      'title': 'New episode released',
-      'subtitle': 'Billionaire Series S1 E06 is ready to watch.',
-      'time': '2 min ago',
-    },
-    {
-      'title': 'Premium offer',
-      'subtitle': 'Get yearly access with extra savings today.',
-      'time': '1 hour ago',
-    },
-    {
-      'title': 'Download complete',
-      'subtitle': 'Forbidden Love is available offline.',
-      'time': 'Yesterday',
-    },
-  ].obs;
-
-  void clearAll() {
-    notifications.clear();
-  }
-}
 
 // =================================────────────────────────────────────────────
 // 8. Privacy Controller
@@ -400,65 +354,4 @@ class TermsController extends GetxController {
           'Movies, web series, micro dramas, downloads, and quality settings can change based on rights and availability.',
     },
   ];
-}
-
-// =================================────────────────────────────────────────────
-// 11. Watchlist Controller
-// =================================────────────────────────────────────────────
-class WatchlistController extends GetxController {
-  final RxInt selectedTabIndex = 0.obs;
-
-  final List<String> tabs = ['Movies', 'Series', 'Micro Dramas'];
-
-  // --- Movies ---
-  final List<Map<String, String>> movies = List.generate(
-    9,
-    (i) => {
-      'title': i % 3 == 0
-          ? 'Me Before You'
-          : i % 3 == 1
-          ? 'Squid Game'
-          : 'Connect',
-      'image': 'https://picsum.photos/seed/wm${i + 1}/200/300',
-    },
-  );
-
-  // --- Series ---
-  final List<Map<String, String>> series = List.generate(
-    9,
-    (i) => {
-      'title': i % 3 == 0
-          ? 'Me Before You'
-          : i % 3 == 1
-          ? 'Squid Game'
-          : 'Connect',
-      'image': 'https://picsum.photos/seed/ws${i + 1}/200/300',
-    },
-  );
-
-  // --- Micro Dramas ---
-  final List<Map<String, String>> microDramas = List.generate(
-    9,
-    (i) => {
-      'title': i % 3 == 0
-          ? 'My Racer Stepbrother'
-          : i % 3 == 1
-          ? 'The True Heiress'
-          : 'Connect',
-      'image': 'https://picsum.photos/seed/wd${i + 1}/200/300',
-    },
-  );
-
-  List<Map<String, String>> get currentList {
-    switch (selectedTabIndex.value) {
-      case 0:
-        return movies;
-      case 1:
-        return series;
-      default:
-        return microDramas;
-    }
-  }
-
-  void selectTab(int index) => selectedTabIndex.value = index;
 }

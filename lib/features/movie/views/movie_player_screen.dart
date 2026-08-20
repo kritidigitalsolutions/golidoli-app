@@ -4,14 +4,23 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../constants/enums.dart';
 
 class MoviePlayerScreen extends StatefulWidget {
-  const MoviePlayerScreen({super.key, required this.episodeId});
-  final String episodeId;
+  const MoviePlayerScreen({
+    super.key,
+    this.episodeId,
+    this.videoUrl,
+    this.title,
+  });
+
+  final String? episodeId;
+  final String? videoUrl;
+  final String? title;
 
   @override
   State<MoviePlayerScreen> createState() => _MoviePlayerScreenState();
@@ -30,44 +39,60 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   final Map<String, String> _qualityUrls = {};
   bool _isLoading = true;
   String? _errorMessage;
-  late final EpisodeController _episodeController;
+  EpisodeController? _episodeController;
   Worker? _statusWorker;
 
   @override
   void initState() {
     super.initState();
-    _episodeController = Get.find<EpisodeController>();
+    _lockPortrait();
 
-    _statusWorker = ever(_episodeController.detailEpisodeStatus, (Status status) {
-      if (status == Status.success && _episodeController.episodeDetail.value != null) {
-        final episodeDetailVal = _episodeController.episodeDetail.value!;
-        final videoUrl = "${AppUrl.baseUrl}${episodeDetailVal.episode.videoUrl}";
-        if (videoUrl.isNotEmpty) {
-          _qualityUrls['Auto'] = videoUrl;
-          _selectedQuality = 'Auto';
-          _initializePlayer(videoUrl);
-        } else {
+    if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
+      final formattedUrl = formatMediaUrl(widget.videoUrl);
+      _qualityUrls['Auto'] = formattedUrl;
+      _selectedQuality = 'Auto';
+      _initializePlayer(formattedUrl);
+    } else if (widget.episodeId != null && widget.episodeId!.isNotEmpty) {
+      _episodeController = Get.put(EpisodeController());
+
+      _statusWorker =
+          ever(_episodeController!.detailEpisodeStatus, (Status status) {
+        if (status == Status.success &&
+            _episodeController!.episodeDetail.value != null) {
+          final episodeDetailVal = _episodeController!.episodeDetail.value!;
+          final videoUrl =
+              formatMediaUrl(episodeDetailVal.episode.videoUrl);
+          if (videoUrl.isNotEmpty) {
+            _qualityUrls['Auto'] = videoUrl;
+            _selectedQuality = 'Auto';
+            _initializePlayer(videoUrl);
+          } else {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'No video URL available';
+            });
+          }
+        } else if (status == Status.error) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'No video URL available';
+            _errorMessage = 'Failed to load episode details';
           });
+          Get.snackbar(
+            "Error",
+            "Failed to load episode details",
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
         }
-      } else if (status == Status.error) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Failed to load episode details';
-        });
-        Get.snackbar(
-          "Error",
-          "Failed to load episode details",
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
-      }
-    });
+      });
 
-    _episodeController.fetchEpisodeDetail(widget.episodeId);
-    _lockPortrait();
+      _episodeController!.fetchEpisodeDetail(widget.episodeId!);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No video URL or episode ID provided';
+      });
+    }
   }
 
   @override
@@ -239,7 +264,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   Widget build(BuildContext context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final title = args?['title'] as String? ?? 'GoliDoli Player';
+    final title = widget.title ??
+        args?['title'] as String? ??
+        (_episodeController?.episodeDetail.value?.episode.title) ??
+        'GoliDoli Player';
 
     return PopScope(
       canPop: !_isFullscreen,

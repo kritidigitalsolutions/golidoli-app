@@ -31,13 +31,13 @@ class MicroDramaDatasource {
     }
   }
 
-  Future<EpisodesResponse?> episodeDetail({required String id}) async {
+  Future<MicroDramaEpisodesResponse?> episodeDetail({required String id}) async {
     try {
       final json = await _apiService.getApi(
         AppUrl.microDramaEpisodeDetail(id: id),
       );
       if (json != null) {
-        return EpisodesResponse.fromJson(json);
+        return MicroDramaEpisodesResponse.fromJson(json);
       }
       return null;
     } catch (e) {

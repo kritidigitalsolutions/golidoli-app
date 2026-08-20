@@ -8,9 +8,23 @@ import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/auth/models/request/user_payload.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
+import 'package:golidoli_app/features/auth/models/intro_screen_model.dart';
 
 class AuthDatasource {
   final NetworkApiService _apiService = NetworkApiService();
+
+  Future<IntroScreenResponse?> fetchIntroScreens() async {
+    try {
+      final response = await _apiService.getApi(AppUrl.introScreens);
+      if (response != null) {
+        return IntroScreenResponse.fromJson(response);
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Fetch Intro Screens Error: $e");
+      return null;
+    }
+  }
 
   Future<bool> sendOtp({required String phone}) async {
     try {

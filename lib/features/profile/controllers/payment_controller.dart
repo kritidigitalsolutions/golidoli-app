@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 import 'package:golidoli_app/features/profile/repositories/payment_repo.dart';
 
@@ -10,6 +11,7 @@ class PaymentController extends GetxController {
 
   final RxBool isProcessing = false.obs;
   String? _currentOrderId;
+  String? planId;
 
   static const String defaultRazorpayKey = "rzp_test_1DP5mmOlF5G5ag";
 
@@ -49,6 +51,7 @@ class PaymentController extends GetxController {
         : (plan.price * 100).toInt();
 
     _currentOrderId = order?.orderId;
+    planId = plan.id;
 
     final options = {
       'key': razorpayKey,
@@ -92,10 +95,16 @@ class PaymentController extends GetxController {
         razorpayOrderId: orderId,
         razorpayPaymentId: response.paymentId ?? '',
         razorpaySignature: response.signature ?? '',
+        planId: planId ?? '',
       );
       isProcessing.value = false;
 
       if (result != null && result.success) {
+        try {
+          Get.find<SubscriptionStatusController>().checkStatus();
+        } catch (e) {
+          debugPrint("Failed to refresh SubscriptionStatusController: $e");
+        }
         Get.snackbar(
           'Payment Successful',
           'Subscription activated successfully!',

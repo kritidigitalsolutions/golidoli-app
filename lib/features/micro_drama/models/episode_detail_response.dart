@@ -1,17 +1,17 @@
-class EpisodesResponse {
+class MicroDramaEpisodesResponse {
   final bool success;
-  final List<EpisodeModel> episodes;
+  final List<MicroDramaEpisode> episodes;
 
-  const EpisodesResponse({
+  const MicroDramaEpisodesResponse({
     required this.success,
     required this.episodes,
   });
 
-  factory EpisodesResponse.fromJson(Map<String, dynamic> json) {
-    return EpisodesResponse(
+  factory MicroDramaEpisodesResponse.fromJson(Map<String, dynamic> json) {
+    return MicroDramaEpisodesResponse(
       success: json['success'] ?? false,
       episodes: (json['episodes'] as List<dynamic>? ?? [])
-          .map((e) => EpisodeModel.fromJson(e))
+          .map((e) => MicroDramaEpisode.fromJson(e))
           .toList(),
     );
   }
@@ -23,18 +23,18 @@ class EpisodesResponse {
     };
   }
 
-  EpisodesResponse copyWith({
+  MicroDramaEpisodesResponse copyWith({
     bool? success,
-    List<EpisodeModel>? episodes,
+    List<MicroDramaEpisode>? episodes,
   }) {
-    return EpisodesResponse(
+    return MicroDramaEpisodesResponse(
       success: success ?? this.success,
       episodes: episodes ?? this.episodes,
     );
   }
 }
 
-class EpisodeModel {
+class MicroDramaEpisode {
   final String id;
   final String tvShowId;
   final int episodeNumber;
@@ -51,7 +51,7 @@ class EpisodeModel {
   final String updatedAt;
   final int version;
 
-  const EpisodeModel({
+  const MicroDramaEpisode({
     required this.id,
     required this.tvShowId,
     required this.episodeNumber,
@@ -69,11 +69,13 @@ class EpisodeModel {
     required this.version,
   });
 
-  factory EpisodeModel.fromJson(Map<String, dynamic> json) {
-    return EpisodeModel(
+  factory MicroDramaEpisode.fromJson(Map<String, dynamic> json) {
+    return MicroDramaEpisode(
       id: json['_id'] ?? '',
       tvShowId: json['tvShowId'] ?? '',
-      episodeNumber: json['episodeNumber'] ?? 0,
+      episodeNumber: (json['episodeNumber'] is num)
+          ? (json['episodeNumber'] as num).toInt()
+          : int.tryParse(json['episodeNumber']?.toString() ?? '0') ?? 0,
       title: json['title'] ?? '',
       description: json['description'] ?? '',
       videoUrl: json['videoUrl'] ?? '',
@@ -81,8 +83,8 @@ class EpisodeModel {
       duration: json['duration'] ?? '',
       isLocked: json['isLocked'] ?? false,
       isVertical: json['isVertical'] ?? false,
-      views: json['views'] ?? 0,
-      likes: json['likes'] ?? 0,
+      views: (json['views'] is num) ? (json['views'] as num).toInt() : 0,
+      likes: (json['likes'] is num) ? (json['likes'] as num).toInt() : 0,
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       version: json['__v'] ?? 0,
@@ -109,7 +111,7 @@ class EpisodeModel {
     };
   }
 
-  EpisodeModel copyWith({
+  MicroDramaEpisode copyWith({
     String? id,
     String? tvShowId,
     int? episodeNumber,
@@ -126,7 +128,7 @@ class EpisodeModel {
     String? updatedAt,
     int? version,
   }) {
-    return EpisodeModel(
+    return MicroDramaEpisode(
       id: id ?? this.id,
       tvShowId: tvShowId ?? this.tvShowId,
       episodeNumber: episodeNumber ?? this.episodeNumber,

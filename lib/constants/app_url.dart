@@ -1,5 +1,5 @@
 class AppUrl {
-  static const String baseUrl = 'http://192.168.1.21:8000';
+  static const String baseUrl = 'http://192.168.1.21:5000';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
   static const String logout = "$baseUrl/api/auth/logout";
@@ -32,4 +32,22 @@ class AppUrl {
 
   static String createOrder = "$baseUrl/api/payment/create-order";
   static String verifyPayment = "$baseUrl/api/payment/verify";
+  static const String subscriptionStatus = "$baseUrl/api/subscription/status";
+
+  // Home Banners & Intro Screens
+  static const String homeBanners = "$baseUrl/api/home-banners";
+  static const String introScreens = "$baseUrl/api/intro-screens";
+
+  // Watchlist APIs
+  static const String watchlist = "$baseUrl/api/watchlist";
+  static String deleteWatchlist(String id) => "$baseUrl/api/watchlist/$id";
+
+  // Notification APIs
+  static const String fcmToken = "$baseUrl/api/notifications/fcm-token";
+  static const String notifications = "$baseUrl/api/notifications";
+  static const String unreadNotificationsCount = "$baseUrl/api/notifications/unread-count";
+  static String markNotificationRead(String id) => "$baseUrl/api/notifications/$id/read";
+  static const String markAllNotificationsRead = "$baseUrl/api/notifications/read-all";
+  static String deleteNotification(String id) => "$baseUrl/api/notifications/$id";
+  static const String notificationSettings = "$baseUrl/api/notification-settings";
 }

@@ -6,6 +6,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class MicroDramaScreen extends StatefulWidget {
@@ -16,7 +17,7 @@ class MicroDramaScreen extends StatefulWidget {
 }
 
 class _MicroDramaScreenState extends State<MicroDramaScreen> {
-  int selectedCategoryIndex = 0;
+  final RxInt selectedCategoryIndex = 0.obs;
   late final MicroDramaController _controller;
 
   final List<String> categories = [
@@ -29,8 +30,8 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   ];
 
   List<Microdrama> _filteredDramas(List<Microdrama> allDramas) {
-    if (selectedCategoryIndex == 0) return allDramas;
-    final genre = categories[selectedCategoryIndex];
+    if (selectedCategoryIndex.value == 0) return allDramas;
+    final genre = categories[selectedCategoryIndex.value];
     return allDramas
         .where(
           (d) => d.genre.any(
@@ -41,18 +42,22 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   }
 
   void _onCategorySelected(int index) {
-    setState(() => selectedCategoryIndex = index);
+    selectedCategoryIndex.value = index;
   }
 
   void _onDramaTap(Microdrama drama) {
-    // TODO: navigate to drama detail
+    Get.to(() => MicroDramaDetailScreen(id: drama.id));
   }
 
   @override
   void initState() {
     super.initState();
-    _controller = Get.put(MicroDramaController());
-    _controller.fetchAllMicroDrama();
+    _controller = Get.isRegistered<MicroDramaController>()
+        ? Get.find<MicroDramaController>()
+        : Get.put(MicroDramaController());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchAllMicroDrama();
+    });
   }
 
   @override
@@ -144,7 +149,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
         itemCount: categories.length,
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
-          final isSelected = selectedCategoryIndex == i;
+          final isSelected = selectedCategoryIndex.value == i;
           return GestureDetector(
             onTap: () => _onCategorySelected(i),
             child: AnimatedContainer(
@@ -269,6 +274,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   }
 
   Widget _buildDramaCard(Microdrama drama) {
+    final bannerUrl = formatMediaUrl(drama.banner);
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -284,7 +290,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
           fit: StackFit.expand,
           children: [
             Image.network(
-              "${AppUrl.baseUrl}${drama.poster}",
+              bannerUrl,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => Container(
                 color: AppColors.cardColor,

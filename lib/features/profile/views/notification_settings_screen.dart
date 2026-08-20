@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/notification_settings_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class NotificationSettingsScreen extends StatelessWidget {
@@ -116,7 +116,11 @@ class NotificationSettingsScreen extends StatelessWidget {
 
   Widget _buildSaveButton(NotificationSettingsController controller) {
     return GestureDetector(
-      onTap: controller.saveChanges,
+      onTap: () {
+        if (!controller.isLoading.value) {
+          controller.saveChanges();
+        }
+      },
       child: Container(
         height: 52,
         width: double.infinity,
@@ -125,10 +129,22 @@ class NotificationSettingsScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
         ),
         child: Center(
-          child: Text(
-            'Save Changes',
-            style: text16(color: AppColors.black, fontWeight: FontWeight.bold),
-          ),
+          child: Obx(() {
+            if (controller.isLoading.value) {
+              return const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: AppColors.black,
+                  strokeWidth: 2.5,
+                ),
+              );
+            }
+            return Text(
+              'Save Changes',
+              style: text16(color: AppColors.black, fontWeight: FontWeight.bold),
+            );
+          }),
         ),
       ),
     );

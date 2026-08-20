@@ -59,44 +59,75 @@ class OnboardingPage {
   final String title;
   final String titleHighlight;
   final String subtitle;
-  final String imagePath;
+  final String? imagePath;
+  final String? imageUrl;
   final Color accentColor;
 
   const OnboardingPage({
     required this.title,
-    required this.titleHighlight,
-    required this.subtitle,
-    required this.imagePath,
-    required this.accentColor,
+    this.titleHighlight = '',
+    this.subtitle = '',
+    this.imagePath,
+    this.imageUrl,
+    this.accentColor = const Color(0xFFFF0564),
   });
 }
 
 class OnboardingController extends GetxController {
+  final AuthDatasource _authDatasource = AuthDatasource();
   final PageController pageController = PageController();
 
   // ── Observables ─────────────────────────────────────
   final RxInt currentPage = 0.obs;
 
   // ── Pages data ──────────────────────────────────────
-  final List<OnboardingPage> pages = const [
-    OnboardingPage(
+  final RxList<OnboardingPage> pages = <OnboardingPage>[
+    const OnboardingPage(
       title: 'Blockbuster Movies',
       titleHighlight: '& Web Series',
       subtitle: 'Enjoy premium entertainment in\ncinematic widescreen format.',
       imagePath: 'assets/auth/onborading1.png',
       accentColor: Color(0xFFFF0564), // AppColors.accentColor
     ),
-    OnboardingPage(
+    const OnboardingPage(
       title: 'Short Vertical',
       titleHighlight: 'Dramas',
       subtitle: 'Binge addictive stories\nanytime, anywhere.',
       imagePath: 'assets/auth/onb2.png',
       accentColor: Color(0xFFFED301), // AppColors.primaryColor
     ),
-  ];
+  ].obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchIntroScreens();
+  }
+
+  Future<void> fetchIntroScreens() async {
+    try {
+      final response = await _authDatasource.fetchIntroScreens();
+      if (response != null &&
+          response.data != null &&
+          response.data!.isNotEmpty) {
+        final List<OnboardingPage> apiPages = response.data!.map((item) {
+          return OnboardingPage(
+            title: item.title ?? 'Welcome',
+            imageUrl: item.image,
+            accentColor: (item.order ?? 1) % 2 == 0
+                ? const Color(0xFFFED301)
+                : const Color(0xFFFF0564),
+          );
+        }).toList();
+        pages.assignAll(apiPages);
+      }
+    } catch (e) {
+      debugPrint("Error fetching intro screens: $e");
+    }
+  }
 
   // ── Getters ─────────────────────────────────────────
-  bool get isLastPage => currentPage.value == pages.length - 1;
+  bool get isLastPage => currentPage.value >= pages.length - 1;
   int get totalPages => pages.length;
 
   // ── Methods ─────────────────────────────────────────
