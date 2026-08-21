@@ -1,5 +1,6 @@
 class AppUrl {
-  static const String baseUrl = 'http://192.168.1.21:5000';
+  // static const String baseUrl = 'http://192.168.1.21:5000';
+  static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
   static const String logout = "$baseUrl/api/auth/logout";
@@ -45,9 +46,25 @@ class AppUrl {
   // Notification APIs
   static const String fcmToken = "$baseUrl/api/notifications/fcm-token";
   static const String notifications = "$baseUrl/api/notifications";
-  static const String unreadNotificationsCount = "$baseUrl/api/notifications/unread-count";
-  static String markNotificationRead(String id) => "$baseUrl/api/notifications/$id/read";
-  static const String markAllNotificationsRead = "$baseUrl/api/notifications/read-all";
-  static String deleteNotification(String id) => "$baseUrl/api/notifications/$id";
-  static const String notificationSettings = "$baseUrl/api/notification-settings";
+  static const String unreadNotificationsCount =
+      "$baseUrl/api/notifications/unread-count";
+  static String markNotificationRead(String id) =>
+      "$baseUrl/api/notifications/$id/read";
+  static const String markAllNotificationsRead =
+      "$baseUrl/api/notifications/read-all";
+  static String deleteNotification(String id) =>
+      "$baseUrl/api/notifications/$id";
+  static const String notificationSettings =
+      "$baseUrl/api/notification-settings";
+
+  // Continue Watching APIs
+  static const String saveWatchProgress =
+      "$baseUrl/api/continue-watching/progress";
+  static const String continueWatchingList = "$baseUrl/api/continue-watching";
+  static String watchProgressForContent(String contentId) =>
+      "$baseUrl/api/continue-watching/progress/$contentId";
+  static String markWatchCompleted(String progressId) =>
+      "$baseUrl/api/continue-watching/complete/$progressId";
+  static String deleteWatchProgress(String progressId) =>
+      "$baseUrl/api/continue-watching/$progressId";
 }

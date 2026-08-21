@@ -21,9 +21,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final FetchProfileController fetchController = Get.put(
-    FetchProfileController(),
-  );
+  final FetchProfileController fetchController = Get.find();
 
   late final EditProfileController _editController = Get.put(
     EditProfileController(),

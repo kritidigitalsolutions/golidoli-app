@@ -6,15 +6,14 @@ import 'package:golidoli_app/features/profile/controllers/profile_controller.dar
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final FetchProfileController controllers = Get.put(
-      FetchProfileController(),
-    );
+    final FetchProfileController controllers = Get.find();
     final controller = Get.put(ProfileController());
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
@@ -61,6 +60,11 @@ class ProfileScreen extends StatelessWidget {
       if (user == null) {
         return const Center(child: Text("No user found"));
       }
+      final userImg = formatMediaUrl(user.profileImage);
+      final hasImage = user.profileImage.isNotEmpty;
+      final initial = user.name.trim().isNotEmpty
+          ? user.name.trim()[0].toUpperCase()
+          : '?';
 
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
@@ -68,15 +72,33 @@ class ProfileScreen extends StatelessWidget {
           children: [
             Stack(
               children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppColors.cardColor,
-                  backgroundImage: user.profileImage.isNotEmpty
-                      ? NetworkImage(user.profileImage)
-                      : null,
-                  child: user.profileImage.isEmpty
-                      ? const Icon(Icons.person)
-                      : null,
+                ClipOval(
+                  child: SizedBox(
+                    width: 60,
+                    height: 60,
+                    child: hasImage
+                        ? Image.network(
+                            userImg,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, progress) {
+                              if (progress == null) return child;
+                              return Container(
+                                color: AppColors.cardColor,
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            errorBuilder: (_, _, _) => _avatarInitial(initial),
+                          )
+                        : _avatarInitial(initial),
+                  ),
                 ),
                 Positioned(
                   right: 0,
@@ -141,6 +163,21 @@ class ProfileScreen extends StatelessWidget {
         ),
       );
     });
+  }
+
+  Widget _avatarInitial(String initial) {
+    return Container(
+      color: AppColors.primaryColor.withValues(alpha: 0.15),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryColor,
+        ),
+      ),
+    );
   }
 
   Widget _buildMenuList(ProfileController controller) {

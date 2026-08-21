@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
 import 'package:golidoli_app/utils/helpers.dart';
@@ -19,20 +20,24 @@ String formatCount(int n) {
 class MicroDramaPlayerScreen extends StatefulWidget {
   final String dramaId;
   final int initialIndex;
+  final int? initialPositionSeconds;
 
   const MicroDramaPlayerScreen({
     super.key,
     required this.dramaId,
     this.initialIndex = 0,
+    this.initialPositionSeconds,
   });
 
   @override
   State<MicroDramaPlayerScreen> createState() => _MicroDramaPlayerScreenState();
 }
 
+
 class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   late final PageController _pageController;
   late final MicroDramaController _controller;
+  late final ContinueWatchingController _cwController;
   final RxInt currentIndex = 0.obs;
   final RxSet<int> likedIndices = <int>{}.obs;
 
@@ -52,6 +57,9 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
     _controller = Get.isRegistered<MicroDramaController>()
         ? Get.find<MicroDramaController>()
         : Get.put(MicroDramaController());
+    _cwController = Get.isRegistered<ContinueWatchingController>()
+        ? Get.find<ContinueWatchingController>()
+        : Get.put(ContinueWatchingController());
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_controller.episodeDetail.value == null ||
@@ -165,15 +173,20 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
             controller: _pageController,
             itemBuilder: (_, index) {
               final episode = episodes[index];
+              final isInitialItem = widget.initialIndex == index;
               return _DramaReelItem(
                 key: _keyFor(index),
                 episode: episode,
+                dramaId: widget.dramaId,
                 episodeIndex: index,
                 totalEpisodes: episodes.length,
                 isActive: currentIndex.value == index,
                 isLiked: likedIndices.contains(index),
                 onToggleLike: () => _toggleLike(index),
                 onBack: _onBack,
+                cwController: _cwController,
+                initialPositionSeconds:
+                    isInitialItem ? widget.initialPositionSeconds : null,
                 onEpisodeComplete: () =>
                     _onEpisodeComplete(index, episodes.length),
               );
@@ -190,6 +203,7 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 class _DramaReelItem extends StatefulWidget {
   final MicroDramaEpisode episode;
+  final String dramaId;
   final int episodeIndex;
   final int totalEpisodes;
   final bool isActive;
@@ -197,10 +211,13 @@ class _DramaReelItem extends StatefulWidget {
   final VoidCallback onToggleLike;
   final VoidCallback onBack;
   final VoidCallback onEpisodeComplete;
+  final ContinueWatchingController cwController;
+  final int? initialPositionSeconds;
 
   const _DramaReelItem({
     super.key,
     required this.episode,
+    required this.dramaId,
     required this.episodeIndex,
     required this.totalEpisodes,
     required this.isActive,
@@ -208,6 +225,8 @@ class _DramaReelItem extends StatefulWidget {
     required this.onToggleLike,
     required this.onBack,
     required this.onEpisodeComplete,
+    required this.cwController,
+    this.initialPositionSeconds,
   });
 
   @override
@@ -224,6 +243,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   final RxBool isDownloaded = false.obs;
 
   Timer? _hideControlsTimer;
+  Timer? _progressTimer;  // fires every 15 s to save progress
   bool _hasCompleted = false;
   bool _autoPlayPending = false;
 
@@ -247,8 +267,17 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                 if (widget.isActive || _autoPlayPending) {
                   _autoPlayPending = false;
                   _vpc.setLooping(false);
+                  if (widget.initialPositionSeconds != null &&
+                      widget.initialPositionSeconds! > 0) {
+                    final startPos =
+                        Duration(seconds: widget.initialPositionSeconds!);
+                    if (startPos < _vpc.value.duration) {
+                      _vpc.seekTo(startPos);
+                    }
+                  }
                   _vpc.play();
                   _startHideControlsTimer();
+                  _startProgressTimer();
                 }
                 _vpc.addListener(_onVideoTick);
               })
@@ -267,6 +296,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
       _vpc.setLooping(false);
       _vpc.play();
       _startHideControlsTimer();
+      _startProgressTimer();
     } else {
       _autoPlayPending = true;
     }
@@ -279,8 +309,50 @@ class _DramaReelItemState extends State<_DramaReelItem> {
     if (duration.inMilliseconds > 0 &&
         position.inMilliseconds >= duration.inMilliseconds - 200) {
       _hasCompleted = true;
+      _stopProgressTimer();
+      // Save ≥ 95% so backend marks as completed
+      _saveProgress(forceComplete: true);
       widget.onEpisodeComplete();
     }
+  }
+
+  // ── Progress saving ───────────────────────────────────────────────────────
+
+  void _startProgressTimer() {
+    _progressTimer?.cancel();
+    // Save progress shortly after start (after duration is known)
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted && isInitialized.value) {
+        _saveProgress();
+      }
+    });
+    _progressTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _saveProgress();
+    });
+  }
+
+  void _stopProgressTimer() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+  }
+
+  void _saveProgress({bool forceComplete = false}) {
+    if (!isInitialized.value) return;
+    final position = _vpc.value.position;
+    final duration = _vpc.value.duration;
+    if (duration.inSeconds <= 0) return;
+
+    final progressSecs = forceComplete
+        ? (duration.inSeconds * 0.96).round()  // ensure ≥ 95%
+        : position.inSeconds;
+
+    widget.cwController.saveProgress(
+      contentId: widget.dramaId,
+      contentType: 'microdrama',
+      episodeId: widget.episode.id,
+      progressSeconds: progressSecs,
+      durationSeconds: duration.inSeconds,
+    );
   }
 
   void _startHideControlsTimer() {
@@ -299,6 +371,9 @@ class _DramaReelItemState extends State<_DramaReelItem> {
     if (!widget.isActive && isInitialized.value) {
       _vpc.pause();
       _hideControlsTimer?.cancel();
+      _stopProgressTimer();
+      // Save progress when leaving this episode
+      _saveProgress();
       showControls.value = true;
     }
   }
@@ -306,6 +381,8 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   @override
   void dispose() {
     _hideControlsTimer?.cancel();
+    _stopProgressTimer();
+    _saveProgress();
     _vpc.removeListener(_onVideoTick);
     _vpc.dispose();
     super.dispose();
@@ -316,10 +393,13 @@ class _DramaReelItemState extends State<_DramaReelItem> {
     if (_vpc.value.isPlaying) {
       _vpc.pause();
       _hideControlsTimer?.cancel();
+      _stopProgressTimer();
+      _saveProgress();
       showControls.value = true;
     } else {
       _vpc.play();
       _startHideControlsTimer();
+      _startProgressTimer();
     }
     showPlayPauseIcon.value = true;
     Future.delayed(const Duration(milliseconds: 700), () {

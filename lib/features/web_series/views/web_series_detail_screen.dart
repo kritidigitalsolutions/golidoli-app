@@ -279,6 +279,8 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                         builder: (context) => MoviePlayerScreen(
                           episodeId: firstEp.id,
                           title: "${series.title} - EP ${firstEp.episodeNumber}",
+                          contentId: widget.id,
+                          contentType: 'series',
                         ),
                       ),
                     );
@@ -563,7 +565,11 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         if (checkPlayable(context, isPremium: isPremium, title: title)) {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => MoviePlayerScreen(episodeId: ep.id),
+              builder: (context) => MoviePlayerScreen(
+                episodeId: ep.id,
+                contentId: widget.id,
+                contentType: 'series',
+              ),
             ),
           );
         }

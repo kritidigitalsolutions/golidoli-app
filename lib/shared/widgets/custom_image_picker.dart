@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 
 class CustomImagePicker extends StatelessWidget {
   final File? imageFile;
@@ -26,7 +27,8 @@ class CustomImagePicker extends StatelessWidget {
     if (imageFile != null) {
       provider = FileImage(imageFile!);
     } else if (imageUrl != null && imageUrl!.isNotEmpty) {
-      provider = NetworkImage(imageUrl!);
+      final img = formatMediaUrl(imageUrl);
+      provider = NetworkImage(img);
     }
 
     return GestureDetector(

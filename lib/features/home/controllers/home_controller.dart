@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/features/home/models/category_model.dart';
 import 'package:golidoli_app/features/home/models/home_banner_model.dart';
 import 'package:golidoli_app/features/home/repositories/home_datasource.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 
 class HomeController extends GetxController {
   final HomeDatasource _homeDatasource = HomeDatasource();
@@ -25,32 +26,18 @@ class HomeController extends GetxController {
     'Web Series',
   ];
 
-  final List<Map<String, dynamic>> continueWatching = [
-    {
-      'title': 'Forbidden Love',
-      'episode': 'S1 E01',
-      'progress': 0.35,
-      'image': 'https://picsum.photos/seed/show1/200/300',
-    },
-    {
-      'title': 'The Hour You',
-      'episode': 'S1 E03',
-      'progress': 0.6,
-      'image': 'https://picsum.photos/seed/show2/200/300',
-    },
-    {
-      'title': 'Squid Game',
-      'episode': 'S1 E05',
-      'progress': 0.8,
-      'image': 'https://picsum.photos/seed/show3/200/300',
-    },
-  ];
+  // ── Continue Watching via shared controller ──────────────────────────────
+  ContinueWatchingController get cwController =>
+      Get.isRegistered<ContinueWatchingController>()
+          ? Get.find<ContinueWatchingController>()
+          : Get.put(ContinueWatchingController());
 
   @override
   void onInit() {
     super.onInit();
     fetchHomeBanners();
     fetchCategories();
+    cwController.fetchForHome();
   }
 
   Future<void> fetchHomeBanners() async {

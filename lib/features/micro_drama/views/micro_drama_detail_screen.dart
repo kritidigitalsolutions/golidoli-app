@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_player_screen.dart';
@@ -815,14 +816,20 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
   }
 
   void _openPlayer({required int initialIndex}) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => MicroDramaPlayerScreen(
-          dramaId: widget.id,
-          initialIndex: initialIndex,
-        ),
-      ),
-    );
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => MicroDramaPlayerScreen(
+              dramaId: widget.id,
+              initialIndex: initialIndex,
+            ),
+          ),
+        )
+        .then((_) {
+          if (Get.isRegistered<ContinueWatchingController>()) {
+            Get.find<ContinueWatchingController>().fetchContinueWatching();
+          }
+        });
   }
 
   void _onSimilarDramaTap(dynamic item) {

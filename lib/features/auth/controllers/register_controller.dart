@@ -90,12 +90,12 @@ class RegistrationController extends GetxController {
   Future<void> continueFromInterests() async {
     if (!hasSelectedInterests) return;
     final ok = await completeProfile();
-    if (ok) Get.toNamed(AppRoutes.allSet);
+    if (ok) Get.offAllNamed(AppRoutes.allSet);
   }
 
   Future<void> skipInterests() async {
     final ok = await completeProfile();
-    if (ok) Get.toNamed(AppRoutes.allSet);
+    if (ok) Get.offAllNamed(AppRoutes.allSet);
   }
 
   void startWatching() {

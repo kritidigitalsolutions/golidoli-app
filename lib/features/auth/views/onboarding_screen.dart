@@ -123,22 +123,22 @@ class _OnboardingPageView extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              Text(
-                page.titleHighlight,
-                style: GoogleFonts.poppins(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: page.accentColor,
-                  height: 1.15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                page.subtitle,
-                style: text14(color: AppColors.secondaryTextColor),
-                textAlign: TextAlign.center,
-              ),
+              // Text(
+              //   page.titleHighlight,
+              //   style: GoogleFonts.poppins(
+              //     fontSize: 26,
+              //     fontWeight: FontWeight.w800,
+              //     color: page.accentColor,
+              //     height: 1.15,
+              //   ),
+              //   textAlign: TextAlign.center,
+              // ),
+              // const SizedBox(height: 12),
+              // Text(
+              //   page.subtitle,
+              //   style: text14(color: AppColors.secondaryTextColor),
+              //   textAlign: TextAlign.center,
+              // ),
             ],
           ),
         ),

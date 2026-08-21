@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
+import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -15,11 +18,17 @@ class MoviePlayerScreen extends StatefulWidget {
     this.episodeId,
     this.videoUrl,
     this.title,
+    this.contentId,
+    this.contentType = 'movie', // "movie" or "series"
+    this.initialPositionSeconds,
   });
 
   final String? episodeId;
   final String? videoUrl;
   final String? title;
+  final String? contentId; // movie._id or series._id for progress tracking
+  final String contentType;
+  final int? initialPositionSeconds;
 
   @override
   State<MoviePlayerScreen> createState() => _MoviePlayerScreenState();
@@ -31,7 +40,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   bool _isPlaying = false;
   bool _isMuted = false;
   bool _showControls = true;
-  bool _isFullscreen = false;
+  bool _isFullscreen = true;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   String _selectedQuality = 'Auto';
@@ -40,11 +49,21 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   String? _errorMessage;
   EpisodeController? _episodeController;
   Worker? _statusWorker;
+  Timer? _progressTimer; // fires every 15 s to save progress
+  Timer? _hideControlsTimer;
+  ContinueWatchingController? _cwController;
 
   @override
   void initState() {
     super.initState();
-    _lockPortrait();
+    // Default to fullscreen landscape mode on playback start
+    _isFullscreen = true;
+    _lockLandscape();
+
+    // Init CW controller if available
+    _cwController = Get.isRegistered<ContinueWatchingController>()
+        ? Get.find<ContinueWatchingController>()
+        : null;
 
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
       final formattedUrl = formatMediaUrl(widget.videoUrl);
@@ -66,16 +85,20 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
             _selectedQuality = 'Auto';
             _initializePlayer(videoUrl);
           } else {
-            setState(() {
-              _isLoading = false;
-              _errorMessage = 'No video URL available';
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = 'No video URL available';
+              });
+            }
           }
         } else if (status == Status.error) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage = 'Failed to load episode details';
-          });
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'Failed to load episode details';
+            });
+          }
           Get.snackbar(
             "Error",
             "Failed to load episode details",
@@ -86,19 +109,59 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
       });
 
       _episodeController!.fetchEpisodeDetail(widget.episodeId!);
-    } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'No video URL or episode ID provided';
+    } else if (widget.contentId != null && widget.contentId!.isNotEmpty) {
+      // ContentId given without videoUrl (e.g. from Continue Watching movie item)
+      final movieController = Get.isRegistered<MovieController>()
+          ? Get.find<MovieController>()
+          : Get.put(MovieController());
+
+      _statusWorker = ever(movieController.movieDetailStatus, (Status status) {
+        if (status == Status.success &&
+            movieController.movieDetail.value != null) {
+          final movie = movieController.movieDetail.value!;
+          final videoUrl = formatMediaUrl(movie.videoUrl);
+          if (videoUrl.isNotEmpty) {
+            _qualityUrls['Auto'] = videoUrl;
+            _selectedQuality = 'Auto';
+            _initializePlayer(videoUrl);
+          } else {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = 'No video URL available for this movie';
+              });
+            }
+          }
+        } else if (status == Status.error) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'Failed to load movie details';
+            });
+          }
+        }
       });
+
+      movieController.fetchMovieDetail(widget.contentId!);
+    } else {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'No video URL or episode ID provided';
+        });
+      }
     }
   }
 
   @override
   void dispose() {
+    _hideControlsTimer?.cancel();
+    _progressTimer?.cancel();
+    // Save final progress on exit
+    _saveProgress();
     _statusWorker?.dispose();
     _videoController?.dispose();
-    _restoreDefaults();
+    _restorePortrait();
     super.dispose();
   }
 
@@ -121,8 +184,11 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
-  void _restoreDefaults() {
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+  void _restorePortrait() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.edgeToEdge,
       overlays: SystemUiOverlay.values,
@@ -130,12 +196,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   Future<void> _handleBack() async {
-    if (_isFullscreen) {
-      _toggleFullscreen();
-      return;
+    _restorePortrait();
+    if (mounted) {
+      Navigator.of(context).maybePop();
     }
-    _restoreDefaults();
-    Navigator.pop(context);
   }
 
   void _toggleFullscreen() {
@@ -147,9 +211,25 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
     }
   }
 
+  void _startHideControlsTimer() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _isPlaying) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
   void _toggleControls() {
     setState(() {
       _showControls = !_showControls;
+      if (_showControls && _isPlaying) {
+        _startHideControlsTimer();
+      } else {
+        _hideControlsTimer?.cancel();
+      }
     });
   }
 
@@ -161,9 +241,14 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
       if (_videoController!.value.isPlaying) {
         _videoController!.pause();
         _isPlaying = false;
+        _hideControlsTimer?.cancel();
+        _progressTimer?.cancel();
+        _saveProgress();
       } else {
         _videoController!.play();
         _isPlaying = true;
+        _startHideControlsTimer();
+        _startProgressTimer();
       }
     });
   }
@@ -180,19 +265,61 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
     if (_videoController == null) return;
     final newPosition = _position - const Duration(seconds: 10);
     _videoController!.seekTo(newPosition);
+    if (_isPlaying) _startHideControlsTimer();
   }
 
   void _forward() {
     if (_videoController == null) return;
     final newPosition = _position + const Duration(seconds: 10);
     _videoController!.seekTo(newPosition);
+    if (_isPlaying) _startHideControlsTimer();
   }
 
   void _seekTo(double value) {
     if (_videoController == null) return;
     final position = Duration(milliseconds: value.toInt());
     _videoController!.seekTo(position);
+    if (_isPlaying) _startHideControlsTimer();
   }
+
+  // ── Progress saving helpers ──────────────────────────────────────────────
+
+  void _startProgressTimer() {
+    _progressTimer?.cancel();
+    // Save once at start, then periodic
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted && _isInitialized) {
+        _saveProgress();
+      }
+    });
+    _progressTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      _saveProgress();
+    });
+  }
+
+  void _saveProgress() {
+    if (_cwController == null) return;
+    if (_videoController == null || !_videoController!.value.isInitialized) {
+      return;
+    }
+    final contentId = widget.contentId;
+    if (contentId == null || contentId.isEmpty) return;
+
+    final pos = _videoController!.value.position;
+    final dur = _videoController!.value.duration;
+    if (dur.inSeconds <= 0) return;
+
+    final episodeId = widget.episodeId; // non-null for series episodes
+    _cwController!.saveProgress(
+      contentId: contentId,
+      contentType: widget.contentType,
+      progressSeconds: pos.inSeconds,
+      durationSeconds: dur.inSeconds,
+      episodeId: episodeId,
+    );
+  }
+
+  // ── ─────────────────────────────────────────────────────────────────────
 
   String _formatDuration(Duration duration) {
     final hours = duration.inHours;
@@ -205,11 +332,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   String _getFullUrl(String videoUrl) {
-    if (videoUrl.startsWith('http://') || videoUrl.startsWith('https://')) {
-      return videoUrl;
-    }
-    const baseUrl = 'http://192.168.1.17:5000';
-    return '$baseUrl$videoUrl';
+    return formatMediaUrl(videoUrl);
   }
 
   void _initializePlayer(String videoUrl) {
@@ -235,8 +358,22 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
                     });
                   }
                 });
+
+                // Resume from initial position if provided
+                if (widget.initialPositionSeconds != null &&
+                    widget.initialPositionSeconds! > 0) {
+                  final startPos = Duration(
+                    seconds: widget.initialPositionSeconds!,
+                  );
+                  if (startPos < _videoController!.value.duration) {
+                    _videoController!.seekTo(startPos);
+                  }
+                }
+
                 _videoController!.play();
                 _isPlaying = true;
+                _startHideControlsTimer();
+                _startProgressTimer();
               }
             })
             .catchError((e) {
@@ -270,9 +407,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         'GoliDoli Player';
 
     return PopScope(
-      canPop: !_isFullscreen,
+      canPop: true,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) _handleBack();
+        _restorePortrait();
       },
       child: Scaffold(
         backgroundColor: AppColors.black,
@@ -282,69 +419,100 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
             return SafeArea(
               top: !isLandscape,
               bottom: !isLandscape,
-              child: Column(
-                children: [
-                  if (!isLandscape) _TopBar(title: title, onBack: _handleBack),
-                  Expanded(
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: _PlayerSurface(
-                          title: title,
-                          showOverlayHeader: isLandscape,
-                          onBack: _handleBack,
-                          onToggleFullscreen: _toggleFullscreen,
-                          isFullscreen: _isFullscreen,
-                          isInitialized: _isInitialized,
-                          isLoading: _isLoading,
-                          errorMessage: _errorMessage,
-                          videoController: _videoController,
-                          showControls: _showControls,
-                          isPlaying: _isPlaying,
-                          isMuted: _isMuted,
-                          position: _position,
-                          duration: _duration,
-                          selectedQuality: _selectedQuality,
-                          qualityUrls: _qualityUrls,
-                          toggleControls: _toggleControls,
-                          togglePlay: _togglePlay,
-                          toggleMute: _toggleMute,
-                          rewind: _rewind,
-                          forward: _forward,
-                          seekTo: _seekTo,
-                          formatDuration: _formatDuration,
-                          changeQuality: (quality) {
-                            setState(() {
-                              _selectedQuality = quality;
-                              if (_qualityUrls.containsKey(quality)) {
-                                final newUrl = _qualityUrls[quality]!;
-                                final currentPosition = _position;
-                                _videoController?.dispose();
-                                _videoController = null;
-                                _isInitialized = false;
-                                _initializePlayer(newUrl);
-                                WidgetsBinding.instance.addPostFrameCallback((
-                                  _,
-                                ) {
-                                  if (_videoController != null &&
-                                      _videoController!.value.isInitialized) {
-                                    _videoController!.seekTo(currentPosition);
-                                  }
-                                });
-                              }
-                            });
-                          },
-                        ),
+              left: false,
+              right: false,
+              child: isLandscape
+                  ? SizedBox.expand(
+                      child: _PlayerSurface(
+                        title: title,
+                        showOverlayHeader: true,
+                        onBack: _handleBack,
+                        onToggleFullscreen: _toggleFullscreen,
+                        isFullscreen: true,
+                        isInitialized: _isInitialized,
+                        isLoading: _isLoading,
+                        errorMessage: _errorMessage,
+                        videoController: _videoController,
+                        showControls: _showControls,
+                        isPlaying: _isPlaying,
+                        isMuted: _isMuted,
+                        position: _position,
+                        duration: _duration,
+                        selectedQuality: _selectedQuality,
+                        qualityUrls: _qualityUrls,
+                        toggleControls: _toggleControls,
+                        togglePlay: _togglePlay,
+                        toggleMute: _toggleMute,
+                        rewind: _rewind,
+                        forward: _forward,
+                        seekTo: _seekTo,
+                        formatDuration: _formatDuration,
+                        changeQuality: _changeQuality,
                       ),
+                    )
+                  : Column(
+                      children: [
+                        _TopBar(title: title, onBack: _handleBack),
+                        Expanded(
+                          child: Center(
+                            child: AspectRatio(
+                              aspectRatio: 16 / 9,
+                              child: _PlayerSurface(
+                                title: title,
+                                showOverlayHeader: false,
+                                onBack: _handleBack,
+                                onToggleFullscreen: _toggleFullscreen,
+                                isFullscreen: false,
+                                isInitialized: _isInitialized,
+                                isLoading: _isLoading,
+                                errorMessage: _errorMessage,
+                                videoController: _videoController,
+                                showControls: _showControls,
+                                isPlaying: _isPlaying,
+                                isMuted: _isMuted,
+                                position: _position,
+                                duration: _duration,
+                                selectedQuality: _selectedQuality,
+                                qualityUrls: _qualityUrls,
+                                toggleControls: _toggleControls,
+                                togglePlay: _togglePlay,
+                                toggleMute: _toggleMute,
+                                rewind: _rewind,
+                                forward: _forward,
+                                seekTo: _seekTo,
+                                formatDuration: _formatDuration,
+                                changeQuality: _changeQuality,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             );
           },
         ),
       ),
     );
+  }
+
+  void _changeQuality(String quality) {
+    setState(() {
+      _selectedQuality = quality;
+      if (_qualityUrls.containsKey(quality)) {
+        final newUrl = _qualityUrls[quality]!;
+        final currentPosition = _position;
+        _videoController?.dispose();
+        _videoController = null;
+        _isInitialized = false;
+        _initializePlayer(newUrl);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_videoController != null &&
+              _videoController!.value.isInitialized) {
+            _videoController!.seekTo(currentPosition);
+          }
+        });
+      }
+    });
   }
 }
 
@@ -444,11 +612,11 @@ class _PlayerSurface extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (isInitialized && videoController != null)
-              FittedBox(
-                fit: BoxFit.contain,
-                child: SizedBox(
-                  width: videoController!.value.size.width,
-                  height: videoController!.value.size.height,
+              Center(
+                child: AspectRatio(
+                  aspectRatio: videoController!.value.aspectRatio > 0
+                      ? videoController!.value.aspectRatio
+                      : 16 / 9,
                   child: VideoPlayer(videoController!),
                 ),
               )
@@ -567,9 +735,9 @@ class _ControlsOverlay extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            Colors.black.withOpacity(0.72),
+            Colors.black.withValues(alpha: 0.72),
             Colors.transparent,
-            Colors.black.withOpacity(0.82),
+            Colors.black.withValues(alpha: 0.82),
           ],
         ),
       ),
@@ -577,7 +745,7 @@ class _ControlsOverlay extends StatelessWidget {
         children: [
           if (showHeader)
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
               child: Row(
                 children: [
                   IconButton(
@@ -585,13 +753,13 @@ class _ControlsOverlay extends StatelessWidget {
                     icon: const Icon(
                       Icons.arrow_back_ios_new_rounded,
                       color: AppColors.white,
-                      size: 18,
+                      size: 20,
                     ),
                   ),
                   Expanded(
                     child: Text(
                       title,
-                      style: text13(fontWeight: FontWeight.w700),
+                      style: text14(fontWeight: FontWeight.w700),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -613,57 +781,57 @@ class _ControlsOverlay extends StatelessWidget {
                 icon: const Icon(
                   Icons.replay_10_rounded,
                   color: AppColors.white,
-                  size: 34,
+                  size: 36,
                 ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 24),
               GestureDetector(
                 onTap: togglePlay,
                 child: Container(
-                  width: 62,
-                  height: 62,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.white.withOpacity(0.18),
+                    color: AppColors.white.withValues(alpha: 0.18),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: AppColors.white,
-                    size: 40,
+                    size: 42,
                   ),
                 ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 24),
               IconButton(
                 onPressed: forward,
                 icon: const Icon(
                   Icons.forward_10_rounded,
                   color: AppColors.white,
-                  size: 34,
+                  size: 36,
                 ),
               ),
             ],
           ),
           const Spacer(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Column(
               children: [
                 Row(
                   children: [
                     Text(
                       formatDuration(position),
-                      style: text10(color: AppColors.white),
+                      style: text11(color: AppColors.white),
                     ),
                     Expanded(
                       child: SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          trackHeight: 2.5,
+                          trackHeight: 3.0,
                           thumbShape: const RoundSliderThumbShape(
-                            enabledThumbRadius: 5,
+                            enabledThumbRadius: 6,
                           ),
                           overlayShape: const RoundSliderOverlayShape(
-                            overlayRadius: 12,
+                            overlayRadius: 14,
                           ),
                         ),
                         child: Slider(
@@ -675,14 +843,14 @@ class _ControlsOverlay extends StatelessWidget {
                               ? 1
                               : duration.inMilliseconds.toDouble(),
                           activeColor: AppColors.accentColor,
-                          inactiveColor: AppColors.white.withOpacity(0.28),
+                          inactiveColor: AppColors.white.withValues(alpha: 0.28),
                           onChanged: seekTo,
                         ),
                       ),
                     ),
                     Text(
                       formatDuration(duration),
-                      style: text10(color: AppColors.white),
+                      style: text11(color: AppColors.white),
                     ),
                   ],
                 ),
@@ -791,9 +959,9 @@ class _QualityMenu extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.44),
+          color: Colors.black.withValues(alpha: 0.44),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.white.withOpacity(0.16)),
+          border: Border.all(color: AppColors.white.withValues(alpha: 0.16)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

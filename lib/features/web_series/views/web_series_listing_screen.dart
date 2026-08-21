@@ -33,7 +33,9 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
   void initState() {
     super.initState();
     _controller = Get.find<SeriesController>();
-    _controller.fetchAllSeries();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchAllSeries();
+    });
   }
 
   @override

@@ -26,6 +26,7 @@ class AuthControllers extends GetxController {
   final RxString mobileError = ''.obs;
 
   final RxBool sendOtpStatus = false.obs;
+  final RxBool resendOtpStatus = false.obs;
 
   //══════════════════════════════════════
   // OTP
@@ -50,14 +51,12 @@ class AuthControllers extends GetxController {
 
   Timer? _timer;
 
-  final RxInt secondsRemaining = 30.obs;
+  final RxInt secondsRemaining = 60.obs;
   final RxBool canResend = false.obs;
 
   String get formattedTimer {
     final min = (secondsRemaining.value ~/ 60).toString().padLeft(2, '0');
-
     final sec = (secondsRemaining.value % 60).toString().padLeft(2, '0');
-
     return "$min:$sec";
   }
 
@@ -70,9 +69,8 @@ class AuthControllers extends GetxController {
     super.onInit();
 
     if (Get.arguments != null && Get.arguments['mobile'] != null) {
-      mobileNumber.value = Get.arguments['mobile'];
+      mobileNumber.value = Get.arguments['mobile'].toString();
       mobileController.text = mobileNumber.value;
-      startTimer();
     }
   }
 
@@ -101,7 +99,12 @@ class AuthControllers extends GetxController {
 
   Future<void> sendOTP() async {
     if (!isMobileValid.value) {
-      Get.snackbar("Error", mobileError.value, backgroundColor: Colors.red);
+      Get.snackbar(
+        "Error",
+        mobileError.value,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
       return;
     }
 
@@ -113,6 +116,7 @@ class AuthControllers extends GetxController {
       sendOtpStatus.value = false;
 
       if (result) {
+        startTimer();
         Get.toNamed(
           AppRoutes.verifyOtp,
           arguments: {"mobile": mobileNumber.value},
@@ -122,12 +126,17 @@ class AuthControllers extends GetxController {
           "Error",
           "Failed to send OTP",
           backgroundColor: Colors.red,
+          colorText: Colors.white,
         );
       }
     } catch (e) {
       sendOtpStatus.value = false;
-
-      Get.snackbar("Error", e.toString(), backgroundColor: Colors.red);
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
 
@@ -145,7 +154,6 @@ class AuthControllers extends GetxController {
     }
 
     otp.value = otpControllers.map((e) => e.text).join();
-
     isOtpValid.value = otp.value.length == 4;
 
     if (!isOtpValid.value) {
@@ -153,9 +161,10 @@ class AuthControllers extends GetxController {
     } else {
       otpError.value = "";
       otpFocusNodes[index].unfocus();
-      verifyOTP(); // <-- auto-trigger verification
+      verifyOTP(); // auto-trigger verification
     }
   }
+
   //══════════════════════════════════════
   // Verify OTP
   //══════════════════════════════════════
@@ -179,6 +188,7 @@ class AuthControllers extends GetxController {
       verifyOtpStatus.value = false;
 
       if (result.success) {
+        _timer?.cancel();
         if (!result.profileComplete) {
           Get.offAllNamed(
             AppRoutes.createAccount,
@@ -188,26 +198,36 @@ class AuthControllers extends GetxController {
           Get.offAllNamed(AppRoutes.home);
         }
       } else {
-        Get.snackbar("Error", "Invalid OTP", backgroundColor: Colors.red);
+        Get.snackbar(
+          "Error",
+          "Invalid OTP",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
     } catch (e) {
       verifyOtpStatus.value = false;
-
-      Get.snackbar("Error", e.toString(), backgroundColor: Colors.red);
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     }
   }
+
   //══════════════════════════════════════
   // Timer
   //══════════════════════════════════════
 
   void startTimer() {
+    _timer?.cancel();
     canResend.value = false;
     secondsRemaining.value = 30;
 
-    _timer?.cancel();
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (secondsRemaining.value == 0) {
+      if (secondsRemaining.value <= 1) {
+        secondsRemaining.value = 0;
         canResend.value = true;
         timer.cancel();
       } else {
@@ -217,26 +237,56 @@ class AuthControllers extends GetxController {
   }
 
   Future<void> resendOtp() async {
-    final result = await authDatasource.sendOtp(phone: mobileNumber.value);
+    if (!canResend.value || resendOtpStatus.value) return;
 
-    if (result) {
-      for (var e in otpControllers) {
-        e.clear();
+    if (mobileNumber.value.isEmpty) {
+      if (Get.arguments != null && Get.arguments['mobile'] != null) {
+        mobileNumber.value = Get.arguments['mobile'].toString();
       }
+    }
 
-      otp.value = "";
-      isOtpValid.value = false;
+    try {
+      resendOtpStatus.value = true;
+      final result = await authDatasource.sendOtp(phone: mobileNumber.value);
+      resendOtpStatus.value = false;
 
-      startTimer();
+      if (result) {
+        for (var e in otpControllers) {
+          e.clear();
+        }
 
-      otpFocusNodes.first.requestFocus();
+        otp.value = "";
+        otpError.value = "";
+        isOtpValid.value = false;
 
-      Get.snackbar("Success", "OTP sent again", backgroundColor: Colors.green);
-    } else {
+        startTimer();
+
+        if (otpFocusNodes.isNotEmpty) {
+          otpFocusNodes.first.requestFocus();
+        }
+
+        Get.snackbar(
+          "Success",
+          "OTP sent again successfully",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+      } else {
+        Get.snackbar(
+          "Error",
+          "Failed to resend OTP",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      resendOtpStatus.value = false;
       Get.snackbar(
         "Error",
-        "Failed to resend OTP",
+        e.toString(),
         backgroundColor: Colors.red,
+        colorText: Colors.white,
       );
     }
   }
@@ -247,6 +297,7 @@ class AuthControllers extends GetxController {
 
   @override
   void onClose() {
+    _timer?.cancel();
     mobileController.dispose();
     nameController.dispose();
     emailController.dispose();
@@ -258,8 +309,6 @@ class AuthControllers extends GetxController {
     for (final f in otpFocusNodes) {
       f.dispose();
     }
-
-    _timer?.cancel();
 
     super.onClose();
   }

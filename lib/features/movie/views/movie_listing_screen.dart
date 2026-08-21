@@ -33,7 +33,9 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
   void initState() {
     super.initState();
     _controller = Get.find<MovieController>();
-    _controller.fetchAllMovies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.fetchAllMovies();
+    });
   }
 
   @override

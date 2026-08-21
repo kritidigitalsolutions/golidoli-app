@@ -22,10 +22,6 @@ void main() async {
   await Hive.initFlutter();
   await Hive.openBox('appBox');
 
-  // Initialize global subscription status controller
-  Get.put(SubscriptionStatusController(), permanent: true);
-
-  // Initialize Notification Service
   final notificationService = Get.put(NotificationService(), permanent: true);
   await notificationService.init();
 
@@ -89,6 +85,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     controller = Get.put(HomeController());
+    Get.put(SubscriptionStatusController(), permanent: true);
 
     // Handle initial index after first build
     WidgetsBinding.instance.addPostFrameCallback((_) {

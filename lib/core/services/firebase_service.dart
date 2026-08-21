@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
 import 'package:golidoli_app/features/profile/repositories/notification_repository.dart';
@@ -190,15 +191,24 @@ class NotificationService extends GetxController {
 
       notifications.assignAll(
         fetchedList.map((e) {
+          final metadata = e['metadata'] is Map
+              ? Map<String, dynamic>.from(e['metadata'])
+              : <String, dynamic>{};
           return {
-            'id': e['_id'] ?? '',
+            'id': e['_id'] ?? e['id'] ?? '',
             'title': e['title'] ?? '',
             'body': e['message'] ?? e['body'] ?? '',
             'subtitle': e['message'] ?? e['body'] ?? '',
-            'image': e['image'] ?? e['imageUrl'] ?? '',
+            'image': e['imageUrl'] ?? e['image'] ?? '',
+            'imageUrl': e['imageUrl'] ?? e['image'] ?? '',
             'time': e['sentAt'] ?? e['createdAt'] ?? DateTime.now().toString(),
             'isRead': e['isRead'] ?? false,
             'type': e['type'] ?? '',
+            'category': e['category'] ?? '',
+            'metadata': metadata,
+            'actionUrl': metadata['actionUrl'] ?? e['actionUrl'] ?? '',
+            'contentId': metadata['contentId'] ?? metadata['planId'] ?? e['contentId'] ?? '',
+            'contentType': metadata['contentType'] ?? e['contentType'] ?? '',
           };
         }).toList(),
       );
@@ -354,43 +364,105 @@ class NotificationService extends GetxController {
   void handleNotificationClick(Map<String, dynamic> data) {
     print("🎯 Handling Notification Click with data: $data");
 
-    String? contentType = data['contentType']?.toString().toLowerCase();
-    String? contentId = data['contentId']?.toString();
-    String? actionUrl = data['actionUrl']?.toString();
+    final meta = data['metadata'] is Map
+        ? Map<String, dynamic>.from(data['metadata'])
+        : <String, dynamic>{};
 
-    if (contentType == null || contentId == null) {
-      if (actionUrl != null && actionUrl.contains("://")) {
-        final parts = actionUrl
-            .substring(actionUrl.indexOf("://") + 3)
-            .split("/");
-        if (parts.length >= 3 && parts[1] == "id") {
-          contentType = parts[0].toLowerCase();
-          contentId = parts[2];
+    String? actionUrl = (data['actionUrl'] ?? meta['actionUrl'])?.toString();
+    String? category = data['category']?.toString();
+    String? contentType =
+        (data['contentType'] ?? meta['contentType'])?.toString().toLowerCase();
+    String? contentId =
+        (data['contentId'] ?? meta['contentId'] ?? meta['planId'])?.toString();
+
+    // Parse custom URI scheme (e.g. golidoli://plans/id/123 or mirchiapp://movies/id/456)
+    if (actionUrl != null && actionUrl.contains("://")) {
+      try {
+        final uri = Uri.parse(actionUrl);
+        final host = uri.host.toLowerCase();
+        final pathSegments = uri.pathSegments;
+
+        if (host.isNotEmpty) {
+          contentType = host;
         }
+
+        if (pathSegments.contains('id')) {
+          final idIdx = pathSegments.indexOf('id');
+          if (idIdx + 1 < pathSegments.length) {
+            contentId = pathSegments[idIdx + 1];
+          }
+        } else if (pathSegments.isNotEmpty) {
+          contentId = pathSegments.last;
+        }
+      } catch (e) {
+        print("Error parsing actionUrl: $e");
       }
     }
 
+    // Infer content type from category if not explicitly set
+    if (contentType == null || contentType.isEmpty) {
+      if (category == 'subscriptionAlerts' || category == 'subscription') {
+        contentType = 'plan';
+      } else if (category == 'newMovies' || category == 'movie') {
+        contentType = 'movie';
+      } else if (category == 'newEpisodes' || category == 'series') {
+        contentType = 'series';
+      } else if (category == 'microdrama' || category == 'microDrama') {
+        contentType = 'microdrama';
+      }
+    }
+
+    // 1. Subscription / Plan routing
     if (contentType == 'plan' ||
         contentType == 'plans' ||
-        contentType == 'subscription') {
+        contentType == 'subscription' ||
+        contentType == 'subscriptionalerts') {
       print("🚀 Navigating to Subscription page");
       Get.toNamed(AppRoutes.subscription);
       return;
     }
 
-    if (contentId != null && contentId.isNotEmpty) {
-      if (contentType == 'movie') {
+    // 2. Content Detail routing
+    if (contentType == 'movie' ||
+        contentType == 'movies' ||
+        contentType == 'newmovies') {
+      if (contentId != null && contentId.isNotEmpty) {
         print("🚀 Navigating to Movie Details: $contentId");
-        Get.toNamed(AppRoutes.movieDetails, arguments: contentId);
-      } else if (contentType == 'series' ||
-          contentType == 'web_series' ||
-          contentType == 'webseries') {
-        print("🚀 Navigating to Web Series Details: $contentId");
-        Get.to(() => WebSeriesDetailScreen(id: contentId ?? ''));
-      } else if (contentType == 'micro_drama' || contentType == 'microdrama') {
-        print("🚀 Navigating to Micro Drama Details: $contentId");
-        Get.to(() => MicroDramaDetailScreen(id: contentId ?? ''));
+        Get.to(() => MovieDetailsScreen(id: contentId));
+      } else {
+        Get.toNamed(AppRoutes.home);
       }
+      return;
+    }
+
+    if (contentType == 'series' ||
+        contentType == 'web_series' ||
+        contentType == 'webseries' ||
+        contentType == 'newepisodes') {
+      if (contentId != null && contentId.isNotEmpty) {
+        print("🚀 Navigating to Web Series Details: $contentId");
+        Get.to(() => WebSeriesDetailScreen(id: contentId!));
+      } else {
+        Get.toNamed(AppRoutes.home);
+      }
+      return;
+    }
+
+    if (contentType == 'micro_drama' ||
+        contentType == 'microdrama') {
+      if (contentId != null && contentId.isNotEmpty) {
+        print("🚀 Navigating to Micro Drama Details: $contentId");
+        Get.to(() => MicroDramaDetailScreen(id: contentId!));
+      } else {
+        Get.toNamed(AppRoutes.home);
+      }
+      return;
+    }
+
+    // Fallback if ID is present but type wasn't resolved
+    if (contentId != null && contentId.isNotEmpty) {
+      print("🚀 Navigating to Movie Details fallback: $contentId");
+      Get.to(() => MovieDetailsScreen(id: contentId!));
     }
   }
 

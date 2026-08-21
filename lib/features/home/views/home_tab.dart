@@ -7,10 +7,15 @@ import 'package:golidoli_app/core/services/firebase_service.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/models/category_model.dart';
 import 'package:golidoli_app/features/home/models/home_banner_model.dart';
+import 'package:golidoli_app/features/home/views/continue_watching_screen.dart';
+import 'package:golidoli_app/features/home/widgets/continue_watching_helper.dart';
+import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
+import 'package:golidoli_app/features/micro_drama/models/continue_watching_model.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
+import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
@@ -33,9 +38,13 @@ class _HomeTabState extends State<HomeTab> {
   final List<String> _tabLabels = ['For You', 'Movies', 'Web Series'];
 
   // ─── GetX Controllers ────────────────────────────────────────────────────
-  final HomeController _homeController = Get.put(HomeController());
+  final HomeController _homeController = Get.find();
   final MovieController _movieController = Get.put(MovieController());
   final SeriesController _seriesController = Get.put(SeriesController());
+  final FetchProfileController _fetchProfileController = Get.put(
+    FetchProfileController(),
+  );
+  late final ContinueWatchingController _cwController;
 
   @override
   void initState() {
@@ -44,6 +53,12 @@ class _HomeTabState extends State<HomeTab> {
     _seriesController.fetchAllSeries();
     _homeController.fetchHomeBanners();
     _homeController.fetchCategories();
+    _cwController = Get.isRegistered<ContinueWatchingController>()
+        ? Get.find<ContinueWatchingController>()
+        : Get.put(ContinueWatchingController());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cwController.fetchForHome();
+    });
   }
 
   void _onTabTapped(int index) {
@@ -68,7 +83,7 @@ class _HomeTabState extends State<HomeTab> {
     return SafeArea(
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader()),
+          SliverToBoxAdapter(child: _buildHeader(_fetchProfileController)),
           SliverToBoxAdapter(child: _buildSearchBar()),
           SliverToBoxAdapter(child: _buildHeroBanner()),
           SliverToBoxAdapter(child: _buildAudioStoriesBanner()),
@@ -301,119 +316,262 @@ class _HomeTabState extends State<HomeTab> {
 
   // ─── Continue Watching Section ──────────────────────────────────────────
   Widget _buildContinueWatchingSection() {
-    final list = _homeController.continueWatching;
-    if (list.isEmpty) return const SizedBox.shrink();
+    return Obx(() {
+      final list = _cwController.homeList;
+      final isLoading = _cwController.homeFetchStatus.value == Status.loading;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Continue Watching',
-                style: text16(fontWeight: FontWeight.bold),
-              ),
-              CustomTextButton(title: "View All", onTap: () {}),
-            ],
+      if (isLoading) {
+        return const SizedBox(
+          height: 170,
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.accentColor),
           ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 150,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final item = list[index];
-                final progress = (item['progress'] as num?)?.toDouble() ?? 0.0;
-                final imageUrl = formatMediaUrl(item['image']?.toString());
+        );
+      }
 
-                return GestureDetector(
-                  onTap: () {},
-                  child: SizedBox(
-                    width: 140,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Stack(
-                            children: [
-                              Image.network(
-                                imageUrl,
-                                width: 140,
-                                height: 85,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  width: 140,
-                                  height: 85,
-                                  color: AppColors.cardColor,
-                                  child: const Center(
-                                    child: Icon(
-                                      Icons.play_circle_outline,
-                                      color: AppColors.hintTextColor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  backgroundColor: Colors.white24,
-                                  valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                        AppColors.accentColor,
-                                      ),
-                                  minHeight: 3,
-                                ),
-                              ),
-                              Positioned.fill(
-                                child: Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.5),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.play_arrow_rounded,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          item['title'] ?? '',
-                          style: text12(fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (item['episode'] != null)
-                          Text(
-                            item['episode'] ?? '',
-                            style: text10(color: AppColors.hintTextColor),
-                          ),
-                      ],
+      if (list.isEmpty) return const SizedBox.shrink();
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Continue Watching',
+                  style: text16(fontWeight: FontWeight.bold),
+                ),
+                CustomTextButton(
+                  title: 'View All',
+                  onTap: () {
+                    Get.to(
+                      () => const ContinueWatchingScreen(),
+                    )?.then((_) => _cwController.fetchForHome());
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 140,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: list.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final item = list[index];
+                  return _buildCwCard(item);
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Widget _buildCwCard(ContinueWatchingItem item) {
+    final imageUrl = formatMediaUrl(item.displayPoster);
+    final title = item.displayTitle;
+    final epNum = item.displayEpisodeNumber;
+    final epLabel = epNum != null
+        ? 'EP $epNum'
+        : (item.contentType == 'movie' ? null : null);
+    final progress = item.progressRatio;
+    final percentage = item.progressPercentage;
+    final type = item.contentType;
+
+    return GestureDetector(
+      onTap: () {
+        ContinueWatchingHelper.playDirectly(
+          context,
+          item,
+          onFinished: () => _cwController.fetchForHome(),
+        );
+      },
+      child: SizedBox(
+        width: 180,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Stack(
+                children: [
+                  imageUrl.isNotEmpty
+                      ? Image.network(
+                          imageUrl,
+                          width: 180,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _cwFallback(),
+                        )
+                      : _cwFallback(),
+
+                  // Progress bar
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: Colors.white24,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.accentColor,
+                      ),
+                      minHeight: 3,
                     ),
                   ),
-                );
-              },
+
+                  // Play icon overlay
+                  Positioned.fill(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Type badge (top-left)
+                  Positioned(
+                    top: 6,
+                    left: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _typeColor(type),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _typeLabel(type),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Percentage badge (bottom-right)
+                  Positioned(
+                    right: 6,
+                    bottom: 6,
+                    child: Text(
+                      '$percentage%',
+                      style: text10(
+                        color: AppColors.accentColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+
+            // Card Bottom Row: Left has Title & Ep, Right has 3-dots button
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: text12(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (epLabel != null)
+                        Text(
+                          epLabel,
+                          style: text10(color: AppColors.hintTextColor),
+                        ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    ContinueWatchingHelper.showOptionsBottomSheet(
+                      context,
+                      item,
+                      onDelete: () => _cwController.deleteItem(item),
+                      onPlay: () => ContinueWatchingHelper.playDirectly(
+                        context,
+                        item,
+                        onFinished: () => _cwController.fetchForHome(),
+                      ),
+                    );
+                  },
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 2),
+                    child: Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white70,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _cwFallback() {
+    return Container(
+      width: 180,
+      height: 100,
+      color: AppColors.cardColor,
+      child: const Center(
+        child: Icon(Icons.play_circle_outline, color: AppColors.hintTextColor),
+      ),
+    );
+  }
+
+  Color _typeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'movie':
+        return const Color(0xFFE53935);
+      case 'series':
+        return const Color(0xFF1E88E5);
+      case 'microdrama':
+        return AppColors.accentColor;
+      default:
+        return AppColors.borderColor;
+    }
+  }
+
+  String _typeLabel(String type) {
+    switch (type.toLowerCase()) {
+      case 'movie':
+        return 'MOVIE';
+      case 'series':
+        return 'SERIES';
+      case 'microdrama':
+        return 'DRAMA';
+      default:
+        return type.toUpperCase();
+    }
   }
 
   // ─── Helper to convert MovieModel / Series to Map with type ──────────
@@ -572,7 +730,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ─── Header ─────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  Widget _buildHeader(FetchProfileController ctr) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(
@@ -638,12 +796,25 @@ class _HomeTabState extends State<HomeTab> {
               Expanded(
                 child: Text(
                   'What do you want\nto watch today?',
-                  style: text20(fontWeight: FontWeight.bold),
+                  style: text18(fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 10),
               Row(
                 children: [
+                  // IconButton(
+                  //   onPressed: () {},
+                  //   icon: Container(
+                  //     padding: const EdgeInsets.all(8),
+                  //     decoration: BoxDecoration(
+                  //       color: AppColors.borderColor,
+                  //       shape: BoxShape.circle,
+                  //     ),
+                  //     child: Center(
+                  //       child: Icon(Icons.search, color: AppColors.white),
+                  //     ),
+                  //   ),
+                  // ),
                   Obx(() {
                     final unreadCount = Get.isRegistered<NotificationService>()
                         ? Get.find<NotificationService>().unreadCount.value
@@ -692,18 +863,57 @@ class _HomeTabState extends State<HomeTab> {
                     );
                   }),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Get.toNamed(AppRoutes.editProfile);
-                    },
-                    child: const CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.cardColor,
-                      backgroundImage: NetworkImage(
-                        'https://picsum.photos/seed/avatar/100/100',
+                  Obx(() {
+                    final user = ctr.user.value;
+
+                    if (ctr.isLoading.value) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (user == null) {
+                      return const Center(child: Text("No user found"));
+                    }
+                    final userImg = formatMediaUrl(user.profileImage);
+                    final hasImage = user.profileImage.isNotEmpty;
+                    final initial = user.name.trim().isNotEmpty
+                        ? user.name.trim()[0].toUpperCase()
+                        : '?';
+
+                    return ClipOval(
+                      child: GestureDetector(
+                        onTap: () {
+                          Get.toNamed(AppRoutes.editProfile);
+                        },
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: hasImage
+                              ? Image.network(
+                                  userImg,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, progress) {
+                                    if (progress == null) return child;
+                                    return Container(
+                                      color: AppColors.cardColor,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (_, _, _) =>
+                                      _avatarInitial(initial),
+                                )
+                              : _avatarInitial(initial),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ),
             ],
@@ -713,10 +923,27 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  Widget _avatarInitial(String initial) {
+    return Container(
+      color: AppColors.primaryColor.withValues(alpha: 0.15),
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryColor,
+        ),
+      ),
+    );
+  }
+
   // ─── Search Bar ─────────────────────────────────────────────────────────
   Widget _buildSearchBar() {
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        _homeController.changeTab(3);
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Container(
@@ -749,12 +976,12 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                 ),
               ),
-              const Icon(
-                Icons.mic_none_rounded,
-                color: AppColors.hintTextColor,
-                size: 20,
-              ),
-              const SizedBox(width: 14),
+              // const Icon(
+              //   Icons.mic_none_rounded,
+              //   color: AppColors.hintTextColor,
+              //   size: 20,
+              // ),
+              // const SizedBox(width: 14),
             ],
           ),
         ),

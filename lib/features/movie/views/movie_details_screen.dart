@@ -361,6 +361,8 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                             builder: (context) => MoviePlayerScreen(
                               videoUrl: movie.videoUrl,
                               title: movie.title,
+                              contentId: movie.id,
+                              contentType: 'movie',
                             ),
                           ),
                         );

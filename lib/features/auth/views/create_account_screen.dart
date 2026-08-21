@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -182,7 +183,14 @@ class CreateAccountScreen extends StatelessWidget {
                                         text: 'Terms of Service',
                                         style: text12(
                                           color: AppColors.accentColor,
+                                          fontWeight: FontWeight.w600,
                                         ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Get.toNamed(
+                                              AppRoutes.termsConditions,
+                                            );
+                                          },
                                       ),
                                       TextSpan(
                                         text: ' and\n',
@@ -194,7 +202,14 @@ class CreateAccountScreen extends StatelessWidget {
                                         text: 'Privacy Policy',
                                         style: text12(
                                           color: AppColors.accentColor,
+                                          fontWeight: FontWeight.w600,
                                         ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Get.toNamed(
+                                              AppRoutes.privacyPolicy,
+                                            );
+                                          },
                                       ),
                                     ],
                                   ),
@@ -219,32 +234,32 @@ class CreateAccountScreen extends StatelessWidget {
                         const SizedBox(height: 20),
 
                         // ── Already have account ──
-                        Center(
-                          child: RichText(
-                            text: TextSpan(
-                              text: 'Already have an account? ',
-                              style: text13(
-                                color: AppColors.secondaryTextColor,
-                              ),
-                              children: [
-                                WidgetSpan(
-                                  child: GestureDetector(
-                                    onTap: () =>
-                                        Get.offAllNamed(AppRoutes.login),
-                                    child: Text(
-                                      'Log In',
-                                      style: text13(
-                                        color: AppColors.accentColor,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
+                        // Center(
+                        //   child: RichText(
+                        //     text: TextSpan(
+                        //       text: 'Already have an account? ',
+                        //       style: text13(
+                        //         color: AppColors.secondaryTextColor,
+                        //       ),
+                        //       children: [
+                        //         WidgetSpan(
+                        //           child: GestureDetector(
+                        //             onTap: () =>
+                        //                 Get.offAllNamed(AppRoutes.login),
+                        //             child: Text(
+                        //               'Log In',
+                        //               style: text13(
+                        //                 color: AppColors.accentColor,
+                        //                 fontWeight: FontWeight.w600,
+                        //               ),
+                        //             ),
+                        //           ),
+                        //         ),
+                        //       ],
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(height: 32),
                       ],
                     ),
                   ),
