@@ -46,7 +46,7 @@ class Series {
   final bool isPremium;
   final int priority;
   final double rating;
-  final bool isTop;
+  final bool isPopular;
   final List<dynamic> cast;
   final List<dynamic> category;
   final List<dynamic> likes;
@@ -75,7 +75,7 @@ class Series {
     required this.isPremium,
     required this.priority,
     required this.rating,
-    this.isTop = false,
+    this.isPopular = false,
     required this.cast,
     required this.category,
     required this.likes,
@@ -108,10 +108,7 @@ class Series {
       rating: (json['rating'] is num)
           ? (json['rating'] as num).toDouble()
           : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
-      isTop: json['isTop'] ??
-          json['topWebseries'] ??
-          json['isTopWebseries'] ??
-          false,
+      isPopular: json['isPopular'] ?? false,
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<dynamic>.from(json['category'] ?? []),
       likes: List<dynamic>.from(json['likes'] ?? []),
@@ -143,6 +140,7 @@ class Series {
       'isPremium': isPremium,
       'priority': priority,
       'rating': rating,
+      'isPopular': isPopular,
       'cast': cast,
       'category': category,
       'likes': likes,
@@ -173,6 +171,7 @@ class Series {
     bool? isPremium,
     int? priority,
     double? rating,
+    bool? isPopular,
     List<dynamic>? cast,
     List<dynamic>? category,
     List<dynamic>? likes,
@@ -201,6 +200,7 @@ class Series {
       isPremium: isPremium ?? this.isPremium,
       priority: priority ?? this.priority,
       rating: rating ?? this.rating,
+      isPopular: isPopular ?? this.isPopular,
       cast: cast ?? this.cast,
       category: category ?? this.category,
       likes: likes ?? this.likes,

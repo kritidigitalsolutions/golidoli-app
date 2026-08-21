@@ -2,7 +2,6 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/core/services/firebase_service.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
@@ -31,11 +30,7 @@ class _HomeTabState extends State<HomeTab> {
   int _currentBannerIndex = 0;
   int _selectedTabIndex = 0; // 0 = For You, 1 = Movies, 2 = Web Series
 
-  final List<String> _tabLabels = [
-    'For You',
-    'Movies',
-    'Web Series',
-  ];
+  final List<String> _tabLabels = ['For You', 'Movies', 'Web Series'];
 
   // ─── GetX Controllers ────────────────────────────────────────────────────
   final HomeController _homeController = Get.put(HomeController());
@@ -116,8 +111,9 @@ class _HomeTabState extends State<HomeTab> {
       }
 
       // Popular Movies
-      List<MovieModel> popularMovies =
-          _movieController.allMovies.where((m) => m.isPopular).toList();
+      List<MovieModel> popularMovies = _movieController.allMovies
+          .where((m) => m.isPopular)
+          .toList();
       if (popularMovies.isEmpty) {
         popularMovies = List<MovieModel>.from(_movieController.allMovies)
           ..sort((a, b) => b.rating.compareTo(a.rating));
@@ -125,7 +121,7 @@ class _HomeTabState extends State<HomeTab> {
 
       // Top Web Series
       final allSeries = _seriesController.allSeries.value?.series ?? [];
-      List<Series> topSeries = allSeries.where((s) => s.isTop).toList();
+      List<Series> topSeries = allSeries.where((s) => s.isPopular).toList();
       if (topSeries.isEmpty) {
         topSeries = List<Series>.from(allSeries)
           ..sort((a, b) => b.rating.compareTo(a.rating));
@@ -172,8 +168,9 @@ class _HomeTabState extends State<HomeTab> {
 
       final List<Widget> categorySections = [];
       for (final cat in topCategories) {
-        final matchedMovies =
-            allMovies.where((m) => _matchesMovieCategory(m, cat)).toList();
+        final matchedMovies = allMovies
+            .where((m) => _matchesMovieCategory(m, cat))
+            .toList();
 
         if (matchedMovies.isNotEmpty) {
           categorySections.add(
@@ -199,10 +196,7 @@ class _HomeTabState extends State<HomeTab> {
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildContinueWatchingSection(),
-          ...categorySections,
-        ],
+        children: [_buildContinueWatchingSection(), ...categorySections],
       );
     });
   }
@@ -227,8 +221,9 @@ class _HomeTabState extends State<HomeTab> {
 
       final List<Widget> categorySections = [];
       for (final cat in topCategories) {
-        final matchedSeries =
-            allSeries.where((s) => _matchesSeriesCategory(s, cat)).toList();
+        final matchedSeries = allSeries
+            .where((s) => _matchesSeriesCategory(s, cat))
+            .toList();
 
         if (matchedSeries.isNotEmpty) {
           categorySections.add(
@@ -254,10 +249,7 @@ class _HomeTabState extends State<HomeTab> {
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildContinueWatchingSection(),
-          ...categorySections,
-        ],
+        children: [_buildContinueWatchingSection(), ...categorySections],
       );
     });
   }
@@ -324,10 +316,7 @@ class _HomeTabState extends State<HomeTab> {
                 'Continue Watching',
                 style: text16(fontWeight: FontWeight.bold),
               ),
-              CustomTextButton(
-                title: "View All",
-                onTap: () {},
-              ),
+              CustomTextButton(title: "View All", onTap: () {}),
             ],
           ),
           const SizedBox(height: 8),
@@ -379,8 +368,8 @@ class _HomeTabState extends State<HomeTab> {
                                   backgroundColor: Colors.white24,
                                   valueColor:
                                       const AlwaysStoppedAnimation<Color>(
-                                    AppColors.accentColor,
-                                  ),
+                                        AppColors.accentColor,
+                                      ),
                                   minHeight: 3,
                                 ),
                               ),
@@ -740,7 +729,11 @@ class _HomeTabState extends State<HomeTab> {
           child: Row(
             children: [
               const SizedBox(width: 14),
-              const Icon(Icons.search, color: AppColors.hintTextColor, size: 20),
+              const Icon(
+                Icons.search,
+                color: AppColors.hintTextColor,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: AbsorbPointer(

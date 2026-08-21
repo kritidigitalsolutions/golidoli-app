@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -35,6 +36,14 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   final RxInt currentIndex = 0.obs;
   final RxSet<int> likedIndices = <int>{}.obs;
 
+  // Stable per-index keys so we can explicitly command play/pause on the
+  // exact item, regardless of build/scroll timing.
+  final Map<int, GlobalKey<_DramaReelItemState>> _itemKeys = {};
+
+  GlobalKey<_DramaReelItemState> _keyFor(int index) {
+    return _itemKeys.putIfAbsent(index, () => GlobalKey<_DramaReelItemState>());
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +72,11 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
 
   void _onPageChanged(int index) {
     currentIndex.value = index;
+    // The new current page is guaranteed to be mounted by now — command
+    // play explicitly instead of relying on didUpdateWidget/init race.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _keyFor(index).currentState?.ensurePlaying();
+    });
   }
 
   void _toggleLike(int index) {
@@ -73,48 +87,29 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
     }
   }
 
-  void _onShowMore(MicroDramaEpisode episode) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surfaceColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (_) {
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'EP ${episode.episodeNumber}: ${episode.title}',
-                style: text18(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              if (episode.duration.isNotEmpty)
-                Text(
-                  'Duration: ${episode.duration}',
-                  style: text12(color: AppColors.hintTextColor),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                episode.description.isNotEmpty
-                    ? episode.description
-                    : 'No description available.',
-                style: text14(color: AppColors.secondaryTextColor),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   void _onBack() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     Navigator.of(context).maybePop();
+  }
+
+  void _onEpisodeComplete(int index, int totalEpisodes) {
+    if (index + 1 < totalEpisodes) {
+      final nextIndex = index + 1;
+      _pageController
+          .animateToPage(
+            nextIndex,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeInOut,
+          )
+          .then((_) {
+            // Safety net in case onPageChanged's post-frame call raced with
+            // the video still initializing.
+            _keyFor(nextIndex).currentState?.ensurePlaying();
+          });
+    } else {
+      // Last episode finished — auto back
+      _onBack();
+    }
   }
 
   @override
@@ -171,12 +166,16 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
             itemBuilder: (_, index) {
               final episode = episodes[index];
               return _DramaReelItem(
+                key: _keyFor(index),
                 episode: episode,
+                episodeIndex: index,
+                totalEpisodes: episodes.length,
                 isActive: currentIndex.value == index,
                 isLiked: likedIndices.contains(index),
                 onToggleLike: () => _toggleLike(index),
-                onShowMore: () => _onShowMore(episode),
                 onBack: _onBack,
+                onEpisodeComplete: () =>
+                    _onEpisodeComplete(index, episodes.length),
               );
             },
           ),
@@ -191,20 +190,24 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 class _DramaReelItem extends StatefulWidget {
   final MicroDramaEpisode episode;
+  final int episodeIndex;
+  final int totalEpisodes;
   final bool isActive;
   final bool isLiked;
   final VoidCallback onToggleLike;
-  final VoidCallback onShowMore;
   final VoidCallback onBack;
+  final VoidCallback onEpisodeComplete;
 
   const _DramaReelItem({
     super.key,
     required this.episode,
+    required this.episodeIndex,
+    required this.totalEpisodes,
     required this.isActive,
     required this.isLiked,
     required this.onToggleLike,
-    required this.onShowMore,
     required this.onBack,
+    required this.onEpisodeComplete,
   });
 
   @override
@@ -215,6 +218,14 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   late VideoPlayerController _vpc;
   final RxBool isInitialized = false.obs;
   final RxBool showPlayPauseIcon = false.obs;
+  final RxBool showControls = true.obs;
+  final RxBool isMuted = false.obs;
+  final RxBool isInWatchlist = false.obs;
+  final RxBool isDownloaded = false.obs;
+
+  Timer? _hideControlsTimer;
+  bool _hasCompleted = false;
+  bool _autoPlayPending = false;
 
   @override
   void initState() {
@@ -231,29 +242,71 @@ class _DramaReelItemState extends State<_DramaReelItem> {
           )
           ..initialize()
               .then((_) {
+                if (!mounted) return;
                 isInitialized.value = true;
-                if (widget.isActive) {
-                  _vpc.setLooping(true);
+                if (widget.isActive || _autoPlayPending) {
+                  _autoPlayPending = false;
+                  _vpc.setLooping(false);
                   _vpc.play();
+                  _startHideControlsTimer();
                 }
+                _vpc.addListener(_onVideoTick);
               })
               .catchError((err) {
                 debugPrint("Error initializing video player: $err");
               });
   }
 
+  /// Explicitly commanded by the parent when this page becomes the current
+  /// page (swipe or auto-advance). Deterministic — no reliance on rebuild
+  /// timing vs. video-initialize timing.
+  void ensurePlaying() {
+    if (!mounted) return;
+    _hasCompleted = false;
+    if (isInitialized.value) {
+      _vpc.setLooping(false);
+      _vpc.play();
+      _startHideControlsTimer();
+    } else {
+      _autoPlayPending = true;
+    }
+  }
+
+  void _onVideoTick() {
+    if (!_vpc.value.isInitialized || _hasCompleted) return;
+    final duration = _vpc.value.duration;
+    final position = _vpc.value.position;
+    if (duration.inMilliseconds > 0 &&
+        position.inMilliseconds >= duration.inMilliseconds - 200) {
+      _hasCompleted = true;
+      widget.onEpisodeComplete();
+    }
+  }
+
+  void _startHideControlsTimer() {
+    _hideControlsTimer?.cancel();
+    showControls.value = true;
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (isInitialized.value && _vpc.value.isPlaying) {
+        showControls.value = false;
+      }
+    });
+  }
+
   @override
   void didUpdateWidget(covariant _DramaReelItem oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.isActive && isInitialized.value) {
-      _vpc.play();
-    } else if (!widget.isActive && isInitialized.value) {
+    if (!widget.isActive && isInitialized.value) {
       _vpc.pause();
+      _hideControlsTimer?.cancel();
+      showControls.value = true;
     }
   }
 
   @override
   void dispose() {
+    _hideControlsTimer?.cancel();
+    _vpc.removeListener(_onVideoTick);
     _vpc.dispose();
     super.dispose();
   }
@@ -262,13 +315,21 @@ class _DramaReelItemState extends State<_DramaReelItem> {
     if (!isInitialized.value) return;
     if (_vpc.value.isPlaying) {
       _vpc.pause();
+      _hideControlsTimer?.cancel();
+      showControls.value = true;
     } else {
       _vpc.play();
+      _startHideControlsTimer();
     }
     showPlayPauseIcon.value = true;
     Future.delayed(const Duration(milliseconds: 700), () {
       showPlayPauseIcon.value = false;
     });
+  }
+
+  void _toggleMute() {
+    isMuted.value = !isMuted.value;
+    _vpc.setVolume(isMuted.value ? 0 : 1);
   }
 
   @override
@@ -315,23 +376,6 @@ class _DramaReelItemState extends State<_DramaReelItem> {
             );
           }),
 
-          // ── Vignette gradient ─────────────────────────────────────────────
-          // Container(
-          //   decoration: BoxDecoration(
-          //     gradient: LinearGradient(
-          //       begin: Alignment.topCenter,
-          //       end: Alignment.bottomCenter,
-          //       colors: [
-          //         Colors.black.withOpacity(0.4),
-          //         Colors.transparent,
-          //         Colors.transparent,
-          //         Colors.black.withOpacity(0.8),
-          //       ],
-          //       stops: const [0.0, 0.25, 0.6, 1.0],
-          //     ),
-          //   ),
-          // ),
-
           // ── Tap to Play/Pause ────────────────────────────────────────────
           GestureDetector(
             onTap: _togglePlayPause,
@@ -339,148 +383,114 @@ class _DramaReelItemState extends State<_DramaReelItem> {
             child: const SizedBox.expand(),
           ),
 
-          // ── Play/Pause Icon overlay ──────────────────────────────────────
+          // ── Play/Pause Icon overlay (animated) ────────────────────────────
           Obx(() {
-            if (!showPlayPauseIcon.value || !isInitialized.value) {
-              return const SizedBox.shrink();
-            }
-            return Center(
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: showPlayPauseIcon.value ? 1.0 : 0.0,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
-                    shape: BoxShape.circle,
+            if (!isInitialized.value) return const SizedBox.shrink();
+            return IgnorePointer(
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: anim,
+                    child: FadeTransition(opacity: anim, child: child),
                   ),
-                  child: Icon(
-                    _vpc.value.isPlaying
-                        ? Icons.play_arrow_rounded
-                        : Icons.pause_rounded,
-                    color: Colors.white,
-                    size: 40,
-                  ),
+                  child: showPlayPauseIcon.value
+                      ? Container(
+                          key: ValueKey(_vpc.value.isPlaying),
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _vpc.value.isPlaying
+                                ? Icons.play_arrow_rounded
+                                : Icons.pause_rounded,
+                            color: Colors.white,
+                            size: 44,
+                          ),
+                        )
+                      : const SizedBox.shrink(key: ValueKey('empty')),
                 ),
               ),
             );
           }),
 
-          // ── Top bar ─────────────────────────────────────────────────────
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  GestureDetector(
-                    onTap: widget.onBack,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
-                        shape: BoxShape.circle,
+          // ── Right side actions (auto-hides) ──────────────────────────────
+          Positioned(
+            right: 12,
+            bottom: 50,
+            child: Obx(
+              () => AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: showControls.value ? 1.0 : 0.0,
+                child: IgnorePointer(
+                  ignoring: !showControls.value,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Obx(
+                        () => _ActionButton(
+                          icon: isInWatchlist.value
+                              ? Icons.favorite
+                              : Icons.favorite_border_outlined,
+                          iconColor: isInWatchlist.value
+                              ? AppColors.accentColor
+                              : AppColors.white,
+                          label: 'Like',
+                          onTap: () =>
+                              isInWatchlist.value = !isInWatchlist.value,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.white,
-                        size: 18,
+                      const SizedBox(height: 20),
+                      Obx(
+                        () => _ActionButton(
+                          icon: isDownloaded.value
+                              ? Icons.download_done_rounded
+                              : Icons.download_rounded,
+                          iconColor: isDownloaded.value
+                              ? AppColors.accentColor
+                              : AppColors.white,
+                          label: 'Download',
+                          onTap: () => isDownloaded.value = !isDownloaded.value,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      Obx(
+                        () => _ActionButton(
+                          icon: isMuted.value
+                              ? Icons.volume_off_rounded
+                              : Icons.volume_up_rounded,
+                          iconColor: AppColors.white,
+                          label: isMuted.value ? 'Muted' : 'Sound',
+                          onTap: _toggleMute,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text('GoliDoli', style: text16(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 36),
-                ],
+                ),
               ),
             ),
           ),
 
-          // ── Right side actions ──────────────────────────────────────────
-          // Positioned(
-          //   right: 12,
-          //   bottom: 140,
-          //   child: Column(
-          //     mainAxisSize: MainAxisSize.min,
-          //     children: [
-          //       _ActionButton(
-          //         icon: widget.isLiked
-          //             ? Icons.favorite_rounded
-          //             : Icons.favorite_border_rounded,
-          //         iconColor: widget.isLiked
-          //             ? AppColors.accentColor
-          //             : AppColors.white,
-          //         label: formatCount(episode.likes > 0 ? episode.likes : 1),
-          //         onTap: widget.onToggleLike,
-          //       ),
-          //       const SizedBox(height: 20),
-          //       _ActionButton(
-          //         icon: Icons.remove_red_eye_outlined,
-          //         iconColor: AppColors.white,
-          //         label: formatCount(episode.views > 0 ? episode.views : 1),
-          //         onTap: () {},
-          //       ),
-          //       const SizedBox(height: 20),
-          //       _ActionButton(
-          //         icon: Icons.reply_rounded,
-          //         iconColor: AppColors.white,
-          //         label: 'Share',
-          //         onTap: () {},
-          //         flipHorizontal: true,
-          //       ),
-          //     ],
-          //   ),
-          // ),
-
-          // ── Bottom info ─────────────────────────────────────────────────
+          // ── Bottom info: episode number / total (always visible) ─────────
           Positioned(
             left: 16,
             right: 70,
-            bottom: 40,
+            bottom: 20,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Text(episode.title, style: text18(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
                 Text(
-                  'Episode ${episode.episodeNumber}',
+                  'Ep ${episode.episodeNumber} / ${widget.totalEpisodes}',
                   style: text13(color: AppColors.secondaryTextColor),
                 ),
-                // if (episode.description.isNotEmpty) ...[
-                //   const SizedBox(height: 8),
-                //   Text(
-                //     episode.description,
-                //     style: text12(color: AppColors.secondaryTextColor),
-                //     maxLines: 2,
-                //     overflow: TextOverflow.ellipsis,
-                //   ),
-                // ],
-                // const SizedBox(height: 12),
-                // GestureDetector(
-                //   onTap: widget.onShowMore,
-                //   child: Container(
-                //     padding: const EdgeInsets.symmetric(
-                //       horizontal: 16,
-                //       vertical: 8,
-                //     ),
-                //     decoration: BoxDecoration(
-                //       color: AppColors.primaryColor,
-                //       borderRadius: BorderRadius.circular(20),
-                //     ),
-                //     child: Text(
-                //       'Show More',
-                //       style: text12(
-                //         color: AppColors.black,
-                //         fontWeight: FontWeight.bold,
-                //       ),
-                //     ),
-                //   ),
-                // ),
               ],
             ),
           ),
 
-          // ── Progress bar ────────────────────────────────────────────────
+          // ── Progress bar (always visible) ─────────────────────────────────
           Positioned(
             left: 0,
             right: 0,
@@ -519,38 +529,38 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   }
 }
 
-// // ─────────────────────────────────────────────────────────────────────────────
-// // Action button
-// // ─────────────────────────────────────────────────────────────────────────────
-// class _ActionButton extends StatelessWidget {
-//   final IconData icon;
-//   final Color iconColor;
-//   final String label;
-//   final VoidCallback onTap;
-//   final bool flipHorizontal;
+// ─────────────────────────────────────────────────────────────────────────────
+// Action button
+// ─────────────────────────────────────────────────────────────────────────────
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final VoidCallback onTap;
+  final bool flipHorizontal;
 
-//   const _ActionButton({
-//     required this.icon,
-//     required this.iconColor,
-//     required this.label,
-//     required this.onTap,
-//     this.flipHorizontal = false,
-//   });
+  const _ActionButton({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.onTap,
+    this.flipHorizontal = false,
+  });
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       onTap: onTap,
-//       child: Column(
-//         children: [
-//           Transform.flip(
-//             flipX: flipHorizontal,
-//             child: Icon(icon, color: iconColor, size: 28),
-//           ),
-//           const SizedBox(height: 4),
-//           Text(label, style: text10(color: AppColors.white)),
-//         ],
-//       ),
-//     );
-//   }
-// }
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Transform.flip(
+            flipX: flipHorizontal,
+            child: Icon(icon, color: iconColor, size: 28),
+          ),
+          const SizedBox(height: 4),
+          Text(label, style: text10(color: AppColors.white)),
+        ],
+      ),
+    );
+  }
+}

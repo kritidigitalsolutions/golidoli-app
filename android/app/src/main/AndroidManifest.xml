@@ -7,7 +7,7 @@
 
     
     <application
-        android:label="golidoli_app"
+        android:label="GoliDoli"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

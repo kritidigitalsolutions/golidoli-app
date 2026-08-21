@@ -20,8 +20,6 @@ class NetworkApiService extends BaseApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          // 🔽 Auto-attach token from storage on every request, so callers
-          // never need to manually call setToken() before making a call.
           final token = await StorageService.getToken();
           if (token != null && token.isNotEmpty) {
             options.headers["Authorization"] = "Bearer $token";
@@ -48,10 +46,6 @@ class NetworkApiService extends BaseApiService {
     );
   }
 
-  /// 🔑 Set Authorization Token
-  /// Optional now — useful right after login to force the new token into
-  /// this session immediately, but requests will also pick it up
-  /// automatically from StorageService on their own.
   void setToken(String token) {
     _dio.options.headers["Authorization"] = "Bearer $token";
     debugPrint("🔐 Authorization token set");

@@ -69,25 +69,33 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildHeader()),
-          SliverToBoxAdapter(child: _buildBanner()),
-          SliverToBoxAdapter(child: _buildToggle()),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: _buildPremiumPlan(),
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildBanner()),
+            SliverToBoxAdapter(child: _buildToggle()),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: _buildPremiumPlan(),
+              ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: _buildContinueButton(),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: _buildContinueButton(),
+              ),
             ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          ],
+        ),
       ),
     );
   }
@@ -304,7 +312,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                       );
                     }
-                    final isSubscribed = Get.find<SubscriptionStatusController>().isPremiumUser.value;
+                    final isSubscribed =
+                        Get.find<SubscriptionStatusController>()
+                            .isPremiumUser
+                            .value;
                     if (isSubscribed) {
                       return Text(
                         'Active Plan',
@@ -373,10 +384,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
               );
             }
-            final isSubscribed = Get.find<SubscriptionStatusController>().isPremiumUser.value;
+            final isSubscribed =
+                Get.find<SubscriptionStatusController>().isPremiumUser.value;
             return Text(
               isSubscribed ? 'Active Plan' : 'Continue',
-              style: text13(color: AppColors.black, fontWeight: FontWeight.bold),
+              style: text13(
+                color: AppColors.black,
+                fontWeight: FontWeight.bold,
+              ),
             );
           }),
         ),

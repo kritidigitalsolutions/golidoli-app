@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
-import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -21,7 +20,9 @@ class MovieDetailsScreen extends StatefulWidget {
 }
 
 class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
-  final WatchlistController _watchlistController = Get.put(WatchlistController());
+  final WatchlistController _watchlistController = Get.put(
+    WatchlistController(),
+  );
   late final MovieController _controller;
 
   @override
@@ -350,7 +351,11 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                 child: GestureDetector(
                   onTap: () {
                     if (movie.videoUrl.isNotEmpty) {
-                      if (checkPlayable(context, isPremium: movie.isPremium, title: movie.title)) {
+                      if (checkPlayable(
+                        context,
+                        isPremium: movie.isPremium,
+                        title: movie.title,
+                      )) {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) => MoviePlayerScreen(
@@ -401,9 +406,11 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               Expanded(
                 child: Obx(() {
                   final bool isInWatchlist =
-                      widget.id != null && _watchlistController.isItemInWatchlist(widget.id!);
+                      widget.id != null &&
+                      _watchlistController.isItemInWatchlist(widget.id!);
                   final bool isLoading =
-                      widget.id != null && _watchlistController.isItemLoading(widget.id!);
+                      widget.id != null &&
+                      _watchlistController.isItemLoading(widget.id!);
 
                   return GestureDetector(
                     onTap: () {

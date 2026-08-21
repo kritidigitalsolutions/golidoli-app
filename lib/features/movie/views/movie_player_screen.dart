@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -55,13 +54,13 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
     } else if (widget.episodeId != null && widget.episodeId!.isNotEmpty) {
       _episodeController = Get.put(EpisodeController());
 
-      _statusWorker =
-          ever(_episodeController!.detailEpisodeStatus, (Status status) {
+      _statusWorker = ever(_episodeController!.detailEpisodeStatus, (
+        Status status,
+      ) {
         if (status == Status.success &&
             _episodeController!.episodeDetail.value != null) {
           final episodeDetailVal = _episodeController!.episodeDetail.value!;
-          final videoUrl =
-              formatMediaUrl(episodeDetailVal.episode.videoUrl);
+          final videoUrl = formatMediaUrl(episodeDetailVal.episode.videoUrl);
           if (videoUrl.isNotEmpty) {
             _qualityUrls['Auto'] = videoUrl;
             _selectedQuality = 'Auto';
@@ -264,7 +263,8 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   Widget build(BuildContext context) {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final title = widget.title ??
+    final title =
+        widget.title ??
         args?['title'] as String? ??
         (_episodeController?.episodeDetail.value?.episode.title) ??
         'GoliDoli Player';
@@ -284,8 +284,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
               bottom: !isLandscape,
               child: Column(
                 children: [
-                  if (!isLandscape)
-                    _TopBar(title: title, onBack: _handleBack),
+                  if (!isLandscape) _TopBar(title: title, onBack: _handleBack),
                   Expanded(
                     child: Center(
                       child: AspectRatio(
