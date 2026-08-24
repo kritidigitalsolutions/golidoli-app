@@ -68,4 +68,39 @@ class AppUrl {
       "$baseUrl/api/continue-watching/complete/$progressId";
   static String deleteWatchProgress(String progressId) =>
       "$baseUrl/api/continue-watching/$progressId";
+
+  // Audio Stories APIs
+  static const String audioCategories = "$baseUrl/api/audio-categories";
+  static String audioStories({
+    String? categoryId,
+    String? language,
+    int? page,
+    int? limit,
+  }) {
+    final params = <String>[];
+    if (categoryId != null && categoryId.isNotEmpty) {
+      params.add("category=$categoryId");
+    }
+    if (language != null && language.isNotEmpty) {
+      params.add("language=$language");
+    }
+    if (page != null) params.add("page=$page");
+    if (limit != null) params.add("limit=$limit");
+    final queryString = params.isNotEmpty ? "?${params.join("&")}" : "";
+    return "$baseUrl/api/audio-stories$queryString";
+  }
+
+  static const String audioStoriesHome = "$baseUrl/api/audio-stories/home";
+  static String searchAudioStories(String query) =>
+      "$baseUrl/api/audio-stories/search?q=${Uri.encodeComponent(query)}";
+  static String singleAudioStory(String storyId) =>
+      "$baseUrl/api/audio-stories/$storyId";
+  static String playAudioEpisode(String episodeId) =>
+      "$baseUrl/api/audio-episodes/$episodeId/play";
+  static const String saveAudioProgress = "$baseUrl/api/audio-progress";
+  static const String continueListening = "$baseUrl/api/audio-progress/continue";
+  static String markAudioEpisodeCompleted(String episodeId) =>
+      "$baseUrl/api/audio-progress/$episodeId/complete";
+  static String audioEpisodeProgress(String episodeId) =>
+      "$baseUrl/api/audio-progress/$episodeId";
 }

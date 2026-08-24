@@ -14,34 +14,24 @@ class AudioStoriesScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildTopBar()),
-            SliverToBoxAdapter(child: _buildCategoryTabs(controller)),
-            SliverToBoxAdapter(child: _buildHeroBanner(controller)),
-            SliverToBoxAdapter(
-              child: _buildSection(
-                'Top Audio Stories',
-                controller.topAudioStories,
-                controller,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _buildSection(
-                'Romantic Audio Stories',
-                controller.romanticAudioStories,
-                controller,
-              ),
-            ),
-            SliverToBoxAdapter(child: _buildExploreMore()),
-            const SliverToBoxAdapter(child: SizedBox(height: 30)),
-          ],
+        child: RefreshIndicator(
+          color: AppColors.primaryColor,
+          backgroundColor: AppColors.surfaceColor,
+          onRefresh: controller.loadInitialData,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(child: _buildTopBar(controller)),
+              SliverToBoxAdapter(child: _buildSearchBar(controller)),
+              SliverToBoxAdapter(child: _buildBody(controller)),
+              const SliverToBoxAdapter(child: SizedBox(height: 40)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTopBar() {
+  Widget _buildTopBar(AudioStoriesController controller) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
@@ -54,7 +44,7 @@ class AudioStoriesScreen extends StatelessWidget {
                 color: AppColors.surfaceColor,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.borderColor.withOpacity(0.4),
+                  color: AppColors.borderColor.withValues(alpha: 0.4),
                 ),
               ),
               child: const Icon(
@@ -71,6 +61,129 @@ class AudioStoriesScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildSearchBar(AudioStoriesController controller) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.5)),
+        ),
+        child: TextField(
+          controller: controller.searchController,
+          onChanged: controller.onSearchChanged,
+          style: text13(color: AppColors.textColor),
+          cursorColor: AppColors.primaryColor,
+          decoration: InputDecoration(
+            hintText: 'Search audio stories by title...',
+            hintStyle: text13(color: AppColors.hintTextColor),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: AppColors.hintTextColor,
+              size: 20,
+            ),
+            suffixIcon: Obx(() {
+              if (controller.searchQuery.value.isNotEmpty) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.hintTextColor,
+                    size: 18,
+                  ),
+                  onPressed: controller.clearSearch,
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody(AudioStoriesController controller) {
+    return Obx(() {
+      // 1. Search Mode
+      if (controller.searchQuery.value.isNotEmpty) {
+        if (controller.isSearching.value) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 40),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.primaryColor),
+            ),
+          );
+        }
+
+        if (controller.searchResults.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 60),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.music_off_rounded,
+                    size: 48,
+                    color: AppColors.hintTextColor.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No audio stories found for "${controller.searchQuery.value}"',
+                    style: text14(color: AppColors.secondaryTextColor),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return _buildSearchResultsGrid(controller);
+      }
+
+      // 2. Loading State
+      if (controller.isLoading.value && controller.allStories.isEmpty) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 60),
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.primaryColor),
+          ),
+        );
+      }
+
+      // 3. Normal Feed
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildCategoryTabs(controller),
+          if (controller.selectedCategoryIndex.value == 0) ...[
+            if (controller.continueListeningList.isNotEmpty)
+              _buildContinueListening(controller),
+            if (controller.heroBanner != null)
+              _buildHeroBanner(controller),
+            if (controller.topAudioStories.isNotEmpty)
+              _buildSection(
+                'Top Audio Stories',
+                controller.topAudioStories,
+                controller,
+              ),
+            if (controller.recentlyAdded.isNotEmpty)
+              _buildSection(
+                'Recently Added',
+                controller.recentlyAdded,
+                controller,
+              ),
+          ] else ...[
+            _buildCategoryFilteredList(controller),
+          ],
+        ],
+      );
+    });
+  }
+
   Widget _buildCategoryTabs(AudioStoriesController controller) {
     return SizedBox(
       height: 38,
@@ -83,28 +196,29 @@ class AudioStoriesScreen extends StatelessWidget {
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
             final isSelected = selected == i;
+            final cat = controller.categories[i];
             return GestureDetector(
               onTap: () => controller.onCategorySelected(i),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 3,
+                  horizontal: 16,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.accentColor
+                      ? AppColors.primaryColor
                       : AppColors.surfaceColor,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isSelected
-                        ? AppColors.accentColor
-                        : AppColors.borderColor.withOpacity(0.4),
+                        ? AppColors.primaryColor
+                        : AppColors.borderColor.withValues(alpha: 0.4),
                   ),
                 ),
                 child: Center(
                   child: Text(
-                    controller.categories[i],
+                    cat.name,
                     style: text12(
                       color: isSelected
                           ? AppColors.black
@@ -123,8 +237,103 @@ class AudioStoriesScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildContinueListening(AudioStoriesController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.history_rounded, color: AppColors.accentColor, size: 18),
+                const SizedBox(width: 6),
+                Text('Continue Listening', style: text15(fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 90,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: controller.continueListeningList.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
+              itemBuilder: (_, i) {
+                final item = controller.continueListeningList[i];
+                final ep = item.episode;
+                return GestureDetector(
+                  onTap: () => controller.onContinueListeningTap(item),
+                  child: Container(
+                    width: 240,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: ep != null && ep.imageUrl.isNotEmpty
+                              ? Image.network(
+                                  ep.imageUrl,
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => _fallbackPlaceholder(70, 70),
+                                )
+                              : _fallbackPlaceholder(70, 70),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                ep?.storyTitle ?? 'Audio Story',
+                                style: text12(fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                ep?.title ?? 'Episode',
+                                style: text10(color: AppColors.secondaryTextColor),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(
+                                value: item.progressPercentage,
+                                backgroundColor: AppColors.cardColor,
+                                color: AppColors.primaryColor,
+                                minHeight: 3,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHeroBanner(AudioStoriesController controller) {
     final story = controller.heroBanner;
+    if (story == null) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: GestureDetector(
@@ -138,17 +347,7 @@ class AudioStoriesScreen extends StatelessWidget {
                 height: 190,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  height: 190,
-                  color: AppColors.cardColor,
-                  child: Center(
-                    child: Icon(
-                      Icons.headphones,
-                      color: AppColors.hintTextColor,
-                      size: 40,
-                    ),
-                  ),
-                ),
+                errorBuilder: (_, _, _) => _fallbackPlaceholder(double.infinity, 190),
               ),
               Container(
                 height: 190,
@@ -158,7 +357,7 @@ class AudioStoriesScreen extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      AppColors.backgroundColor.withOpacity(0.92),
+                      AppColors.backgroundColor.withValues(alpha: 0.92),
                     ],
                   ),
                 ),
@@ -166,17 +365,22 @@ class AudioStoriesScreen extends StatelessWidget {
               Positioned(
                 bottom: 16,
                 left: 16,
+                right: 16,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       story.title,
                       style: text18(fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
                       story.subtitle,
                       style: text12(color: AppColors.secondaryTextColor),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 10),
                     GestureDetector(
@@ -196,7 +400,7 @@ class AudioStoriesScreen extends StatelessWidget {
                             const Icon(
                               Icons.play_arrow_rounded,
                               color: AppColors.black,
-                              size: 16,
+                              size: 18,
                             ),
                             const SizedBox(width: 4),
                             Text(
@@ -225,6 +429,8 @@ class AudioStoriesScreen extends StatelessWidget {
     List<AudioStoryModel> stories,
     AudioStoriesController controller,
   ) {
+    if (stories.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.only(top: 20),
       child: Column(
@@ -236,18 +442,18 @@ class AudioStoriesScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(title, style: text16(fontWeight: FontWeight.bold)),
-                Text('View All', style: text12(color: AppColors.accentColor)),
+                Text('${stories.length} Stories', style: text11(color: AppColors.hintTextColor)),
               ],
             ),
           ),
           const SizedBox(height: 12),
           SizedBox(
-            height: 140,
+            height: 160,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: stories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => const SizedBox(width: 12),
               itemBuilder: (_, i) {
                 return _buildStoryCard(stories[i], controller);
               },
@@ -265,7 +471,7 @@ class AudioStoriesScreen extends StatelessWidget {
     return GestureDetector(
       onTap: () => controller.onStoryTap(story),
       child: SizedBox(
-        width: 90,
+        width: 100,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -274,31 +480,22 @@ class AudioStoriesScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 child: Image.network(
                   story.imageUrl,
-                  width: 90,
+                  width: 100,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    color: AppColors.cardColor,
-                    child: Center(
-                      child: Icon(
-                        Icons.headphones,
-                        color: AppColors.hintTextColor,
-                        size: 28,
-                      ),
-                    ),
-                  ),
+                  errorBuilder: (_, _, _) => _fallbackPlaceholder(100, 110),
                 ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 6),
             Text(
               story.title,
-              style: text10(fontWeight: FontWeight.w500),
+              style: text11(fontWeight: FontWeight.w600),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
               story.subtitle,
-              style: text9(color: AppColors.hintTextColor),
+              style: text10(color: AppColors.hintTextColor),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -308,37 +505,67 @@ class AudioStoriesScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildExploreMore() {
+  Widget _buildCategoryFilteredList(AudioStoriesController controller) {
+    final stories = controller.categoryStories;
+    if (stories.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 40),
+        child: Center(
+          child: Text(
+            'No stories found in this category.',
+            style: text13(color: AppColors.secondaryTextColor),
+          ),
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
-          ),
-          child: Center(
-            child: Text(
-              'Explore More',
-              style: text13(
-                color: AppColors.secondaryTextColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+      padding: const EdgeInsets.all(16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: stories.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.62,
+        ),
+        itemBuilder: (_, i) => _buildStoryCard(stories[i], controller),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsGrid(AudioStoriesController controller) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: controller.searchResults.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 16,
+          childAspectRatio: 0.62,
+        ),
+        itemBuilder: (_, i) => _buildStoryCard(controller.searchResults[i], controller),
+      ),
+    );
+  }
+
+  Widget _fallbackPlaceholder(double w, double h) {
+    return Container(
+      width: w,
+      height: h,
+      color: AppColors.cardColor,
+      child: Center(
+        child: Icon(
+          Icons.headphones_rounded,
+          color: AppColors.hintTextColor,
+          size: 32,
         ),
       ),
     );
   }
-}
-
-// local text9 helper
-TextStyle text9({
-  FontWeight fontWeight = FontWeight.normal,
-  Color color = AppColors.textColor,
-}) {
-  return appTextStyle(fontSize: 9, fontWeight: fontWeight, color: color);
 }

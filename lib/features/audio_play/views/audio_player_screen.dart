@@ -11,38 +11,59 @@ class AudioPlayerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(AudioPlayerController());
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildHero(controller)),
-          SliverToBoxAdapter(child: _buildNowPlaying(controller)),
-          SliverToBoxAdapter(child: _buildProgressBar(controller)),
-          SliverToBoxAdapter(child: _buildPlayerControls(controller)),
-          SliverToBoxAdapter(child: _buildEpisodesList(controller)),
-          SliverToBoxAdapter(child: _buildBackToHome()),
-          const SliverToBoxAdapter(child: SizedBox(height: 30)),
-        ],
-      ),
+      body: Obx(() {
+        final story = controller.story.value;
+        final currentEp = controller.currentEpisode;
+
+        if (story == null && controller.isLoadingAudio.value) {
+          return const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryColor),
+          );
+        }
+
+        return CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildHero(controller, story, currentEp)),
+            SliverToBoxAdapter(child: _buildNowPlaying(controller, story, currentEp)),
+            SliverToBoxAdapter(child: _buildProgressBar(controller)),
+            SliverToBoxAdapter(child: _buildPlayerControls(controller)),
+            if (story != null && story.episodes.isNotEmpty)
+              SliverToBoxAdapter(child: _buildEpisodesList(controller, story)),
+            SliverToBoxAdapter(child: _buildBackToHome()),
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          ],
+        );
+      }),
     );
   }
 
-  Widget _buildHero(AudioPlayerController controller) {
+  Widget _buildHero(
+    AudioPlayerController controller,
+    dynamic story,
+    dynamic currentEp,
+  ) {
+    final imageUrl = currentEp?.imageUrl.isNotEmpty == true
+        ? currentEp!.imageUrl
+        : (story?.imageUrl ?? '');
+
     return Stack(
       children: [
         // Cover image
         SizedBox(
-          height: 240,
+          height: 250,
           width: double.infinity,
           child: Image.network(
-            controller.story.imageUrl,
+            imageUrl,
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(
-              height: 240,
+              height: 250,
               color: AppColors.cardColor,
-              child: Center(
+              child: const Center(
                 child: Icon(
-                  Icons.headphones,
+                  Icons.headphones_rounded,
                   color: AppColors.hintTextColor,
                   size: 60,
                 ),
@@ -52,12 +73,15 @@ class AudioPlayerScreen extends StatelessWidget {
         ),
         // Gradient overlay
         Container(
-          height: 240,
+          height: 250,
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, AppColors.backgroundColor],
+              colors: [
+                Colors.transparent,
+                AppColors.backgroundColor.withValues(alpha: 0.95),
+              ],
             ),
           ),
         ),
@@ -76,7 +100,7 @@ class AudioPlayerScreen extends StatelessWidget {
                     onTap: () => Get.back(),
                     child: Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.overlayColor,
                         shape: BoxShape.circle,
                       ),
@@ -87,130 +111,99 @@ class AudioPlayerScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Obx(() {
-                    return Column(
-                      children: [
+                  Column(
+                    children: [
+                      Text(
+                        story?.title ?? 'Audio Story',
+                        style: text13(fontWeight: FontWeight.bold),
+                      ),
+                      if (currentEp != null)
                         Text(
-                          controller.story.title,
-                          style: text13(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'Episode ${controller.currentEpisode.episodeNumber}',
+                          'Episode ${currentEp.episodeNumber}',
                           style: text10(color: AppColors.secondaryTextColor),
                         ),
-                      ],
-                    );
-                  }),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.overlayColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.share_outlined,
-                        color: AppColors.white,
-                        size: 18,
-                      ),
-                    ),
+                    ],
                   ),
+                  const SizedBox(width: 36), // Balanced spacing
                 ],
               ),
             ),
-          ),
-        ),
-        // Title at bottom of hero
-        Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                controller.story.title,
-                style: text18(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                controller.story.subtitle,
-                style: text12(color: AppColors.secondaryTextColor),
-              ),
-            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildNowPlaying(AudioPlayerController controller) {
+  Widget _buildNowPlaying(
+    AudioPlayerController controller,
+    dynamic story,
+    dynamic currentEp,
+  ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Obx(() {
-        final episode = controller.currentEpisode;
-        return Column(
-          children: [
-            Text(
-              episode.title
-                  .split('–')
-                  .last
-                  .trim()
-                  .replaceAll('Ep ', 'The Beginning'),
-              style: text18(fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${episode.storyTitle} – Episode ${episode.episodeNumber}',
-              style: text12(color: AppColors.secondaryTextColor),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        );
-      }),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: Column(
+        children: [
+          Text(
+            currentEp?.title ?? 'Playing Audio',
+            style: text20(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${story?.title ?? ''} – Episode ${currentEp?.episodeNumber ?? 1}',
+            style: text13(color: AppColors.secondaryTextColor),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildProgressBar(AudioPlayerController controller) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       child: Obx(() {
+        final total = controller.totalDuration.value > 0 ? controller.totalDuration.value : 1.0;
+        final sliderValue = controller.seekValue.value.clamp(0.0, total);
+
         return Column(
           children: [
             SliderTheme(
               data: SliderThemeData(
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                trackHeight: 4,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                activeTrackColor: AppColors.accentColor,
+                activeTrackColor: AppColors.primaryColor,
                 inactiveTrackColor: AppColors.surfaceColor,
-                thumbColor: AppColors.accentColor,
-                overlayColor: AppColors.accentColor.withOpacity(0.2),
+                thumbColor: AppColors.primaryColor,
+                overlayColor: AppColors.primaryColor.withValues(alpha: 0.2),
               ),
               child: Slider(
-                value: controller.seekValue.value.clamp(
-                  0.0,
-                  controller.totalDuration.value,
-                ),
-                min: 0,
-                max: controller.totalDuration.value,
-                onChanged: controller.seekTo,
+                value: sliderValue,
+                min: 0.0,
+                max: total,
+                onChanged: (val) {
+                  controller.seekValue.value = val;
+                },
+                onChangeEnd: (val) {
+                  controller.seekTo(val);
+                },
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     controller.currentPositionFormatted,
-                    style: text11(color: AppColors.secondaryTextColor),
+                    style: text11(color: AppColors.hintTextColor),
                   ),
                   Text(
                     controller.totalDurationFormatted,
-                    style: text11(color: AppColors.secondaryTextColor),
+                    style: text11(color: AppColors.hintTextColor),
                   ),
                 ],
               ),
@@ -223,111 +216,95 @@ class AudioPlayerScreen extends StatelessWidget {
 
   Widget _buildPlayerControls(AudioPlayerController controller) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Previous episode
-          GestureDetector(
-            onTap: controller.playPrevious,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: Icon(
-                Icons.skip_previous_rounded,
-                color: AppColors.secondaryTextColor,
-                size: 30,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Skip backward 15s
-          GestureDetector(
-            onTap: controller.skipBackward,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    Icons.replay_rounded,
-                    color: AppColors.secondaryTextColor,
-                    size: 28,
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    child: Text(
-                      '15',
-                      style: text8(
-                        color: AppColors.secondaryTextColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          // Previous Episode
+          IconButton(
+            onPressed: controller.playPrevious,
+            icon: const Icon(
+              Icons.skip_previous_rounded,
+              color: AppColors.white,
+              size: 32,
             ),
           ),
           const SizedBox(width: 12),
-          // Play / Pause
-          Obx(
-            () => GestureDetector(
-              onTap: controller.togglePlayPause,
-              child: Container(
-                width: 60,
-                height: 60,
+
+          // Replay 15s
+          IconButton(
+            onPressed: () => controller.skipBackward(15),
+            icon: const Icon(
+              Icons.replay_10_rounded,
+              color: AppColors.white,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Play / Pause / Loading
+          Obx(() {
+            if (controller.isLoadingAudio.value) {
+              return Container(
+                width: 64,
+                height: 64,
                 decoration: const BoxDecoration(
-                  color: AppColors.accentColor,
+                  color: AppColors.primaryColor,
                   shape: BoxShape.circle,
                 ),
+                padding: const EdgeInsets.all(18),
+                child: const CircularProgressIndicator(
+                  color: AppColors.black,
+                  strokeWidth: 3,
+                ),
+              );
+            }
+
+            final isPlaying = controller.isPlaying.value;
+            return GestureDetector(
+              onTap: controller.togglePlayPause,
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryColor.withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
                 child: Icon(
-                  controller.isPlaying.value
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
-                  color: AppColors.white,
-                  size: 32,
+                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  color: AppColors.black,
+                  size: 36,
                 ),
               ),
+            );
+          }),
+          const SizedBox(width: 16),
+
+          // Forward 15s
+          IconButton(
+            onPressed: () => controller.skipForward(15),
+            icon: const Icon(
+              Icons.forward_10_rounded,
+              color: AppColors.white,
+              size: 28,
             ),
           ),
           const SizedBox(width: 12),
-          // Skip forward 15s
-          GestureDetector(
-            onTap: controller.skipForward,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Icon(
-                    Icons.forward_rounded,
-                    color: AppColors.secondaryTextColor,
-                    size: 28,
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    child: Text(
-                      '15',
-                      style: text8(
-                        color: AppColors.secondaryTextColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Next episode
-          GestureDetector(
-            onTap: controller.playNext,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              child: Icon(
-                Icons.skip_next_rounded,
-                color: AppColors.secondaryTextColor,
-                size: 30,
-              ),
+
+          // Next Episode
+          IconButton(
+            onPressed: controller.playNext,
+            icon: const Icon(
+              Icons.skip_next_rounded,
+              color: AppColors.white,
+              size: 32,
             ),
           ),
         ],
@@ -335,117 +312,116 @@ class AudioPlayerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEpisodesList(AudioPlayerController controller) {
+  Widget _buildEpisodesList(
+    AudioPlayerController controller,
+    dynamic story,
+  ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Episodes', style: text16(fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Episodes', style: text16(fontWeight: FontWeight.bold)),
+              Text(
+                '${story.episodes.length} Episodes',
+                style: text12(color: AppColors.hintTextColor),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
-          Obx(() {
-            return Column(
-              children: List.generate(controller.story.episodes.length, (i) {
-                final ep = controller.story.episodes[i];
-                final isCurrentEp = controller.currentEpisodeIndex.value == i;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: GestureDetector(
-                    onTap: () => controller.selectEpisode(i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: story.episodes.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, index) {
+              final ep = story.episodes[index];
+              return Obx(() {
+                final isSelected = controller.currentEpisodeIndex.value == index;
+
+                return GestureDetector(
+                  onTap: () => controller.selectEpisode(index),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primaryColor.withValues(alpha: 0.12)
+                          : AppColors.surfaceColor,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : AppColors.borderColor.withValues(alpha: 0.4),
                       ),
-                      decoration: BoxDecoration(
-                        color: isCurrentEp
-                            ? AppColors.accentColor.withOpacity(0.12)
-                            : AppColors.surfaceColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isCurrentEp
-                              ? AppColors.accentColor.withOpacity(0.5)
-                              : AppColors.borderColor.withOpacity(0.3),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          // Thumbnail
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: Image.network(
-                              ep.imageUrl,
-                              width: 44,
-                              height: 44,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(
-                                width: 44,
-                                height: 44,
-                                color: AppColors.cardColor,
-                                child: Icon(
-                                  Icons.headphones,
-                                  color: AppColors.hintTextColor,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primaryColor
+                                : AppColors.surfaceColor,
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(width: 12),
-                          // Info
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  ep.title,
-                                  style: text13(
-                                    fontWeight: isCurrentEp
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                    color: isCurrentEp
-                                        ? AppColors.white
-                                        : AppColors.textColor,
+                          child: Center(
+                            child: isSelected && controller.isPlaying.value
+                                ? const Icon(
+                                    Icons.graphic_eq_rounded,
+                                    color: AppColors.black,
+                                    size: 18,
+                                  )
+                                : Text(
+                                    '${ep.episodeNumber}',
+                                    style: text12(
+                                      color: isSelected ? AppColors.black : AppColors.secondaryTextColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  ep.fileSize,
-                                  style: text11(color: AppColors.hintTextColor),
-                                ),
-                              ],
-                            ),
                           ),
-                          // Play icon
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: isCurrentEp
-                                  ? AppColors.accentColor
-                                  : AppColors.cardColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isCurrentEp
-                                    ? AppColors.accentColor
-                                    : AppColors.borderColor.withOpacity(0.4),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ep.title,
+                                style: text13(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? AppColors.primaryColor : AppColors.textColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            child: Icon(
-                              isCurrentEp && controller.isPlaying.value
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: AppColors.white,
-                              size: 18,
-                            ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${ep.durationSeconds ~/ 60}:${(ep.durationSeconds % 60).toString().padLeft(2, '0')} mins',
+                                style: text10(color: AppColors.secondaryTextColor),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        Icon(
+                          isSelected
+                              ? (controller.isPlaying.value
+                                  ? Icons.pause_circle_filled_rounded
+                                  : Icons.play_circle_fill_rounded)
+                              : Icons.play_circle_outline_rounded,
+                          color: isSelected ? AppColors.primaryColor : AppColors.hintTextColor,
+                          size: 26,
+                        ),
+                      ],
                     ),
                   ),
                 );
-              }),
-            );
-          }),
+              });
+            },
+          ),
         ],
       ),
     );
@@ -453,23 +429,30 @@ class AudioPlayerScreen extends StatelessWidget {
 
   Widget _buildBackToHome() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
       child: GestureDetector(
         onTap: () => Get.offAllNamed(AppRoutes.home),
         child: Container(
-          height: 44,
+          height: 46,
           decoration: BoxDecoration(
             color: AppColors.surfaceColor,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
+            border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.4)),
           ),
           child: Center(
-            child: Text(
-              'Back to Home',
-              style: text13(
-                color: AppColors.secondaryTextColor,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.home_rounded, color: AppColors.secondaryTextColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Back to Home',
+                  style: text13(
+                    color: AppColors.secondaryTextColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
