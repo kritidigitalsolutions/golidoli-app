@@ -15,7 +15,7 @@ import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_scree
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
-import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
@@ -41,8 +41,8 @@ class _HomeTabState extends State<HomeTab> {
   final HomeController _homeController = Get.find();
   final MovieController _movieController = Get.put(MovieController());
   final SeriesController _seriesController = Get.put(SeriesController());
-  final FetchProfileController _fetchProfileController = Get.put(
-    FetchProfileController(),
+  final ProfileController _fetchProfileController = Get.put(
+    ProfileController(),
   );
   late final ContinueWatchingController _cwController;
 
@@ -730,7 +730,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   // ─── Header ─────────────────────────────────────────────────────────────
-  Widget _buildHeader(FetchProfileController ctr) {
+  Widget _buildHeader(ProfileController ctr) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Column(

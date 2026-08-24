@@ -1,12 +1,10 @@
-import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/features/auth/models/response/user_model.dart';
+import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../core/services/storage_service.dart';
 
@@ -16,22 +14,12 @@ import '../../../core/services/storage_service.dart';
 class ProfileController extends GetxController {
   final RxString selectedLanguage = 'English'.obs;
 
-  final Map<String, dynamic> user = {
-    'name': 'Aradhya Jain',
-    'isPremium': true,
-    'avatar': 'https://picsum.photos/seed/aradhya/200/200',
-    'continueTitle': "Billionaire's Obsession",
-    'continueEpisode': 'S1 E05',
-    'continueProgress': 0.60,
-    'continueImage': 'https://picsum.photos/seed/billionaire/400/200',
-  };
-
   final List<Map<String, dynamic>> menuItems = [
     {'icon': 'edit', 'label': 'Edit Profile'},
     {'icon': 'subscription', 'label': 'Subscription'},
     {'icon': 'language', 'label': 'Language', 'trailing': 'English'},
     {'icon': 'download', 'label': 'Downloads'},
-    //{'icon': 'content', 'label': 'Content Preference'},
+    {'icon': 'content', 'label': 'Content Preference'},
     {'icon': 'settings', 'label': 'Notifications Settings'},
     {'icon': 'privacy', 'label': 'Privacy Policy'},
     {'icon': 'terms', 'label': 'Terms & Conditions'},
@@ -45,7 +33,7 @@ class ProfileController extends GetxController {
       'Subscription': AppRoutes.subscription,
       'Language': AppRoutes.language,
       'Downloads': AppRoutes.downloads,
-      //'Content Preference': AppRoutes.contentPreference,
+      'Content Preference': AppRoutes.contentPreference,
       'Notifications Settings': AppRoutes.notificationSettings,
       'Privacy Policy': AppRoutes.privacyPolicy,
       'Terms & Conditions': AppRoutes.termsConditions,
@@ -153,6 +141,74 @@ class ProfileController extends GetxController {
       ),
     );
   }
+
+  final AuthDatasource _datasource = AuthDatasource();
+
+  /// Loading State
+  final RxBool isLoading = false.obs;
+
+  /// User Data
+  final Rxn<UserModel> user = Rxn<UserModel>();
+
+  /// Error Message
+  final RxString error = "".obs;
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchProfile();
+  }
+
+  Future<void> fetchProfile() async {
+    try {
+      // Load cached user instantly to avoid UI delay
+      final cachedUser = await StorageService.getUser();
+      if (cachedUser != null) {
+        user.value = cachedUser;
+      }
+
+      isLoading.value = user.value == null;
+      error.value = "";
+
+      final result = await _datasource.fetchProfile();
+
+      if (result != null) {
+        user.value = result;
+      } else if (user.value == null) {
+        error.value = "Unable to fetch profile.";
+      }
+    } catch (e) {
+      debugPrint("Profile Controller Error: $e");
+      if (user.value == null) {
+        error.value = e.toString();
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Refresh Profile
+  Future<void> refreshProfile() async {
+    await fetchProfile();
+  }
+
+  /// Update locally using copyWith()
+  void updateUser(UserModel updatedUser) {
+    user.value = updatedUser;
+  }
+
+  /// Example
+  void updateName(String name) {
+    if (user.value == null) return;
+
+    user.value = user.value!.copyWith(name: name);
+  }
+
+  void updateProfileImage(String image) {
+    if (user.value == null) return;
+
+    user.value = user.value!.copyWith(profileImage: image);
+  }
 }
 
 // =================================────────────────────────────────────────────
@@ -196,90 +252,6 @@ class DownloadsController extends GetxController {
 }
 
 // =================================────────────────────────────────────────────
-// 4. Edit Profile Controller
-// =================================────────────────────────────────────────────
-class EditProfileController extends GetxController {
-  final nameController = TextEditingController(text: 'Aradhya Jain');
-  final mobileController = TextEditingController(text: '+91 98765 43210');
-  final emailController = TextEditingController(text: 'aradhya@golidoli.com');
-
-  final Rx<File?> profileImage = Rx<File?>(null);
-  final RxBool isSaving = false.obs;
-
-  final ImagePicker _picker = ImagePicker();
-
-  Future<void> pickImage(ImageSource source) async {
-    final XFile? image = await _picker.pickImage(
-      source: source,
-      imageQuality: 80,
-    );
-
-    if (image != null) {
-      profileImage.value = File(image.path);
-    }
-  }
-
-  void showImagePicker() {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: AppColors.backgroundColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Wrap(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColors.white),
-                title: Text(
-                  "Camera",
-                  style: text14(fontWeight: FontWeight.w500),
-                ),
-                onTap: () {
-                  Get.back();
-                  pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.photo_library,
-                  color: AppColors.white,
-                ),
-                title: Text(
-                  "Gallery",
-                  style: text14(fontWeight: FontWeight.w500),
-                ),
-                onTap: () {
-                  Get.back();
-                  pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> saveProfile() async {
-    isSaving.value = true;
-    await Future.delayed(const Duration(milliseconds: 600));
-    isSaving.value = false;
-
-    Get.snackbar('Profile Updated', 'Your changes have been saved.');
-  }
-
-  @override
-  void onClose() {
-    nameController.dispose();
-    mobileController.dispose();
-    emailController.dispose();
-    super.onClose();
-  }
-}
-
-// =================================────────────────────────────────────────────
 // 5. Language Controller
 // =================================────────────────────────────────────────────
 class LanguageController extends GetxController {
@@ -289,69 +261,4 @@ class LanguageController extends GetxController {
   void selectLanguage(String language) {
     selectedLanguage.value = language;
   }
-}
-
-// =================================────────────────────────────────────────────
-
-// =================================────────────────────────────────────────────
-// 8. Privacy Controller
-// =================================────────────────────────────────────────────
-class PrivacyController extends GetxController {
-  final sections = const [
-    {
-      'title': 'Data We Collect',
-      'body':
-          'We use profile, watch history, preferences, and device data to improve your streaming experience.',
-    },
-    {
-      'title': 'How We Use Data',
-      'body':
-          'Your data helps personalize recommendations, manage subscriptions, improve safety, and support downloads.',
-    },
-    {
-      'title': 'Your Choices',
-      'body':
-          'You can update profile details, content preferences, notification choices, and account settings anytime.',
-    },
-  ];
-}
-
-// =================================────────────────────────────────────────────
-// 9. Subscription Controller
-// =================================────────────────────────────────────────────
-class SubscriptionController extends GetxController {
-  final RxBool isYearly = false.obs;
-
-  void selectMonthly() => isYearly.value = false;
-  void selectYearly() => isYearly.value = true;
-
-  void onContinueToPay() {
-    Get.toNamed(AppRoutes.premiumWelcome);
-  }
-
-  String get premiumPrice => isYearly.value ? '₹799' : '₹99';
-  String get premiumPeriod => isYearly.value ? '/year' : '/month';
-}
-
-// =================================────────────────────────────────────────────
-// 10. Terms Controller
-// =================================────────────────────────────────────────────
-class TermsController extends GetxController {
-  final sections = const [
-    {
-      'title': 'Using GoliDoli',
-      'body':
-          'Use the app only for personal entertainment and follow all applicable laws and platform rules.',
-    },
-    {
-      'title': 'Subscriptions',
-      'body':
-          'Premium benefits, billing cycles, offers, and cancellation terms may vary by plan and region.',
-    },
-    {
-      'title': 'Content Access',
-      'body':
-          'Movies, web series, micro dramas, downloads, and quality settings can change based on rights and availability.',
-    },
-  ];
 }

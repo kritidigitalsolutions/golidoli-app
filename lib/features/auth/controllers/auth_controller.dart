@@ -2,13 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
+import 'package:golidoli_app/core/services/firebase_service.dart';
+import 'package:golidoli_app/core/services/google_auth_service.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 
+// ── Splash Controller ──────────────────────────────────────────
 class SplashController extends GetxController
     with GetSingleTickerProviderStateMixin {
-  // ── Animation ──────────────────────────────────────────
   late AnimationController animationController;
   late Animation<double> fadeAnimation;
   late Animation<double> scaleAnimation;
@@ -51,10 +52,7 @@ class SplashController extends GetxController
   }
 }
 
-// =========================================
-// Onboarding controller
-// ==============================================
-
+// ── Onboarding Controller & Model ──────────────────────────────
 class OnboardingPage {
   final String title;
   final String titleHighlight;
@@ -77,24 +75,22 @@ class OnboardingController extends GetxController {
   final AuthDatasource _authDatasource = AuthDatasource();
   final PageController pageController = PageController();
 
-  // ── Observables ─────────────────────────────────────
   final RxInt currentPage = 0.obs;
 
-  // ── Pages data ──────────────────────────────────────
   final RxList<OnboardingPage> pages = <OnboardingPage>[
     const OnboardingPage(
       title: 'Blockbuster Movies',
       titleHighlight: '& Web Series',
       subtitle: 'Enjoy premium entertainment in\ncinematic widescreen format.',
       imagePath: 'assets/auth/onborading1.png',
-      accentColor: Color(0xFFFF0564), // AppColors.accentColor
+      accentColor: Color(0xFFFF0564),
     ),
     const OnboardingPage(
       title: 'Short Vertical',
       titleHighlight: 'Dramas',
       subtitle: 'Binge addictive stories\nanytime, anywhere.',
       imagePath: 'assets/auth/onb2.png',
-      accentColor: Color(0xFFFED301), // AppColors.primaryColor
+      accentColor: Color(0xFFFED301),
     ),
   ].obs;
 
@@ -126,11 +122,9 @@ class OnboardingController extends GetxController {
     }
   }
 
-  // ── Getters ─────────────────────────────────────────
   bool get isLastPage => currentPage.value >= pages.length - 1;
   int get totalPages => pages.length;
 
-  // ── Methods ─────────────────────────────────────────
   void onPageChanged(int index) {
     currentPage.value = index;
   }
@@ -153,58 +147,21 @@ class OnboardingController extends GetxController {
   }
 }
 
-// ====================================================
-// Auth controller like login mobile enter otp
-// ==================================================
-
+// ── Auth Controller (Login, OTP, Google Auth) ──────────────────
 class AuthController extends GetxController {
   final AuthDatasource authDatasource = AuthDatasource();
-  // ── Mobile number ────────────────────────────────────
+  final GoogleAuthService googleAuthService = GoogleAuthService();
+
+  // ── Google Sign-In ──────────────────────────────────
+  final RxBool isGoogleLoading = false.obs;
+
+  // ── Mobile ──────────────────────────────────────────
   final TextEditingController mobileController = TextEditingController();
   final RxString mobileNumber = ''.obs;
   final RxBool isMobileValid = false.obs;
-  final RxBool isOtpValid = false.obs;
   final RxString mobileError = ''.obs;
   final RxBool sendOtpStatus = false.obs;
-  final TextEditingController otpController = TextEditingController();
-
-  final RxString otp = ''.obs;
-  final RxBool verifyOtpStatus = false.obs;
-  Future<void> sendOTP() async {
-    if (!isMobileValid.value) {
-      Get.snackbar(
-        'Enter mobile number',
-        mobileError.value,
-        backgroundColor: Colors.red,
-      );
-      return;
-    }
-
-    try {
-      // Start loading
-      sendOtpStatus.value = true;
-
-      final result = await authDatasource.sendOtp(phone: mobileNumber.value);
-
-      // Stop loading
-      sendOtpStatus.value = false;
-
-      if (result) {
-        Get.snackbar("Success", "OTP sent successfully");
-
-        Get.toNamed(
-          AppRoutes.verifyOtp,
-          arguments: {'mobile': mobileController.text},
-        );
-      } else {
-        Get.snackbar("Error", "Failed to send OTP");
-      }
-    } catch (e) {
-      sendOtpStatus.value = false;
-
-      Get.snackbar("Error", e.toString());
-    }
-  }
+  final RxBool resendOtpStatus = false.obs;
 
   // ── OTP ──────────────────────────────────────────────
   final List<TextEditingController> otpControllers = List.generate(
@@ -212,159 +169,329 @@ class AuthController extends GetxController {
     (_) => TextEditingController(),
   );
   final List<FocusNode> otpFocusNodes = List.generate(4, (_) => FocusNode());
-  final RxString otpValue = ''.obs;
-  final RxBool isOtpComplete = false.obs;
+  final RxString otp = ''.obs;
+  final RxBool isOtpValid = false.obs;
   final RxString otpError = ''.obs;
+  final RxBool verifyOtpStatus = false.obs;
 
   // ── Timer ────────────────────────────────────────────
-  final RxInt timerSeconds = 45.obs;
-  final RxBool canResend = false.obs;
   Timer? _timer;
+  final RxInt secondsRemaining = 30.obs;
+  final RxBool canResend = false.obs;
 
-  // ── Loading ──────────────────────────────────────────
-  final RxBool isLoading = false.obs;
+  String get formattedTimer {
+    final min = (secondsRemaining.value ~/ 60).toString().padLeft(2, '0');
+    final sec = (secondsRemaining.value % 60).toString().padLeft(2, '0');
+    return "$min:$sec";
+  }
 
   @override
   void onInit() {
     super.onInit();
-    mobileController.addListener(() {
-      final text = mobileController.text;
-      mobileNumber.value = text;
+    if (Get.arguments != null && Get.arguments['mobile'] != null) {
+      mobileNumber.value = Get.arguments['mobile'].toString();
+      mobileController.text = mobileNumber.value;
+    }
+  }
 
-      if (text.isEmpty) {
-        mobileError.value = '';
-        isMobileValid.value = false;
+  // ── Mobile Validation ────────────────────────────────
+  void validateMobile(String value) {
+    mobileNumber.value = value.trim();
+
+    if (value.isEmpty) {
+      mobileError.value = "Mobile number is required";
+      isMobileValid.value = false;
+    } else if (value.length != 10) {
+      mobileError.value = "Enter valid 10-digit mobile number";
+      isMobileValid.value = false;
+    } else if (!RegExp(r'^[6-9]\d{9}$').hasMatch(value)) {
+      mobileError.value = "Indian mobile numbers must start with 6, 7, 8, or 9";
+      isMobileValid.value = false;
+    } else {
+      mobileError.value = "";
+      isMobileValid.value = true;
+    }
+  }
+
+  // ── Send OTP ─────────────────────────────────────────
+  Future<void> sendOTP() async {
+    if (!isMobileValid.value) {
+      Get.snackbar(
+        "Error",
+        mobileError.value.isNotEmpty
+            ? mobileError.value
+            : "Enter valid mobile number",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      sendOtpStatus.value = true;
+      final result = await authDatasource.sendOtp(phone: mobileNumber.value);
+      sendOtpStatus.value = false;
+
+      if (result) {
+        startTimer();
+        Get.toNamed(
+          AppRoutes.verifyOtp,
+          arguments: {"mobile": mobileNumber.value},
+        );
       } else {
-        final regExp = RegExp(r'^[6-9]\d{9}$');
-        if (!regExp.hasMatch(text)) {
-          if (text.length < 10) {
-            mobileError.value = 'Please enter a 10-digit number';
-          } else if (!RegExp(r'^[6-9]').hasMatch(text)) {
-            mobileError.value =
-                'Indian mobile numbers must start with 6, 7, 8, or 9';
-          } else {
-            mobileError.value = 'Invalid Indian mobile number';
-          }
-          isMobileValid.value = false;
-        } else {
-          mobileError.value = '';
-          isMobileValid.value = true;
-        }
+        Get.snackbar(
+          "Error",
+          "Failed to send OTP",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
       }
-    });
+    } catch (e) {
+      sendOtpStatus.value = false;
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
-  // ── Mobile screen ────────────────────────────────────
-  void sendOtp() async {
-    if (!isMobileValid.value) return;
-    isLoading.value = true;
-    await Future.delayed(const Duration(seconds: 1)); // Simulated API call
-    isLoading.value = false;
-    Get.toNamed(
-      AppRoutes.verifyOtp,
-      arguments: {'mobile': mobileController.text},
-    );
-    _startTimer();
-  }
-
-  // ── OTP screen ───────────────────────────────────────
+  // ── OTP Changed ──────────────────────────────────────
   void onOtpChanged(String value, int index) {
-    if (value.length == 1 && index < 3) {
+    if (value.isNotEmpty && index < 3) {
       otpFocusNodes[index + 1].requestFocus();
     }
+
     if (value.isEmpty && index > 0) {
       otpFocusNodes[index - 1].requestFocus();
     }
-    _updateOtpValue();
-  }
 
-  void _updateOtpValue() {
-    final otp = otpControllers.map((c) => c.text).join();
-    otpValue.value = otp;
-    isOtpComplete.value = otp.length == 4;
+    otp.value = otpControllers.map((e) => e.text).join();
+    isOtpValid.value = otp.value.length == 4;
 
-    if (isOtpComplete.value) {
-      _verifyOtp();
-    }
-  }
-
-  void _verifyOtp() async {
-    isLoading.value = true;
-    otpError.value = '';
-    await Future.delayed(const Duration(seconds: 1)); // Simulated API call
-    isLoading.value = false;
-
-    if (otpValue.value == '1234') {
-      _timer?.cancel();
-      Get.offNamed(AppRoutes.verified);
+    if (!isOtpValid.value) {
+      otpError.value = "Enter valid OTP";
     } else {
-      otpError.value = 'Incorrect OTP. Try entering 1234.';
-      isOtpComplete.value = false;
-      for (var c in otpControllers) {
-        c.clear();
-      }
-      otpFocusNodes[0].requestFocus();
+      otpError.value = "";
+      otpFocusNodes[index].unfocus();
+      verifyOTP(); // auto-trigger verification
     }
   }
 
-  void resendOtp() {
-    if (!canResend.value) return;
-    for (var c in otpControllers) {
-      c.clear();
+  // ── Verify OTP ───────────────────────────────────────
+  Future<void> verifyOTP() async {
+    if (!isOtpValid.value) {
+      otpError.value = "Please enter a valid OTP";
+      return;
     }
-    otpValue.value = '';
-    isOtpComplete.value = false;
-    otpError.value = '';
-    _startTimer();
-    // TODO: actual resend API call
-  }
 
-  void _startTimer() {
-    timerSeconds.value = 45;
-    canResend.value = false;
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (timerSeconds.value > 0) {
-        timerSeconds.value--;
+    try {
+      verifyOtpStatus.value = true;
+      final enteredOtp = otpControllers.map((e) => e.text).join();
+
+      final result = await authDatasource.verifyOtp(
+        phone: mobileNumber.value,
+        otp: enteredOtp,
+      );
+
+      verifyOtpStatus.value = false;
+
+      if (result.success) {
+        _timer?.cancel();
+        if (!result.profileComplete) {
+          Get.offAllNamed(
+            AppRoutes.createAccount,
+            arguments: {"mobile": mobileNumber.value},
+          );
+        } else {
+          Get.offAllNamed(AppRoutes.home);
+        }
       } else {
+        Get.snackbar(
+          "Error",
+          result.message ?? "Invalid OTP",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      verifyOtpStatus.value = false;
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  // ── Timer & Resend OTP ───────────────────────────────
+  void startTimer() {
+    _timer?.cancel();
+    canResend.value = false;
+    secondsRemaining.value = 30;
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (secondsRemaining.value <= 1) {
+        secondsRemaining.value = 0;
         canResend.value = true;
-        t.cancel();
+        timer.cancel();
+      } else {
+        secondsRemaining.value--;
       }
     });
   }
 
-  String get formattedTimer {
-    final m = timerSeconds.value ~/ 60;
-    final s = timerSeconds.value % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  Future<void> resendOtp() async {
+    if (!canResend.value || resendOtpStatus.value) return;
+
+    if (mobileNumber.value.isEmpty) {
+      if (Get.arguments != null && Get.arguments['mobile'] != null) {
+        mobileNumber.value = Get.arguments['mobile'].toString();
+      }
+    }
+
+    try {
+      resendOtpStatus.value = true;
+      final result = await authDatasource.sendOtp(phone: mobileNumber.value);
+      resendOtpStatus.value = false;
+
+      if (result) {
+        for (var e in otpControllers) {
+          e.clear();
+        }
+
+        otp.value = "";
+        otpError.value = "";
+        isOtpValid.value = false;
+
+        startTimer();
+
+        if (otpFocusNodes.isNotEmpty) {
+          otpFocusNodes.first.requestFocus();
+        }
+
+        Get.snackbar(
+          "Success",
+          "OTP sent again successfully",
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+      } else {
+        Get.snackbar(
+          "Error",
+          "Failed to resend OTP",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      resendOtpStatus.value = false;
+      Get.snackbar(
+        "Error",
+        e.toString(),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    }
   }
 
-  String get maskedMobile {
-    final args = Get.arguments as Map<String, dynamic>?;
-    return args?['mobile'] ?? mobileController.text;
+  // ── Google Sign-In ──────────────────────────────────
+  Future<void> loginWithGoogle() async {
+    if (isGoogleLoading.value) return;
+
+    try {
+      isGoogleLoading.value = true;
+      final account = await googleAuthService.signIn();
+
+      if (account == null) {
+        // User cancelled sign-in
+        isGoogleLoading.value = false;
+        return;
+      }
+
+      final auth = await googleAuthService.getAuthentication(account);
+      final idToken = auth?.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
+        isGoogleLoading.value = false;
+        Get.snackbar(
+          "Login Failed",
+          "Failed to get Google ID token. Please try again.",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+        return;
+      }
+
+      // Fetch FCM Token if available
+      String? fcmToken;
+      try {
+        if (Get.isRegistered<NotificationService>()) {
+          fcmToken = await NotificationService.to.getFcmToken();
+        }
+      } catch (e) {
+        debugPrint("FCM token fetch error on Google Login: $e");
+      }
+
+      final result = await authDatasource.googleLogin(
+        idToken: idToken,
+        fcmToken: fcmToken,
+      );
+
+      isGoogleLoading.value = false;
+
+      if (result.success) {
+        // Sync FCM token if NotificationService is initialized
+        try {
+          if (Get.isRegistered<NotificationService>()) {
+            NotificationService.to.uploadToken();
+          }
+        } catch (e) {
+          debugPrint("FCM upload error on Google Login: $e");
+        }
+
+        Get.offAllNamed(AppRoutes.home);
+      } else {
+        Get.snackbar(
+          "Login Failed",
+          result.message ?? "Failed to sign in with Google. Please try again.",
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.TOP,
+        );
+      }
+    } catch (e) {
+      isGoogleLoading.value = false;
+      debugPrint("Google Sign In Exception: $e");
+      Get.snackbar(
+        "Error",
+        "Google Sign-In failed: ${e.toString()}",
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+      );
+    }
   }
 
-  // ── Verified screen ──────────────────────────────────
+  // ── Verified screen helper ───────────────────────────
   void continueToHome() {
-    Get.toNamed(AppRoutes.createAccount);
+    Get.offAllNamed(AppRoutes.createAccount);
   }
 
   @override
   void onClose() {
+    _timer?.cancel();
     mobileController.dispose();
-    for (var c in otpControllers) {
+    for (final c in otpControllers) {
       c.dispose();
     }
-    for (var f in otpFocusNodes) {
+    for (final f in otpFocusNodes) {
       f.dispose();
     }
-    _timer?.cancel();
     super.onClose();
   }
 }
-
-// ===============================================================
-// Register controller
-// =====================================================================
-
-// ── Interest model ────────────────────────────────────

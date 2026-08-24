@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
@@ -13,7 +12,7 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
   @override
   Widget build(BuildContext context) {
-    final FetchProfileController controllers = Get.find();
+    final ProfileController controllers = Get.find();
     final controller = Get.put(ProfileController());
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
@@ -49,7 +48,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUserHeader(FetchProfileController controller) {
+  Widget _buildUserHeader(ProfileController controller) {
     return Obx(() {
       final user = controller.user.value;
 
@@ -186,7 +185,7 @@ class ProfileScreen extends StatelessWidget {
       'subscription': Icons.card_membership_outlined,
       'language': Icons.language_outlined,
       'download': Icons.download_outlined,
-      //'content': Icons.tune_outlined,
+      'content': Icons.tune_outlined,
       'settings': Icons.settings_outlined,
       'privacy': Icons.privacy_tip_outlined,
       'terms': Icons.description_outlined,

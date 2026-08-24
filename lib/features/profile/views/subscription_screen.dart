@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
-import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/payment_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import '../controllers/plan_controller.dart';
@@ -19,14 +19,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isYearly = false;
   late final PlanController _controller;
   late final PaymentController _paymentController;
-  late final FetchProfileController _profileController;
+  late final ProfileController _profileController;
 
   @override
   void initState() {
     super.initState();
     _controller = Get.put(PlanController());
     _paymentController = Get.put(PaymentController());
-    _profileController = Get.put(FetchProfileController());
+    _profileController = Get.put(ProfileController());
     _controller.fetchAllPlans(name: 'monthly');
   }
 

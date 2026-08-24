@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "807853365926-1rhv4tvqdhlilkd3h8jaa7khbro0p037.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.company.golidoli",
+            "certificate_hash": "6c9516e73daa34598a44f042b86b4d1d7e109cdd"
+          }
+        },
+        {
           "client_id": "807853365926-ad785gcjvkcq1oiusk3sn9uisc586k4q.apps.googleusercontent.com",
           "client_type": 3
         }

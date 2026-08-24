@@ -106,8 +106,20 @@ class RegistrationController extends GetxController {
   void onInit() {
     super.onInit();
 
-    if (Get.arguments != null && Get.arguments['mobile'] != null) {
-      phoneController.text = Get.arguments['mobile'];
+    if (Get.arguments != null) {
+      if (Get.arguments['mobile'] != null) {
+        phoneController.text = Get.arguments['mobile'].toString();
+      }
+      if (Get.arguments['name'] != null &&
+          Get.arguments['name'].toString().isNotEmpty) {
+        nameController.text = Get.arguments['name'].toString();
+        name.value = nameController.text.trim();
+      }
+      if (Get.arguments['email'] != null &&
+          Get.arguments['email'].toString().isNotEmpty) {
+        emailController.text = Get.arguments['email'].toString();
+        email.value = emailController.text.trim();
+      }
     }
 
     nameController.addListener(() {

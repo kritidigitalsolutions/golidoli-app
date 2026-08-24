@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controllers.dart';
+import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class VerifyOtpScreen extends StatefulWidget {
@@ -13,14 +13,14 @@ class VerifyOtpScreen extends StatefulWidget {
 }
 
 class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
-  late final AuthControllers controllers;
+  late final AuthController controllers;
 
   @override
   void initState() {
     super.initState();
-    controllers = Get.isRegistered<AuthControllers>()
-        ? Get.find<AuthControllers>()
-        : Get.put(AuthControllers());
+    controllers = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>()
+        : Get.put(AuthController());
 
     final args = Get.arguments;
     if (args is Map && args['mobile'] != null) {

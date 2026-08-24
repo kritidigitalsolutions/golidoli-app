@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/features/auth/controllers/auth_controllers.dart';
+import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class EnterMobileScreen extends StatelessWidget {
   EnterMobileScreen({super.key});
 
-  final AuthControllers controllers = Get.put(AuthControllers());
+  final AuthController controllers = Get.put(AuthController());
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -170,7 +170,7 @@ class _PhoneIllustration extends StatelessWidget {
 
 // ─── Mobile input field ───────────────────────────────
 class _MobileInputField extends StatelessWidget {
-  final AuthControllers controller;
+  final AuthController controller;
   const _MobileInputField({required this.controller});
 
   @override

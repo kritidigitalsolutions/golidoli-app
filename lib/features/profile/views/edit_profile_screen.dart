@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/profile/controllers/edit_profile_controller.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
-import 'package:golidoli_app/features/profile/controllers/fetch_profile_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/shared/widgets/custom_image_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -21,7 +21,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final FetchProfileController fetchController = Get.find();
+  final ProfileController fetchController = Get.find();
 
   late final EditProfileController _editController = Get.put(
     EditProfileController(),
@@ -88,7 +88,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    Get.delete<FetchProfileController>();
+    Get.delete<ProfileController>();
     super.dispose();
   }
 

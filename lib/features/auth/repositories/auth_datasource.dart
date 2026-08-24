@@ -54,18 +54,91 @@ class AuthDatasource {
 
       if (response != null) {
         final token = response["token"] ?? "";
-        await StorageService.saveToken(token);
-        _apiService.setToken(token);
+        if (token.isNotEmpty) {
+          await StorageService.saveToken(token);
+          _apiService.setToken(token);
+        }
 
+        UserModel? userModel;
+        Map<String, dynamic>? userData;
+        if (response["user"] is Map) {
+          userData = Map<String, dynamic>.from(response["user"]);
+          userModel = UserModel.fromJson(userData);
+          await StorageService.saveUser(userModel);
+        }
+
+        final bool isNewUser = response["isNewUser"] == true;
         final bool profileComplete =
-            response["user"]["profileComplete"] ?? false;
-        return VerifyOtpResult(success: true, profileComplete: profileComplete);
+            (userData != null && (userData["profileComplete"] == true)) ||
+            (response["profileComplete"] == true);
+
+        return VerifyOtpResult(
+          success: true,
+          profileComplete: profileComplete,
+          isNewUser: isNewUser,
+          token: token,
+          message: response["message"]?.toString(),
+          user: userModel,
+          rawUser: userData,
+        );
       }
 
       return VerifyOtpResult.failure();
     } catch (e) {
       debugPrint("Verify OTP Error: $e");
-      return VerifyOtpResult.failure();
+      return VerifyOtpResult.failure(e.toString());
+    }
+  }
+
+  Future<VerifyOtpResult> googleLogin({
+    required String idToken,
+    String? fcmToken,
+  }) async {
+    try {
+      final Map<String, dynamic> body = {
+        "idToken": idToken,
+        if (fcmToken != null && fcmToken.isNotEmpty) "fcmToken": fcmToken,
+      };
+
+      debugPrint("Sending Google Login Payload: $body");
+      final response = await _apiService.postApi(AppUrl.googleLogin, body);
+
+      if (response != null) {
+        final token = response["token"] ?? "";
+        if (token.isNotEmpty) {
+          await StorageService.saveToken(token);
+          _apiService.setToken(token);
+        }
+
+        UserModel? userModel;
+        Map<String, dynamic>? userData;
+        if (response["user"] is Map) {
+          userData = Map<String, dynamic>.from(response["user"]);
+          userModel = UserModel.fromJson(userData);
+          await StorageService.saveUser(userModel);
+        }
+
+        final bool isNewUser = response["isNewUser"] == true;
+        final bool profileComplete =
+            (userData != null && (userData["profileComplete"] == true)) ||
+            (response["profileComplete"] == true) ||
+            (!isNewUser && userModel != null && userModel.name.isNotEmpty);
+
+        return VerifyOtpResult(
+          success: response["success"] == true || token.isNotEmpty,
+          profileComplete: profileComplete,
+          isNewUser: isNewUser,
+          token: token,
+          message: response["message"]?.toString(),
+          user: userModel,
+          rawUser: userData,
+        );
+      }
+
+      return VerifyOtpResult.failure("Invalid response from server");
+    } catch (e) {
+      debugPrint("Google Login Error: $e");
+      return VerifyOtpResult.failure(e.toString());
     }
   }
 
@@ -94,7 +167,9 @@ class AuthDatasource {
     try {
       final response = await _apiService.getApi(AppUrl.fetchProfile);
       if (response != null && response["user"] != null) {
-        return UserModel.fromJson(response["user"]);
+        final userModel = UserModel.fromJson(response["user"]);
+        await StorageService.saveUser(userModel);
+        return userModel;
       }
       return null;
     } catch (e) {
@@ -159,10 +234,28 @@ class AuthDatasource {
 class VerifyOtpResult {
   final bool success;
   final bool profileComplete;
+  final bool isNewUser;
+  final String? message;
+  final String? token;
+  final UserModel? user;
+  final Map<String, dynamic>? rawUser;
 
-  VerifyOtpResult({required this.success, required this.profileComplete});
+  VerifyOtpResult({
+    required this.success,
+    required this.profileComplete,
+    this.isNewUser = false,
+    this.message,
+    this.token,
+    this.user,
+    this.rawUser,
+  });
 
-  factory VerifyOtpResult.failure() {
-    return VerifyOtpResult(success: false, profileComplete: false);
+  factory VerifyOtpResult.failure([String? message]) {
+    return VerifyOtpResult(
+      success: false,
+      profileComplete: false,
+      isNewUser: false,
+      message: message,
+    );
   }
 }

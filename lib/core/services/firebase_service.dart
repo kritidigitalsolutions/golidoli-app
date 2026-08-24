@@ -33,6 +33,18 @@ class NotificationService extends GetxController {
   final RxInt unreadCount = 0.obs;
 
   String? _currentToken;
+  String? get currentToken => _currentToken;
+
+  Future<String?> getFcmToken() async {
+    if (GetPlatform.isWeb) return null;
+    try {
+      _currentToken ??= await _firebaseMessaging.getToken();
+      return _currentToken;
+    } catch (e) {
+      print("Error getting FCM token: $e");
+      return _currentToken;
+    }
+  }
 
   Future<void> init() async {
     if (GetPlatform.isWeb) {

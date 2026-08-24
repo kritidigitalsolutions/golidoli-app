@@ -21,14 +21,18 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json["id"] ?? "",
-      name: json["name"] ?? "",
-      email: json["email"] ?? "",
-      phone: json["phone"] ?? "",
+      id: json["id"]?.toString() ?? json["_id"]?.toString() ?? "",
+      name: json["name"]?.toString() ?? "",
+      email: json["email"]?.toString() ?? "",
+      phone: json["phone"]?.toString() ?? "",
       interests: List<String>.from(json["interests"] ?? []),
-      profileImage: json["profileImage"] ?? "",
-      profileComplete: json["profileComplete"] ?? false,
-      role: json["role"] ?? "",
+      profileImage: json["profileImage"]?.toString() ??
+          json["photoUrl"]?.toString() ??
+          json["avatar"]?.toString() ??
+          json["image"]?.toString() ??
+          "",
+      profileComplete: json["profileComplete"] == true,
+      role: json["role"]?.toString() ?? "USER",
     );
   }
 

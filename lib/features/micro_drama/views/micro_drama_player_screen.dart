@@ -33,7 +33,6 @@ class MicroDramaPlayerScreen extends StatefulWidget {
   State<MicroDramaPlayerScreen> createState() => _MicroDramaPlayerScreenState();
 }
 
-
 class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   late final PageController _pageController;
   late final MicroDramaController _controller;
@@ -185,8 +184,9 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
                 onToggleLike: () => _toggleLike(index),
                 onBack: _onBack,
                 cwController: _cwController,
-                initialPositionSeconds:
-                    isInitialItem ? widget.initialPositionSeconds : null,
+                initialPositionSeconds: isInitialItem
+                    ? widget.initialPositionSeconds
+                    : null,
                 onEpisodeComplete: () =>
                     _onEpisodeComplete(index, episodes.length),
               );
@@ -243,7 +243,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   final RxBool isDownloaded = false.obs;
 
   Timer? _hideControlsTimer;
-  Timer? _progressTimer;  // fires every 15 s to save progress
+  Timer? _progressTimer; // fires every 15 s to save progress
   bool _hasCompleted = false;
   bool _autoPlayPending = false;
 
@@ -269,8 +269,9 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                   _vpc.setLooping(false);
                   if (widget.initialPositionSeconds != null &&
                       widget.initialPositionSeconds! > 0) {
-                    final startPos =
-                        Duration(seconds: widget.initialPositionSeconds!);
+                    final startPos = Duration(
+                      seconds: widget.initialPositionSeconds!,
+                    );
                     if (startPos < _vpc.value.duration) {
                       _vpc.seekTo(startPos);
                     }
@@ -343,7 +344,8 @@ class _DramaReelItemState extends State<_DramaReelItem> {
     if (duration.inSeconds <= 0) return;
 
     final progressSecs = forceComplete
-        ? (duration.inSeconds * 0.96).round()  // ensure ≥ 95%
+        ? (duration.inSeconds * 0.96)
+              .round() // ensure ≥ 95%
         : position.inSeconds;
 
     widget.cwController.saveProgress(

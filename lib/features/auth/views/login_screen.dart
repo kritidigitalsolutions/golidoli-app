@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
+import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AuthController authController = Get.put(AuthController());
     return Scaffold(
       body: Stack(
         fit: StackFit.expand,
@@ -111,21 +113,14 @@ class LoginScreen extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Google
-                  _SocialButton(
-                    image: AppImages.google,
-
-                    label: 'Continue with Google',
-                    onTap: () {},
+                  Obx(
+                    () => _SocialButton(
+                      image: AppImages.google,
+                      label: 'Continue with Google',
+                      isLoading: authController.isGoogleLoading.value,
+                      onTap: () => authController.loginWithGoogle(),
+                    ),
                   ),
-                  // const SizedBox(height: 12),
-
-                  // // Facebook
-                  // _SocialButton(
-                  //   image: AppImages.facebook,
-
-                  //   label: 'Continue with Facebook',
-                  //   onTap: () {},
-                  // ),
                   const SizedBox(height: 36),
 
                   // Already have an account
@@ -234,11 +229,13 @@ class _SocialButton extends StatelessWidget {
   final String image;
   final String label;
   final VoidCallback onTap;
+  final bool isLoading;
 
   const _SocialButton({
     required this.image,
     required this.label,
     required this.onTap,
+    this.isLoading = false,
   });
 
   @override
@@ -247,21 +244,31 @@ class _SocialButton extends StatelessWidget {
       width: double.infinity,
       height: 52,
       child: OutlinedButton(
-        onPressed: onTap,
+        onPressed: isLoading ? null : onTap,
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: AppColors.borderColor, width: 1.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(image, width: 22, height: 22),
-            const SizedBox(width: 12),
-            Text(label, style: text14(color: AppColors.textColor)),
-          ],
-        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(image, width: 22, height: 22),
+                  const SizedBox(width: 12),
+                  Text(label, style: text14(color: AppColors.textColor)),
+                ],
+              ),
       ),
     );
   }

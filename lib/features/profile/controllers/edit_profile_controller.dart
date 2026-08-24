@@ -6,11 +6,6 @@ import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 
 class EditProfileController extends GetxController {
-  // final UpdateProfileUsecase _updateProfileUsecase;
-
-  // EditProfileController({required UpdateProfileUsecase updateProfileUsecase})
-  //     : _updateProfileUsecase = updateProfileUsecase;
-
   // ── State ─────────────────────────────────────────────────────────────────
   final Rx<UserModel?> user = Rx(null);
   final Rx<File?> localImageFile = Rx(null);
