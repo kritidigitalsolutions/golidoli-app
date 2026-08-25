@@ -1,6 +1,6 @@
 class AppUrl {
-  static const String baseUrl = 'http://192.168.1.9:5000';
-  //static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
+  //static const String baseUrl = 'http://192.168.1.9:5000';
+  static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
   static const String googleLogin = "$baseUrl/api/auth/google-login";
@@ -98,7 +98,8 @@ class AppUrl {
   static String playAudioEpisode(String episodeId) =>
       "$baseUrl/api/audio-episodes/$episodeId/play";
   static const String saveAudioProgress = "$baseUrl/api/audio-progress";
-  static const String continueListening = "$baseUrl/api/audio-progress/continue";
+  static const String continueListening =
+      "$baseUrl/api/audio-progress/continue";
   static String markAudioEpisodeCompleted(String episodeId) =>
       "$baseUrl/api/audio-progress/$episodeId/complete";
   static String audioEpisodeProgress(String episodeId) =>

@@ -506,7 +506,7 @@ class AudioStoriesScreen extends StatelessWidget {
   }
 
   Widget _buildCategoryFilteredList(AudioStoriesController controller) {
-    final stories = controller.categoryStories;
+    final stories = controller.filteredCategoryStories;
     if (stories.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),

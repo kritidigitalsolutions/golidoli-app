@@ -19,7 +19,8 @@ class AudioStoriesController extends GetxController {
   final RxList<AudioStoryModel> topRatedStories = <AudioStoryModel>[].obs;
   final RxList<AudioStoryModel> allStories = <AudioStoryModel>[].obs;
   final RxList<AudioStoryModel> categoryStories = <AudioStoryModel>[].obs;
-  final RxList<AudioProgressModel> continueListeningList = <AudioProgressModel>[].obs;
+  final RxList<AudioProgressModel> continueListeningList =
+      <AudioProgressModel>[].obs;
 
   // Search
   final TextEditingController searchController = TextEditingController();
@@ -55,16 +56,50 @@ class AudioStoriesController extends GetxController {
     try {
       isCategoriesLoading.value = true;
       final result = await _repository.getAudioCategories();
-      final list = <AudioCategoryModel>[
-        const AudioCategoryModel(id: 'all', name: 'All', description: 'All Audio Stories'),
-        ...result.where((c) => c.isActive),
-      ];
-      categories.assignAll(list);
+
+      final activeSorted = result.where((c) => c.isActive).toList()
+        ..sort((a, b) => a.priority.compareTo(b.priority));
+
+      _populateCategories(activeSorted);
     } catch (e) {
       debugPrint("fetchCategories error: $e");
     } finally {
       isCategoriesLoading.value = false;
     }
+  }
+
+  void _populateCategories(List<AudioCategoryModel> apiCats) {
+    final Map<String, AudioCategoryModel> catMap = {};
+    for (var c in apiCats) {
+      if (c.name.trim().isNotEmpty && !catMap.containsKey(c.name.trim().toLowerCase())) {
+        catMap[c.name.trim().toLowerCase()] = c;
+      }
+    }
+
+    // Also collect categories from allStories
+    for (var story in allStories) {
+      for (var c in story.categories) {
+        if (c.name.trim().isNotEmpty && !catMap.containsKey(c.name.trim().toLowerCase())) {
+          catMap[c.name.trim().toLowerCase()] = c;
+        }
+      }
+      if (story.genre.trim().isNotEmpty && story.genre != 'Audio Story' && !catMap.containsKey(story.genre.trim().toLowerCase())) {
+        catMap[story.genre.trim().toLowerCase()] = AudioCategoryModel(
+          id: story.categoryId,
+          name: story.genre,
+        );
+      }
+    }
+
+    final list = <AudioCategoryModel>[
+      const AudioCategoryModel(
+        id: 'all',
+        name: 'All',
+        description: 'All Audio Stories',
+      ),
+      ...catMap.values,
+    ];
+    categories.assignAll(list);
   }
 
   /// 2. Fetch Home Feed (Featured, Recently Added, Top Rated)
@@ -96,32 +131,69 @@ class AudioStoriesController extends GetxController {
     try {
       final stories = await _repository.getAudioStories();
       allStories.assignAll(stories);
-      if (categoryStories.isEmpty && stories.isNotEmpty) {
-        categoryStories.assignAll(stories);
-      }
+      _populateCategories(categories.where((c) => c.id != 'all').toList());
+      _updateCategoryStories();
     } catch (e) {
       debugPrint("fetchAllStories error: $e");
     }
   }
 
+  /// Helper to check if a story belongs to a given category
+  bool _storyMatchesCategory(AudioStoryModel story, AudioCategoryModel cat) {
+    if (cat.id == 'all') return true;
+
+    final targetName = cat.name.trim().toLowerCase();
+    final targetId = cat.id.trim();
+    final targetSlug = cat.slug.trim().toLowerCase();
+
+    // Check category id
+    if (targetId.isNotEmpty) {
+      if (story.categoryId.trim() == targetId) return true;
+      if (story.categories.any((c) => c.id.trim() == targetId)) return true;
+    }
+
+    // Check slug
+    if (targetSlug.isNotEmpty) {
+      if (story.categories.any((c) => c.slug.trim().toLowerCase() == targetSlug)) {
+        return true;
+      }
+    }
+
+    // Check name
+    if (targetName.isNotEmpty) {
+      if (story.genre.trim().toLowerCase() == targetName) return true;
+      if (story.categories.any((c) => c.name.trim().toLowerCase() == targetName)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /// 5. Category Selection
-  void onCategorySelected(int index) async {
+  void onCategorySelected(int index) {
     selectedCategoryIndex.value = index;
-    if (index == 0) {
+    _updateCategoryStories();
+  }
+
+  void _updateCategoryStories() {
+    final index = selectedCategoryIndex.value;
+    if (index <= 0 || index >= categories.length) {
       categoryStories.assignAll(allStories);
       return;
     }
 
     final selectedCat = categories[index];
-    try {
-      isLoading.value = true;
-      final stories = await _repository.getAudioStories(categoryId: selectedCat.id);
-      categoryStories.assignAll(stories);
-    } catch (e) {
-      debugPrint("onCategorySelected error: $e");
-    } finally {
-      isLoading.value = false;
-    }
+    final filtered = allStories.where((s) => _storyMatchesCategory(s, selectedCat)).toList();
+    categoryStories.assignAll(filtered);
+  }
+
+  List<AudioStoryModel> get filteredCategoryStories {
+    final index = selectedCategoryIndex.value;
+    if (index <= 0 || index >= categories.length) return allStories;
+
+    final selectedCat = categories[index];
+    return allStories.where((s) => _storyMatchesCategory(s, selectedCat)).toList();
   }
 
   /// 6. Search Stories
@@ -158,14 +230,19 @@ class AudioStoriesController extends GetxController {
     return null;
   }
 
-  List<AudioStoryModel> get topAudioStories =>
-      topRatedStories.isNotEmpty ? topRatedStories : allStories.take(5).toList();
+  List<AudioStoryModel> get topAudioStories => topRatedStories.isNotEmpty
+      ? topRatedStories
+      : allStories.take(5).toList();
 
-  List<AudioStoryModel> get recentlyAdded =>
-      recentlyAddedStories.isNotEmpty ? recentlyAddedStories : allStories.skip(2).take(5).toList();
+  List<AudioStoryModel> get recentlyAdded => recentlyAddedStories.isNotEmpty
+      ? recentlyAddedStories
+      : allStories.skip(2).take(5).toList();
 
   void onStoryTap(AudioStoryModel story) {
-    Get.toNamed(AppRoutes.audioDetail, arguments: story.id.isNotEmpty ? story.id : story);
+    Get.toNamed(
+      AppRoutes.audioDetail,
+      arguments: story.id.isNotEmpty ? story.id : story,
+    );
   }
 
   void onContinueListeningTap(AudioProgressModel item) {
