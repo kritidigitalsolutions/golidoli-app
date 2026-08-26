@@ -3,26 +3,80 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/audio_play/controllers/audio_stories_controller.dart';
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
+import 'package:golidoli_app/features/audio_play/widgets/audio_mini_player.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
-class AudioStoriesScreen extends StatelessWidget {
+class AudioStoriesScreen extends StatefulWidget {
   const AudioStoriesScreen({super.key});
 
   @override
+  State<AudioStoriesScreen> createState() => _AudioStoriesScreenState();
+}
+
+class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
+  late final AudioStoriesController controller;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<AudioStoriesController>()
+        ? Get.find<AudioStoriesController>()
+        : Get.put(AudioStoriesController());
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      controller.fetchMoreStories();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(AudioStoriesController());
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
+      bottomNavigationBar: const AudioMiniPlayer(withSystemPadding: true),
       body: SafeArea(
         child: RefreshIndicator(
           color: AppColors.primaryColor,
           backgroundColor: AppColors.surfaceColor,
           onRefresh: controller.loadInitialData,
           child: CustomScrollView(
+            controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildTopBar(controller)),
               SliverToBoxAdapter(child: _buildSearchBar(controller)),
               SliverToBoxAdapter(child: _buildBody(controller)),
+              SliverToBoxAdapter(
+                child: Obx(() {
+                  if (controller.isLoadingMore.value) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                }),
+              ),
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
             ],
           ),

@@ -45,15 +45,24 @@ class WatchlistItem {
   });
 
   factory WatchlistItem.fromJson(Map<String, dynamic> json) {
+    WatchlistMediaItem? mediaItem;
+    if (json['item'] is Map<String, dynamic>) {
+      mediaItem = WatchlistMediaItem.fromJson(json['item']);
+    } else if (json['itemId'] is Map<String, dynamic>) {
+      mediaItem = WatchlistMediaItem.fromJson(json['itemId']);
+    } else if (json['item'] is String) {
+      mediaItem = WatchlistMediaItem(id: json['item']);
+    } else if (json['itemId'] is String) {
+      mediaItem = WatchlistMediaItem(id: json['itemId']);
+    }
+
     return WatchlistItem(
-      id: json['_id'],
-      user: json['user'],
-      item: json['item'] is Map<String, dynamic>
-          ? WatchlistMediaItem.fromJson(json['item'])
-          : null,
-      itemModel: json['itemModel'],
-      createdAt: json['createdAt'],
-      updatedAt: json['updatedAt'],
+      id: json['_id']?.toString() ?? json['id']?.toString(),
+      user: json['user']?.toString(),
+      item: mediaItem,
+      itemModel: json['itemModel']?.toString() ?? json['model']?.toString(),
+      createdAt: json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
     );
   }
 
@@ -92,14 +101,18 @@ class WatchlistMediaItem {
 
   factory WatchlistMediaItem.fromJson(Map<String, dynamic> json) {
     return WatchlistMediaItem(
-      id: json['_id'],
-      title: json['title'],
-      poster: json['poster'],
+      id: json['_id']?.toString() ?? json['id']?.toString(),
+      title: json['title'] ?? json['name'],
+      poster: json['poster'] ?? json['coverImage'] ?? json['thumbnail'],
       banner: json['banner'],
-      releaseYear: json['releaseYear'],
-      genre: json['genre'] != null ? List<String>.from(json['genre']) : [],
+      releaseYear: json['releaseYear'] is int
+          ? json['releaseYear']
+          : int.tryParse(json['releaseYear']?.toString() ?? ''),
+      genre: json['genre'] != null
+          ? List<String>.from(json['genre'].map((e) => e.toString()))
+          : [],
       rating: json['rating']?.toString(),
-      duration: json['duration'],
+      duration: json['duration']?.toString(),
     );
   }
 

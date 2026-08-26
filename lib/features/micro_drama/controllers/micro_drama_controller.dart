@@ -2,13 +2,17 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/micro_drama/datasource/micro_drama_datasource.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
-import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart';
+import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart' hide Microdrama;
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
 
 class MicroDramaController extends GetxController {
   // ── State ─────────────────────────────────────────────────────────────────
   final allMicroDramaStatus = Status.init.obs;
   final Rx<MicrodramasResponse?> allMicroDrama = Rx(null);
+  final RxBool isLoadingMore = false.obs;
+  final RxBool hasMore = true.obs;
+  int currentPage = 1;
+  static const int pageSize = 12;
 
   final detailDramaStatus = Status.init.obs;
   final Rx<MicrodramaDetailResponse?> dramaDetail = Rx(null);
@@ -20,10 +24,50 @@ class MicroDramaController extends GetxController {
 
   // ── Actions ───────────────────────────────────────────────────────────────
   Future<void> fetchAllMicroDrama() async {
+    currentPage = 1;
+    hasMore.value = true;
     allMicroDramaStatus.value = Status.loading;
-    final result = await _api.allMicroDrama();
-    allMicroDrama.value = result;
-    allMicroDramaStatus.value = Status.success;
+    final result = await _api.allMicroDrama(page: 1, limit: pageSize);
+    if (result != null) {
+      allMicroDrama.value = result;
+      if (result.microdramas.length < pageSize) {
+        hasMore.value = false;
+      }
+      allMicroDramaStatus.value = Status.success;
+    } else {
+      allMicroDramaStatus.value = Status.error;
+    }
+  }
+
+  Future<void> fetchMoreMicroDrama() async {
+    if (isLoadingMore.value || !hasMore.value) return;
+    isLoadingMore.value = true;
+    try {
+      final nextPage = currentPage + 1;
+      final result = await _api.allMicroDrama(page: nextPage, limit: pageSize);
+      if (result != null && result.microdramas.isNotEmpty) {
+        final current = allMicroDrama.value;
+        if (current != null) {
+          final existingIds = current.microdramas.map((m) => m.id).toSet();
+          final newDramas = result.microdramas.where((m) => !existingIds.contains(m.id)).toList();
+          if (newDramas.isNotEmpty) {
+            final combined = List<Microdrama>.from(current.microdramas)..addAll(newDramas);
+            allMicroDrama.value = current.copyWith(microdramas: combined);
+            currentPage = nextPage;
+          } else {
+            hasMore.value = false;
+          }
+          if (result.microdramas.length < pageSize) {
+            hasMore.value = false;
+          }
+        }
+      } else {
+        hasMore.value = false;
+      }
+    } catch (_) {
+    } finally {
+      isLoadingMore.value = false;
+    }
   }
 
   Future<void> fetchDramaDetail(String id) async {

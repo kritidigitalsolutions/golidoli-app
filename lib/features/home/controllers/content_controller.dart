@@ -14,16 +14,16 @@ class ContentController extends GetxController {
   final _api = HomeDatasource();
 
   // ── Actions ───────────────────────────────────────────────────────────────
-  Future<void> fetchAllContent() async {
-    allContentStatus.value = Status.loading;
-    final result = await _api.allContent();
-    if (result != null) {
-      allContents.value = result;
-      allContentStatus.value = Status.success;
-    } else {
-      allContentStatus.value = Status.error;
-    }
-  }
+  // Future<void> fetchAllContent() async {
+  //   allContentStatus.value = Status.loading;
+  //   final result = await _api.allContent();
+  //   if (result != null) {
+  //     allContents.value = result;
+  //     allContentStatus.value = Status.success;
+  //   } else {
+  //     allContentStatus.value = Status.error;
+  //   }
+  // }
 
   Future<void> searchContent(String query) async {
     if (query.trim().isEmpty) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
+import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -10,6 +11,7 @@ import '../../../constants/enums.dart';
 import '../models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
+import 'package:golidoli_app/routes/app_routes.dart';
 
 class MovieDetailsScreen extends StatefulWidget {
   const MovieDetailsScreen({super.key, this.id});
@@ -472,41 +474,130 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           ),
           const SizedBox(height: 10),
           // Download button
-          GestureDetector(
-            onTap: () {
-              // Handle download
-            },
-            child: Container(
-              height: 44,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.borderColor.withOpacity(0.4),
+          Obx(() {
+            final downloadService = AppDownloadService.to;
+            final isDownloaded = downloadService.isDownloaded(movie.id);
+            final isDownloading = downloadService.isDownloading(movie.id);
+            final progress = downloadService.getProgress(movie.id);
+
+            return GestureDetector(
+              onTap: () {
+                if (isDownloading) return;
+                if (isDownloaded) {
+                  _showDownloadOptions(context, movie, downloadService);
+                } else {
+                  downloadService.downloadMedia(
+                    id: movie.id,
+                    title: movie.title,
+                    parentTitle: movie.genre.join(', '),
+                    coverImage: movie.poster.isNotEmpty ? movie.poster : movie.banner,
+                    remoteUrl: movie.videoUrl,
+                    mediaType: DownloadMediaType.movie,
+                  );
+                }
+              },
+              child: Container(
+                height: 44,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDownloaded
+                      ? AppColors.primaryColor.withValues(alpha: 0.15)
+                      : AppColors.surfaceColor,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDownloaded
+                        ? AppColors.primaryColor
+                        : AppColors.borderColor.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isDownloading)
+                      Container(
+                        width: 18,
+                        height: 18,
+                        margin: const EdgeInsets.only(right: 8),
+                        child: CircularProgressIndicator(
+                          value: progress > 0 ? progress : null,
+                          strokeWidth: 2,
+                          color: AppColors.primaryColor,
+                        ),
+                      )
+                    else
+                      Icon(
+                        isDownloaded ? Icons.download_done_rounded : Icons.download_outlined,
+                        color: isDownloaded ? AppColors.primaryColor : AppColors.secondaryTextColor,
+                        size: 18,
+                      ),
+                    const SizedBox(width: 8),
+                    Text(
+                      isDownloading
+                          ? 'Downloading ${(progress * 100).toInt()}%'
+                          : (isDownloaded ? 'Downloaded (Offline Ready)' : 'Download Movie'),
+                      style: text13(
+                        color: isDownloaded ? AppColors.primaryColor : AppColors.secondaryTextColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.download_outlined,
-                    color: AppColors.secondaryTextColor,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Download',
-                    style: text13(
-                      color: AppColors.secondaryTextColor,
-                      fontWeight: FontWeight.w500,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _showDownloadOptions(
+    BuildContext context,
+    MovieModel movie,
+    AppDownloadService downloadService,
+  ) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(movie.title, style: text16(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('Downloaded for offline viewing', style: text12(color: AppColors.secondaryTextColor)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primaryColor),
+              title: Text('Watch Offline', style: text14(color: AppColors.white)),
+              onTap: () {
+                Get.back();
+                final localPath = downloadService.getLocalFilePath(movie.id);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => MoviePlayerScreen(
+                      videoUrl: localPath ?? movie.videoUrl,
+                      title: movie.title,
+                      contentId: movie.id,
+                      contentType: 'movie',
                     ),
                   ),
-                ],
-              ),
+                );
+              },
             ),
-          ),
-        ],
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.errorColor),
+              title: Text('Delete Download', style: text14(color: AppColors.errorColor)),
+              onTap: () {
+                Get.back();
+                downloadService.removeDownload(movie.id);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -574,12 +665,11 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           const SizedBox(height: 12),
           GestureDetector(
             onTap: () {
-              // Navigate to all movies
-              Navigator.pop(context);
+              Get.toNamed(AppRoutes.movieListing);
             },
             child: Center(
               child: Text(
-                'Explore More',
+                'Explore More Movies',
                 style: text13(
                   color: AppColors.accentColor,
                   fontWeight: FontWeight.w600,

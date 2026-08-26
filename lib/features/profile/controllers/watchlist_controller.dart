@@ -27,24 +27,30 @@ class WatchlistController extends GetxController {
     switch (selectedTabIndex.value) {
       case 0:
         return allItems
-            .where((item) =>
-                item.itemModel?.toLowerCase() == 'movie' ||
-                item.itemModel?.toLowerCase() == 'movies')
+            .where(
+              (item) =>
+                  item.itemModel?.toLowerCase() == 'movie' ||
+                  item.itemModel?.toLowerCase() == 'movies',
+            )
             .toList();
       case 1:
         return allItems
-            .where((item) =>
-                item.itemModel?.toLowerCase() == 'series' ||
-                item.itemModel?.toLowerCase() == 'web_series' ||
-                item.itemModel?.toLowerCase() == 'webseries')
+            .where(
+              (item) =>
+                  item.itemModel?.toLowerCase() == 'series' ||
+                  item.itemModel?.toLowerCase() == 'web_series' ||
+                  item.itemModel?.toLowerCase() == 'webseries',
+            )
             .toList();
       case 2:
         return allItems
-            .where((item) =>
-                item.itemModel?.toLowerCase() == 'microdrama' ||
-                item.itemModel?.toLowerCase() == 'micro_drama' ||
-                item.itemModel?.toLowerCase() == 'micro-drama' ||
-                item.itemModel?.toLowerCase() == 'tvshow')
+            .where(
+              (item) =>
+                  item.itemModel?.toLowerCase() == 'microdrama' ||
+                  item.itemModel?.toLowerCase() == 'micro_drama' ||
+                  item.itemModel?.toLowerCase() == 'micro-drama' ||
+                  item.itemModel?.toLowerCase() == 'tvshow',
+            )
             .toList();
       default:
         return allItems;
@@ -66,7 +72,10 @@ class WatchlistController extends GetxController {
   }
 
   bool isItemInWatchlist(String itemId) {
-    return allItems.any((entry) => entry.item?.id == itemId || entry.id == itemId);
+    if (itemId.isEmpty) return false;
+    return allItems.any(
+      (entry) => entry.item?.id == itemId || entry.id == itemId,
+    );
   }
 
   bool isItemLoading(String itemId) {
@@ -74,6 +83,7 @@ class WatchlistController extends GetxController {
   }
 
   WatchlistItem? getWatchlistItemByContentId(String itemId) {
+    if (itemId.isEmpty) return null;
     try {
       return allItems.firstWhere(
         (entry) => entry.item?.id == itemId || entry.id == itemId,
@@ -84,15 +94,15 @@ class WatchlistController extends GetxController {
   }
 
   Future<bool> toggleWatchlist(String itemId) async {
-    if (loadingItemIds.contains(itemId)) return false;
+    if (itemId.isEmpty || loadingItemIds.contains(itemId)) return false;
     loadingItemIds.add(itemId);
 
     try {
       final existing = getWatchlistItemByContentId(itemId);
       if (existing != null && existing.id != null) {
-        return await removeFromWatchlist(existing.id!, showFeedback: false);
+        return await removeFromWatchlist(existing.id!, showFeedback: true);
       } else {
-        return await addToWatchlist(itemId, showFeedback: false);
+        return await addToWatchlist(itemId, showFeedback: true);
       }
     } finally {
       loadingItemIds.remove(itemId);
@@ -103,17 +113,9 @@ class WatchlistController extends GetxController {
     try {
       final response = await _repository.addToWatchlist(itemId);
       if (response != null &&
-          (response['message'] != null || response['data'] != null)) {
-        if (showFeedback) {
-          Get.snackbar(
-            'Watchlist',
-            response['message'] ?? 'Added to watchlist ❤️',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green.withOpacity(0.8),
-            colorText: Colors.white,
-            duration: const Duration(seconds: 2),
-          );
-        }
+          (response['message'] != null ||
+              response['data'] != null ||
+              response['success'] == true)) {
         await fetchWatchlist();
         return true;
       }
@@ -124,22 +126,25 @@ class WatchlistController extends GetxController {
     }
   }
 
-  Future<bool> removeFromWatchlist(String watchlistId, {bool showFeedback = true}) async {
+  Future<bool> removeFromWatchlist(
+    String watchlistId, {
+    bool showFeedback = true,
+  }) async {
     try {
       final response = await _repository.removeFromWatchlist(watchlistId);
       if (response != null &&
           (response['message'] != null || response['success'] == true)) {
         allItems.removeWhere((element) => element.id == watchlistId);
-        if (showFeedback) {
-          Get.snackbar(
-            'Watchlist',
-            response['message'] ?? 'Removed from watchlist ❌',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.grey[800]!.withOpacity(0.9),
-            colorText: Colors.white,
-            duration: const Duration(seconds: 2),
-          );
-        }
+        // if (showFeedback) {
+        //   Get.snackbar(
+        //     'Watchlist',
+        //     response['message'] ?? 'Removed from watchlist ❌',
+        //     snackPosition: SnackPosition.BOTTOM,
+        //     backgroundColor: Colors.grey[800]!.withValues(alpha: 0.9),
+        //     colorText: Colors.white,
+        //     duration: const Duration(seconds: 2),
+        //   );
+        // }
         return true;
       }
       return false;

@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/audio_play/controllers/audio_detail_controller.dart';
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
+import 'package:golidoli_app/features/audio_play/services/audio_download_service.dart';
+import 'package:golidoli_app/features/audio_play/widgets/audio_mini_player.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class AudioDetailScreen extends StatelessWidget {
@@ -14,6 +16,7 @@ class AudioDetailScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
+      bottomNavigationBar: const AudioMiniPlayer(withSystemPadding: true),
       body: Obx(() {
         if (controller.isLoading.value && controller.story.value == null) {
           return const Center(
@@ -374,6 +377,57 @@ class AudioDetailScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                      // Download action / progress / completed
+                      Obx(() {
+                        final downloadService = AudioDownloadService.to;
+                        final isDownloaded = downloadService.isDownloaded(ep.id);
+                        final isDownloading = downloadService.isDownloading(ep.id);
+                        final progress = downloadService.getProgress(ep.id);
+
+                        if (isDownloading) {
+                          return Container(
+                            width: 32,
+                            height: 32,
+                            padding: const EdgeInsets.all(6),
+                            margin: const EdgeInsets.only(right: 6),
+                            child: CircularProgressIndicator(
+                              value: progress > 0 ? progress : null,
+                              strokeWidth: 2.5,
+                              color: AppColors.primaryColor,
+                            ),
+                          );
+                        }
+
+                        if (isDownloaded) {
+                          return IconButton(
+                            icon: const Icon(
+                              Icons.download_done_rounded,
+                              color: AppColors.primaryColor,
+                              size: 24,
+                            ),
+                            padding: const EdgeInsets.only(right: 6),
+                            constraints: const BoxConstraints(),
+                            tooltip: 'Downloaded',
+                            onPressed: () {
+                              _showDownloadOptions(context, ep, downloadService);
+                            },
+                          );
+                        }
+
+                        return IconButton(
+                          icon: const Icon(
+                            Icons.download_for_offline_outlined,
+                            color: AppColors.hintTextColor,
+                            size: 24,
+                          ),
+                          padding: const EdgeInsets.only(right: 6),
+                          constraints: const BoxConstraints(),
+                          tooltip: 'Download Episode',
+                          onPressed: () {
+                            downloadService.downloadEpisode(ep, story);
+                          },
+                        );
+                      }),
                       const Icon(
                         Icons.play_circle_fill_rounded,
                         color: AppColors.primaryColor,
@@ -386,6 +440,40 @@ class AudioDetailScreen extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDownloadOptions(
+    BuildContext context,
+    AudioEpisodeModel ep,
+    AudioDownloadService downloadService,
+  ) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(ep.title, style: text16(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('Downloaded for offline listening', style: text12(color: AppColors.secondaryTextColor)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.errorColor),
+              title: Text('Delete Download', style: text14(color: AppColors.errorColor)),
+              onTap: () {
+                Get.back();
+                downloadService.removeDownload(ep.id);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

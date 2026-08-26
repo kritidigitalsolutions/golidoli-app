@@ -16,6 +16,10 @@ class MovieController extends GetxController {
   // ── State ─────────────────────────────────────────────────────────────────
   final allMoviesStatus = Status.init.obs;
   final RxList<MovieModel> allMovies = <MovieModel>[].obs;
+  final RxBool isLoadingMore = false.obs;
+  final RxBool hasMore = true.obs;
+  int currentPage = 1;
+  static const int pageSize = 12;
 
   final movieDetailStatus = Status.init.obs;
   final Rx<MovieModel?> movieDetail = Rx(null);
@@ -24,15 +28,47 @@ class MovieController extends GetxController {
 
   // ── Actions ───────────────────────────────────────────────────────────────
   Future<void> fetchAllMovies() async {
+    currentPage = 1;
+    hasMore.value = true;
     allMoviesStatus.value = Status.loading;
-    final result = await _api.allMovie();
-    if (result.isNotEmpty) {
+    try {
+      final result = await _api.allMovie(page: 1, limit: pageSize);
       allMovies.assignAll(result);
+      if (result.length < pageSize) {
+        hasMore.value = false;
+      }
       allMoviesStatus.value = Status.success;
-    } else if (result.isEmpty) {
-      allMoviesStatus.value = Status.success;
-    } else {
+    } catch (_) {
       allMoviesStatus.value = Status.error;
+    }
+  }
+
+  Future<void> fetchMoreMovies() async {
+    if (isLoadingMore.value || !hasMore.value) return;
+    isLoadingMore.value = true;
+    try {
+      final nextPage = currentPage + 1;
+      final result = await _api.allMovie(page: nextPage, limit: pageSize);
+      if (result.isNotEmpty) {
+        // Filter out any duplicates
+        final existingIds = allMovies.map((m) => m.id).toSet();
+        final newItems = result.where((m) => !existingIds.contains(m.id)).toList();
+        if (newItems.isNotEmpty) {
+          allMovies.addAll(newItems);
+          currentPage = nextPage;
+        } else {
+          hasMore.value = false;
+        }
+        if (result.length < pageSize) {
+          hasMore.value = false;
+        }
+      } else {
+        hasMore.value = false;
+      }
+    } catch (_) {
+      // Don't mark fatal error on paginate, just stop
+    } finally {
+      isLoadingMore.value = false;
     }
   }
 

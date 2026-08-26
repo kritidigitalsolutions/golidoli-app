@@ -2,15 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/audio_play/controllers/audio_player_controller.dart';
+import 'package:golidoli_app/features/audio_play/services/audio_download_service.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
-class AudioPlayerScreen extends StatelessWidget {
+class AudioPlayerScreen extends StatefulWidget {
   const AudioPlayerScreen({super.key});
 
   @override
+  State<AudioPlayerScreen> createState() => _AudioPlayerScreenState();
+}
+
+class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
+  late final AudioPlayerController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AudioPlayerController.to;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.handleArguments(Get.arguments);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(AudioPlayerController());
 
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
@@ -124,7 +140,53 @@ class AudioPlayerScreen extends StatelessWidget {
                         ),
                     ],
                   ),
-                  const SizedBox(width: 36), // Balanced spacing
+                  // Download Button
+                  Obx(() {
+                    if (currentEp == null) return const SizedBox(width: 36);
+                    final downloadService = AudioDownloadService.to;
+                    final isDownloaded = downloadService.isDownloaded(currentEp.id);
+                    final isDownloading = downloadService.isDownloading(currentEp.id);
+                    final progress = downloadService.getProgress(currentEp.id);
+
+                    if (isDownloading) {
+                      return Container(
+                        width: 34,
+                        height: 34,
+                        padding: const EdgeInsets.all(6),
+                        decoration: const BoxDecoration(
+                          color: AppColors.overlayColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: CircularProgressIndicator(
+                          value: progress > 0 ? progress : null,
+                          strokeWidth: 2.5,
+                          color: AppColors.primaryColor,
+                        ),
+                      );
+                    }
+
+                    return GestureDetector(
+                      onTap: () {
+                        if (isDownloaded) {
+                          downloadService.removeDownload(currentEp.id);
+                        } else if (story != null) {
+                          downloadService.downloadEpisode(currentEp, story);
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: AppColors.overlayColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
+                          color: isDownloaded ? AppColors.primaryColor : AppColors.white,
+                          size: 18,
+                        ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -185,7 +247,7 @@ class AudioPlayerScreen extends StatelessWidget {
                 min: 0.0,
                 max: total,
                 onChanged: (val) {
-                  controller.seekValue.value = val;
+                  controller.onSeekChanged(val);
                 },
                 onChangeEnd: (val) {
                   controller.seekTo(val);
@@ -217,98 +279,101 @@ class AudioPlayerScreen extends StatelessWidget {
   Widget _buildPlayerControls(AudioPlayerController controller) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Previous Episode
-          IconButton(
-            onPressed: controller.playPrevious,
-            icon: const Icon(
-              Icons.skip_previous_rounded,
-              color: AppColors.white,
-              size: 32,
-            ),
-          ),
-          const SizedBox(width: 12),
+      child: Obx(() {
+        final story = controller.story.value;
+        final hasNext = story != null && controller.currentEpisodeIndex.value < story.episodes.length - 1;
+        final hasPrev = controller.currentEpisodeIndex.value > 0;
+        final isPlaying = controller.isPlaying.value;
+        final isLoading = controller.isLoadingAudio.value && !isPlaying;
 
-          // Replay 15s
-          IconButton(
-            onPressed: () => controller.skipBackward(15),
-            icon: const Icon(
-              Icons.replay_10_rounded,
-              color: AppColors.white,
-              size: 28,
-            ),
-          ),
-          const SizedBox(width: 16),
-
-          // Play / Pause / Loading
-          Obx(() {
-            if (controller.isLoadingAudio.value) {
-              return Container(
-                width: 64,
-                height: 64,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                padding: const EdgeInsets.all(18),
-                child: const CircularProgressIndicator(
-                  color: AppColors.black,
-                  strokeWidth: 3,
-                ),
-              );
-            }
-
-            final isPlaying = controller.isPlaying.value;
-            return GestureDetector(
-              onTap: controller.togglePlayPause,
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryColor.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Icon(
-                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  color: AppColors.black,
-                  size: 36,
-                ),
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Previous Episode
+            IconButton(
+              onPressed: hasPrev ? controller.playPrevious : null,
+              icon: Icon(
+                Icons.skip_previous_rounded,
+                color: hasPrev ? AppColors.white : AppColors.hintTextColor,
+                size: 32,
               ),
-            );
-          }),
-          const SizedBox(width: 16),
-
-          // Forward 15s
-          IconButton(
-            onPressed: () => controller.skipForward(15),
-            icon: const Icon(
-              Icons.forward_10_rounded,
-              color: AppColors.white,
-              size: 28,
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
 
-          // Next Episode
-          IconButton(
-            onPressed: controller.playNext,
-            icon: const Icon(
-              Icons.skip_next_rounded,
-              color: AppColors.white,
-              size: 32,
+            // Replay 10s
+            IconButton(
+              onPressed: () => controller.skipBackward(10),
+              icon: const Icon(
+                Icons.replay_10_rounded,
+                color: AppColors.white,
+                size: 28,
+              ),
             ),
-          ),
-        ],
-      ),
+            const SizedBox(width: 16),
+
+            // Play / Pause / Loading
+            isLoading
+                ? Container(
+                    width: 64,
+                    height: 64,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(18),
+                    child: const CircularProgressIndicator(
+                      color: AppColors.black,
+                      strokeWidth: 3,
+                    ),
+                  )
+                : GestureDetector(
+                    onTap: controller.togglePlayPause,
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryColor.withValues(alpha: 0.3),
+                            blurRadius: 16,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        color: AppColors.black,
+                        size: 36,
+                      ),
+                    ),
+                  ),
+            const SizedBox(width: 16),
+
+            // Forward 10s
+            IconButton(
+              onPressed: () => controller.skipForward(10),
+              icon: const Icon(
+                Icons.forward_10_rounded,
+                color: AppColors.white,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Next Episode
+            IconButton(
+              onPressed: hasNext ? controller.playNext : null,
+              icon: Icon(
+                Icons.skip_next_rounded,
+                color: hasNext ? AppColors.white : AppColors.hintTextColor,
+                size: 32,
+              ),
+            ),
+          ],
+        );
+      }),
     );
   }
 

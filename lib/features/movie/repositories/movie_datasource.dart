@@ -5,9 +5,12 @@ import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 class MovieDatasource {
   final NetworkApiService _apiService = NetworkApiService();
 
-  Future<List<MovieModel>> allMovie() async {
+  Future<List<MovieModel>> allMovie({int? page, int? limit}) async {
     try {
-      final jsonData = await _apiService.getApi(AppUrl.allMovies);
+      final url = (page != null)
+          ? '${AppUrl.allMovies}?page=$page&limit=${limit ?? 10}'
+          : AppUrl.allMovies;
+      final jsonData = await _apiService.getApi(url);
       final List<dynamic> moviesJson = jsonData['movies'] ?? [];
       return moviesJson
           .map((e) => MovieModel.fromJson(e as Map<String, dynamic>))

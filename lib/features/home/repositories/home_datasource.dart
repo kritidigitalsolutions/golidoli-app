@@ -51,17 +51,17 @@ class HomeDatasource {
     }
   }
 
-  Future<HomeContentResponse?> allContent() async {
-    try {
-      final json = await _apiService.getApi(AppUrl.allContentApi);
-      if (json != null) {
-        return HomeContentResponse.fromJson(json);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
+  // Future<HomeContentResponse?> allContent() async {
+  //   try {
+  //     final json = await _apiService.getApi(AppUrl.allContentApi);
+  //     if (json != null) {
+  //       return HomeContentResponse.fromJson(json);
+  //     }
+  //     return null;
+  //   } catch (e) {
+  //     return null;
+  //   }
+  // }
 
   Future<HomeContentResponse?> searchContent(String query) async {
     try {

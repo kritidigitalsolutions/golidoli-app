@@ -18,6 +18,7 @@ class WebSeriesListingScreen extends StatefulWidget {
 class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
   int selectedCategoryIndex = 0;
   late final SeriesController _controller;
+  final ScrollController _scrollController = ScrollController();
   final List<String> categories = [
     'All',
     'Action',
@@ -33,9 +34,24 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
   void initState() {
     super.initState();
     _controller = Get.find<SeriesController>();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.fetchAllSeries();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _controller.fetchMoreSeries();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -46,11 +62,11 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
         child: Obx(() {
           final status = _controller.allSeriesStatus.value;
 
-          if (status == Status.loading) {
+          if (status == Status.loading && (_controller.allSeries.value == null)) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (status == Status.error) {
+          if (status == Status.error && (_controller.allSeries.value == null)) {
             return const Center(
               child: Text(
                 "Something went wrong",
@@ -68,8 +84,6 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
               _buildCategoryTabs(),
               const SizedBox(height: 12),
               Expanded(child: _buildGrid(filteredSeries)),
-              _buildExploreMore(),
-              const SizedBox(height: 16),
             ],
           );
         }),
@@ -165,16 +179,46 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: series.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.62,
-      ),
-      itemBuilder: (_, i) => _buildCard(series[i]),
+    return CustomScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.62,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (_, i) => _buildCard(series[i]),
+              childCount: series.length,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Obx(() {
+            if (_controller.isLoadingMore.value) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox(height: 16);
+          }),
+        ),
+      ],
     );
   }
 
@@ -236,29 +280,6 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExploreMore() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
-          ),
-          child: Center(
-            child: Text(
-              'Explore More',
-              style: text13(color: AppColors.secondaryTextColor),
-            ),
-          ),
         ),
       ),
     );

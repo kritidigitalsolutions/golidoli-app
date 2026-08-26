@@ -127,14 +127,63 @@ class AudioStoriesController extends GetxController {
   }
 
   /// 4. Fetch All Stories
+  final RxBool isLoadingMore = false.obs;
+  final RxBool hasMore = true.obs;
+  int currentPage = 1;
+  static const int pageSize = 12;
+
   Future<void> fetchAllStories() async {
+    currentPage = 1;
+    hasMore.value = true;
     try {
-      final stories = await _repository.getAudioStories();
+      final stories = await _repository.getAudioStories(page: 1, limit: pageSize);
       allStories.assignAll(stories);
+      if (stories.length < pageSize) {
+        hasMore.value = false;
+      }
       _populateCategories(categories.where((c) => c.id != 'all').toList());
       _updateCategoryStories();
     } catch (e) {
       debugPrint("fetchAllStories error: $e");
+    }
+  }
+
+  Future<void> fetchMoreStories() async {
+    if (isLoadingMore.value || !hasMore.value) return;
+    isLoadingMore.value = true;
+    try {
+      final nextPage = currentPage + 1;
+      final selectedCat = (selectedCategoryIndex.value < categories.length &&
+              categories[selectedCategoryIndex.value].id != 'all')
+          ? categories[selectedCategoryIndex.value].id
+          : null;
+
+      final newStories = await _repository.getAudioStories(
+        categoryId: selectedCat,
+        page: nextPage,
+        limit: pageSize,
+      );
+
+      if (newStories.isNotEmpty) {
+        final existingIds = allStories.map((s) => s.id).toSet();
+        final filtered = newStories.where((s) => !existingIds.contains(s.id)).toList();
+        if (filtered.isNotEmpty) {
+          allStories.addAll(filtered);
+          currentPage = nextPage;
+          _updateCategoryStories();
+        } else {
+          hasMore.value = false;
+        }
+        if (newStories.length < pageSize) {
+          hasMore.value = false;
+        }
+      } else {
+        hasMore.value = false;
+      }
+    } catch (e) {
+      debugPrint("fetchMoreStories error: $e");
+    } finally {
+      isLoadingMore.value = false;
     }
   }
 
@@ -248,13 +297,27 @@ class AudioStoriesController extends GetxController {
   void onContinueListeningTap(AudioProgressModel item) {
     final ep = item.episode;
     if (ep != null) {
+      final storyId = ep.storyId;
+      AudioStoryModel? cachedStory = allStories.firstWhereOrNull(
+        (s) => s.id == storyId,
+      );
+      cachedStory ??= featuredStories.firstWhereOrNull(
+        (s) => s.id == storyId,
+      );
+
+      final Map<String, dynamic> args = {
+        'storyId': storyId,
+        'episodeId': ep.id,
+        'episode': ep,
+        'progressSeconds': item.progressSeconds,
+      };
+      if (cachedStory != null) {
+        args['story'] = cachedStory;
+      }
+
       Get.toNamed(
         AppRoutes.audioPlayer,
-        arguments: {
-          'storyId': ep.storyId,
-          'episodeId': ep.id,
-          'progressSeconds': item.progressSeconds,
-        },
+        arguments: args,
       );
     }
   }

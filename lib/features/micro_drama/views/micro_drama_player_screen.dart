@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
+import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
@@ -250,41 +253,52 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   @override
   void initState() {
     super.initState();
-    final videoUrl = formatMediaUrl(widget.episode.videoUrl);
-    _vpc =
-        VideoPlayerController.networkUrl(
-            Uri.parse(videoUrl),
-            httpHeaders: {
-              'User-Agent':
-                  'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-              'Accept': '*/*',
-            },
-          )
-          ..initialize()
-              .then((_) {
-                if (!mounted) return;
-                isInitialized.value = true;
-                if (widget.isActive || _autoPlayPending) {
-                  _autoPlayPending = false;
-                  _vpc.setLooping(false);
-                  if (widget.initialPositionSeconds != null &&
-                      widget.initialPositionSeconds! > 0) {
-                    final startPos = Duration(
-                      seconds: widget.initialPositionSeconds!,
-                    );
-                    if (startPos < _vpc.value.duration) {
-                      _vpc.seekTo(startPos);
-                    }
-                  }
-                  _vpc.play();
-                  _startHideControlsTimer();
-                  _startProgressTimer();
-                }
-                _vpc.addListener(_onVideoTick);
-              })
-              .catchError((err) {
-                debugPrint("Error initializing video player: $err");
-              });
+    final localPath = AppDownloadService.to.getLocalFilePath(widget.episode.id);
+    final isLocal =
+        localPath != null &&
+        localPath.isNotEmpty &&
+        File(localPath).existsSync();
+
+    if (isLocal) {
+      _vpc = VideoPlayerController.file(File(localPath));
+    } else {
+      final videoUrl = formatMediaUrl(widget.episode.videoUrl);
+      _vpc = VideoPlayerController.networkUrl(
+        Uri.parse(videoUrl),
+        httpHeaders: {
+          'User-Agent':
+              'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+          'Accept': '*/*',
+        },
+      );
+    }
+
+    _vpc
+        .initialize()
+        .then((_) {
+          if (!mounted) return;
+          isInitialized.value = true;
+          if (widget.isActive || _autoPlayPending) {
+            _autoPlayPending = false;
+            _vpc.setLooping(false);
+            if (widget.initialPositionSeconds != null &&
+                widget.initialPositionSeconds! > 0) {
+              final startPos = Duration(
+                seconds: widget.initialPositionSeconds!,
+              );
+              if (startPos < _vpc.value.duration) {
+                _vpc.seekTo(startPos);
+              }
+            }
+            _vpc.play();
+            _startHideControlsTimer();
+            _startProgressTimer();
+          }
+          _vpc.addListener(_onVideoTick);
+        })
+        .catchError((err) {
+          debugPrint("Error initializing video player: $err");
+        });
   }
 
   /// Explicitly commanded by the parent when this page becomes the current
@@ -511,32 +525,86 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Obx(
-                        () => _ActionButton(
-                          icon: isInWatchlist.value
+                      Obx(() {
+                        final watchlistCtrl =
+                            Get.isRegistered<WatchlistController>()
+                            ? Get.find<WatchlistController>()
+                            : Get.put(WatchlistController());
+                        final isSaved = watchlistCtrl.isItemInWatchlist(
+                          widget.dramaId,
+                        );
+
+                        return _ActionButton(
+                          icon: isSaved
                               ? Icons.favorite
                               : Icons.favorite_border_outlined,
-                          iconColor: isInWatchlist.value
+                          iconColor: isSaved
                               ? AppColors.accentColor
                               : AppColors.white,
-                          label: 'Like',
+                          label: isSaved ? 'Saved' : 'Like',
                           onTap: () =>
-                              isInWatchlist.value = !isInWatchlist.value,
-                        ),
-                      ),
+                              watchlistCtrl.toggleWatchlist(widget.dramaId),
+                        );
+                      }),
                       const SizedBox(height: 20),
-                      Obx(
-                        () => _ActionButton(
-                          icon: isDownloaded.value
-                              ? Icons.download_done_rounded
-                              : Icons.download_rounded,
-                          iconColor: isDownloaded.value
-                              ? AppColors.accentColor
-                              : AppColors.white,
-                          label: 'Download',
-                          onTap: () => isDownloaded.value = !isDownloaded.value,
-                        ),
-                      ),
+                      Obx(() {
+                        final downloadService = AppDownloadService.to;
+                        final isDownloaded = downloadService.isDownloaded(
+                          widget.episode.id,
+                        );
+                        final isDownloading = downloadService.isDownloading(
+                          widget.episode.id,
+                        );
+                        final progress = downloadService.getProgress(
+                          widget.episode.id,
+                        );
+
+                        return _ActionButton(
+                          icon: isDownloading
+                              ? Icons.hourglass_top_rounded
+                              : (isDownloaded
+                                    ? Icons.download_done_rounded
+                                    : Icons.download_rounded),
+                          iconColor: isDownloaded
+                              ? AppColors.primaryColor
+                              : (isDownloading
+                                    ? AppColors.primaryColor
+                                    : AppColors.white),
+                          label: isDownloading
+                              ? '${(progress * 100).toInt()}%'
+                              : (isDownloaded ? 'Saved' : 'Download'),
+                          onTap: () {
+                            if (isDownloaded) {
+                              downloadService.removeDownload(widget.episode.id);
+                            } else {
+                              final dramaController =
+                                  Get.isRegistered<MicroDramaController>()
+                                  ? Get.find<MicroDramaController>()
+                                  : null;
+                              final drama = dramaController
+                                  ?.dramaDetail
+                                  .value
+                                  ?.microdrama;
+                              downloadService.downloadMedia(
+                                id: widget.episode.id,
+                                title: widget.episode.title.isNotEmpty
+                                    ? widget.episode.title
+                                    : 'Episode ${widget.episode.episodeNumber}',
+                                parentTitle: drama?.title ?? 'Micro Drama',
+                                coverImage: widget.episode.thumbnail.isNotEmpty
+                                    ? formatMediaUrl(widget.episode.thumbnail)
+                                    : (drama?.poster ?? drama?.banner ?? ''),
+                                remoteUrl: widget.episode.videoUrl,
+                                mediaType: DownloadMediaType.microDrama,
+                                durationSeconds:
+                                    int.tryParse(widget.episode.duration) ?? 0,
+                                episodeNumber: widget.episode.episodeNumber,
+                                extra: {'dramaId': widget.dramaId},
+                              );
+                            }
+                          },
+                        );
+                      }),
                       const SizedBox(height: 20),
                       Obx(
                         () => _ActionButton(

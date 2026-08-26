@@ -7,9 +7,12 @@ import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart'
 class MicroDramaDatasource {
   final NetworkApiService _apiService = NetworkApiService();
 
-  Future<MicrodramasResponse?> allMicroDrama() async {
+  Future<MicrodramasResponse?> allMicroDrama({int? page, int? limit}) async {
     try {
-      final json = await _apiService.getApi(AppUrl.allMicroDramaApis);
+      final url = (page != null)
+          ? '${AppUrl.allMicroDramaApis}?page=$page&limit=${limit ?? 10}'
+          : AppUrl.allMicroDramaApis;
+      final json = await _apiService.getApi(url);
       if (json != null) {
         return MicrodramasResponse.fromJson(json);
       }

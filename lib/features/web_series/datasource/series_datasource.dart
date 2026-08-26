@@ -7,9 +7,12 @@ import 'package:golidoli_app/features/web_series/model/episode_response.dart';
 class SeriesDatasource {
   final NetworkApiService _apiService = NetworkApiService();
 
-  Future<SeriesResponse?> allSeries() async {
+  Future<SeriesResponse?> allSeries({int? page, int? limit}) async {
     try {
-      final json = await _apiService.getApi(AppUrl.allSeries);
+      final url = (page != null)
+          ? '${AppUrl.allSeries}?page=$page&limit=${limit ?? 10}'
+          : AppUrl.allSeries;
+      final json = await _apiService.getApi(url);
       if (json != null) {
         return SeriesResponse.fromJson(json);
       }

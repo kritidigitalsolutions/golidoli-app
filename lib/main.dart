@@ -1,7 +1,13 @@
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/core/services/app_download_service.dart';
+import 'package:golidoli_app/features/audio_play/controllers/audio_player_controller.dart';
+import 'package:golidoli_app/features/audio_play/services/audio_download_service.dart';
+import 'package:golidoli_app/features/audio_play/services/audio_handler.dart';
+import 'package:golidoli_app/features/audio_play/widgets/audio_mini_player.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/views/discover_tab.dart';
 import 'package:golidoli_app/features/home/views/home_tab.dart';
@@ -24,6 +30,31 @@ void main() async {
 
   final notificationService = Get.put(NotificationService(), permanent: true);
   await notificationService.init();
+
+  // Initialize universal offline media download manager
+  final appDownloadService = Get.put(AppDownloadService(), permanent: true);
+  await appDownloadService.init();
+
+  final audioDownloadService = Get.put(AudioDownloadService(), permanent: true);
+  await audioDownloadService.init();
+
+  // Initialize audio_service — registers the background service & notification
+  final audioHandler = await AudioService.init(
+    builder: () => GolodoliAudioHandler(),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.golidoli.audio.channel',
+      androidNotificationChannelName: 'GoliDoli Audio',
+      androidStopForegroundOnPause: true,  // stop foreground when paused (battery friendly)
+      androidNotificationIcon: 'mipmap/ic_launcher',
+      androidShowNotificationBadge: true,
+      fastForwardInterval: Duration(seconds: 10),
+      rewindInterval: Duration(seconds: 10),
+    ),
+  );
+
+  // Wire handler to AudioPlayerController singleton
+  AudioPlayerController.setHandler(audioHandler);
+  Get.put(AudioPlayerController(), permanent: true);
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -86,6 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     controller = Get.put(HomeController());
     Get.put(SubscriptionStatusController(), permanent: true);
+    AudioPlayerController.to;
 
     // Handle initial index after first build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -121,9 +153,15 @@ class _MyHomePageState extends State<MyHomePage> {
     return Obx(
       () => Scaffold(
         backgroundColor: AppColors.backgroundColor,
-        bottomNavigationBar: BottomNavBar(
-          currentIndex: controller.selectedIndex.value,
-          onTap: controller.changeTab,
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const AudioMiniPlayer(),
+            BottomNavBar(
+              currentIndex: controller.selectedIndex.value,
+              onTap: controller.changeTab,
+            ),
+          ],
         ),
         body: IndexedStack(
           index: controller.selectedIndex.value,

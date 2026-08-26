@@ -18,6 +18,7 @@ class MovieListingScreen extends StatefulWidget {
 class _MovieListingScreenState extends State<MovieListingScreen> {
   int selectedCategoryIndex = 0;
   late final MovieController _controller;
+  final ScrollController _scrollController = ScrollController();
   final List<String> categories = [
     'All',
     'Action',
@@ -33,9 +34,24 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
   void initState() {
     super.initState();
     _controller = Get.find<MovieController>();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.fetchAllMovies();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _controller.fetchMoreMovies();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -50,8 +66,6 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
               _buildCategoryTabs(),
               const SizedBox(height: 12),
               Expanded(child: _buildGrid()),
-              _buildExploreMore(),
-              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -207,16 +221,46 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
       );
     }
 
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: movies.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        childAspectRatio: 0.62,
-      ),
-      itemBuilder: (_, index) => _buildCard(movies[index]),
+    return CustomScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.62,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (_, index) => _buildCard(movies[index]),
+              childCount: movies.length,
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Obx(() {
+            if (_controller.isLoadingMore.value) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: AppColors.primaryColor,
+                    ),
+                  ),
+                ),
+              );
+            }
+            return const SizedBox(height: 16);
+          }),
+        ),
+      ],
     );
   }
 
@@ -358,32 +402,6 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExploreMore() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: GestureDetector(
-        onTap: () {
-          // Load more movies
-          // context.read<MovieBloc>().add(const MovieEvent.loadMore());
-        },
-        child: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
-          ),
-          child: Center(
-            child: Text(
-              'Explore More',
-              style: text13(color: AppColors.secondaryTextColor),
-            ),
-          ),
         ),
       ),
     );

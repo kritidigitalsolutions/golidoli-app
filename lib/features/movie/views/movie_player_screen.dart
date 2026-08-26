@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -338,10 +339,14 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   void _initializePlayer(String videoUrl) {
     try {
       final fullUrl = _getFullUrl(videoUrl);
-      debugPrint('🎬 Initializing player with URL: $fullUrl');
+      if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && File(videoUrl).existsSync()) {
+        _videoController = VideoPlayerController.file(File(videoUrl));
+      } else {
+        _videoController = VideoPlayerController.networkUrl(Uri.parse(fullUrl));
+      }
 
-      _videoController = VideoPlayerController.networkUrl(Uri.parse(fullUrl))
-        ..initialize()
+      _videoController!
+        .initialize()
             .then((_) {
               if (mounted) {
                 setState(() {

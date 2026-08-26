@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/core/services/app_download_service.dart';
+import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
+import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
@@ -240,14 +243,100 @@ class ContentPreferenceController extends GetxController {
 // 3. Downloads Controller
 // =================================────────────────────────────────────────────
 class DownloadsController extends GetxController {
-  final RxList<Map<String, String>> downloads = <Map<String, String>>[
-    {'title': 'Forbidden Love', 'subtitle': 'S1 E03 | 156 MB'},
-    {'title': 'City Chase', 'subtitle': 'S1 E08 | 212 MB'},
-    {'title': 'Toxic Love', 'subtitle': 'Movie | 820 MB'},
-  ].obs;
+  AppDownloadService get appDownload => AppDownloadService.to;
 
-  void removeDownload(int index) {
-    downloads.removeAt(index);
+  final RxString selectedCategory = 'All'.obs;
+  final List<String> categories = const ['All', 'Audio', 'Movies', 'Web Series', 'Micro Drama'];
+
+  List<DownloadedMediaItem> get filteredDownloads {
+    final cat = selectedCategory.value;
+    if (cat == 'Audio') return appDownload.audioDownloads;
+    if (cat == 'Movies') return appDownload.movieDownloads;
+    if (cat == 'Web Series') return appDownload.webSeriesDownloads;
+    if (cat == 'Micro Drama') return appDownload.microDramaDownloads;
+    return appDownload.downloadedItems;
+  }
+
+  void selectCategory(String cat) {
+    selectedCategory.value = cat;
+  }
+
+  void removeDownload(String id) {
+    appDownload.removeDownload(id);
+  }
+
+  void playDownloadedItem(BuildContext context, DownloadedMediaItem item) {
+    switch (item.mediaType) {
+      case DownloadMediaType.audio:
+        final ep = AudioEpisodeModel(
+          id: item.id,
+          title: item.title,
+          storyId: item.extra['storyId']?.toString() ?? '',
+          storyTitle: item.parentTitle,
+          storyCoverImage: item.coverImage,
+          episodeNumber: item.episodeNumber,
+          durationSeconds: item.durationSeconds,
+          audioUrl: item.localFilePath,
+          coverImage: item.coverImage,
+        );
+        final story = AudioStoryModel(
+          id: item.extra['storyId']?.toString() ?? item.id,
+          title: item.parentTitle.isNotEmpty ? item.parentTitle : 'Audio Story',
+          coverImage: item.coverImage,
+          episodes: [ep],
+        );
+        Get.toNamed(
+          AppRoutes.audioPlayer,
+          arguments: {
+            'story': story,
+            'storyId': story.id,
+            'episodeId': item.id,
+            'episode': ep,
+          },
+        );
+        break;
+
+      case DownloadMediaType.movie:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MoviePlayerScreen(
+              videoUrl: item.localFilePath,
+              title: item.title,
+              contentId: item.id,
+              contentType: 'movie',
+            ),
+          ),
+        );
+        break;
+
+      case DownloadMediaType.webSeries:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MoviePlayerScreen(
+              videoUrl: item.localFilePath,
+              title: item.title,
+              contentId: item.extra['seriesId']?.toString() ?? item.id,
+              contentType: 'series',
+              episodeId: item.id,
+            ),
+          ),
+        );
+        break;
+
+      case DownloadMediaType.microDrama:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => MoviePlayerScreen(
+              videoUrl: item.localFilePath,
+              title: item.title,
+              contentId: item.extra['dramaId']?.toString() ?? item.id,
+              contentType: 'microdrama',
+              episodeId: item.id,
+            ),
+          ),
+        );
+        break;
+    }
   }
 }
 

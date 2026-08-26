@@ -28,7 +28,7 @@ class AppUrl {
   static String microDramaEpisodeDetail({required String id}) =>
       "$baseUrl/api/microdramas-episodes/$id";
   static String plan({required String name}) => "$baseUrl/api/plan/$name";
-  static String allContentApi = "$baseUrl/api/content";
+  // static String allContentApi = "$baseUrl/api/content";
   static String searchContent({required String query}) =>
       "$baseUrl/api/content/?search=$query";
 

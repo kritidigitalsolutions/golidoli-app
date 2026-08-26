@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_url.dart';
+import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
@@ -12,6 +13,7 @@ import 'package:golidoli_app/utils/text_style.dart';
 import '../../../constants/enums.dart';
 import '../../movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
+import 'package:golidoli_app/routes/app_routes.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
   const WebSeriesDetailScreen({super.key, required this.id});
@@ -562,6 +564,23 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         final series = _seriesController.seriesDetail.value;
         final isPremium = series?.isPremium ?? false;
         final title = series?.title;
+        final localPath = AppDownloadService.to.getLocalFilePath(ep.id);
+
+        if (localPath != null && localPath.isNotEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => MoviePlayerScreen(
+                videoUrl: localPath,
+                title: ep.title,
+                contentId: widget.id,
+                contentType: 'series',
+                episodeId: ep.id,
+              ),
+            ),
+          );
+          return;
+        }
+
         if (checkPlayable(context, isPremium: isPremium, title: title)) {
           Navigator.of(context).push(
             MaterialPageRoute(
@@ -580,7 +599,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         decoration: BoxDecoration(
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderColor.withOpacity(0.3)),
+          border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
@@ -632,6 +651,64 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 ],
               ),
             ),
+            // Download Action
+            Obx(() {
+              final downloadService = AppDownloadService.to;
+              final isDownloaded = downloadService.isDownloaded(ep.id);
+              final isDownloading = downloadService.isDownloading(ep.id);
+              final progress = downloadService.getProgress(ep.id);
+              final series = _seriesController.seriesDetail.value;
+
+              if (isDownloading) {
+                return Container(
+                  width: 30,
+                  height: 30,
+                  padding: const EdgeInsets.all(6),
+                  margin: const EdgeInsets.only(right: 6),
+                  child: CircularProgressIndicator(
+                    value: progress > 0 ? progress : null,
+                    strokeWidth: 2,
+                    color: AppColors.primaryColor,
+                  ),
+                );
+              }
+
+              if (isDownloaded) {
+                return IconButton(
+                  icon: const Icon(
+                    Icons.download_done_rounded,
+                    color: AppColors.primaryColor,
+                    size: 22,
+                  ),
+                  onPressed: () {
+                    _showEpisodeDownloadOptions(context, ep, downloadService);
+                  },
+                );
+              }
+
+              return IconButton(
+                icon: const Icon(
+                  Icons.download_outlined,
+                  color: AppColors.hintTextColor,
+                  size: 22,
+                ),
+                onPressed: () {
+                  downloadService.downloadMedia(
+                    id: ep.id,
+                    title: ep.title,
+                    parentTitle: series?.title ?? 'Web Series',
+                    coverImage: ep.thumbnail.isNotEmpty ? '${AppUrl.baseUrl}${ep.thumbnail}' : '',
+                    remoteUrl: ep.videoUrl,
+                    mediaType: DownloadMediaType.webSeries,
+                    episodeNumber: ep.episodeNumber,
+                    extra: {
+                      'seriesId': widget.id,
+                      'seasonNumber': ep.seasonNumber,
+                    },
+                  );
+                },
+              );
+            }),
             Container(
               width: 32,
               height: 32,
@@ -651,14 +728,50 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
     );
   }
 
+  void _showEpisodeDownloadOptions(
+    BuildContext context,
+    Episode ep,
+    AppDownloadService downloadService,
+  ) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: AppColors.surfaceColor,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(ep.title, style: text16(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('Downloaded for offline viewing', style: text12(color: AppColors.secondaryTextColor)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.errorColor),
+              title: Text('Delete Download', style: text14(color: AppColors.errorColor)),
+              onTap: () {
+                Get.back();
+                downloadService.removeDownload(ep.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildExploreMore() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: GestureDetector(
-        onTap: () {},
+        onTap: () {
+          Get.toNamed(AppRoutes.webSeries);
+        },
         child: Center(
           child: Text(
-            'Explore More',
+            'Explore More Series',
             style: text13(
               color: AppColors.accentColor,
               fontWeight: FontWeight.w600,

@@ -23,9 +23,11 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   final RxInt selectedCategoryIndex = 0.obs;
   late final MicroDramaController _controller;
   late final ContinueWatchingController _cwController;
+  final ScrollController _scrollController = ScrollController();
 
   final List<String> categories = [
     'All',
+    'Drama',
     'Action',
     'Romance',
     'Thriller',
@@ -65,10 +67,25 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
         ? Get.find<ContinueWatchingController>()
         : Get.put(ContinueWatchingController());
 
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.fetchAllMicroDrama();
       _cwController.fetchContinueWatching();
     });
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _controller.fetchMoreMicroDrama();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -77,13 +94,34 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
         child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _buildTopBar()),
             SliverToBoxAdapter(child: _buildCategoryTabs()),
             // SliverToBoxAdapter(child: _buildHeroBannerSection()),
             SliverToBoxAdapter(child: _buildContinueWatchingSection()),
             SliverToBoxAdapter(child: _buildDramaGridSection()),
-            SliverToBoxAdapter(child: _buildExploreMore()),
+            SliverToBoxAdapter(
+              child: Obx(() {
+                if (_controller.isLoadingMore.value) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.primaryColor,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
+            ),
             const SliverToBoxAdapter(child: SizedBox(height: 30)),
           ],
         ),
@@ -601,35 +639,6 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  // ── Explore more ──────────────────────────────────────────────────────────
-  Widget _buildExploreMore() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.borderColor.withValues(alpha: 0.4),
-            ),
-          ),
-          child: Center(
-            child: Text(
-              'Explore More',
-              style: text13(
-                color: AppColors.secondaryTextColor,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
         ),
       ),
     );
