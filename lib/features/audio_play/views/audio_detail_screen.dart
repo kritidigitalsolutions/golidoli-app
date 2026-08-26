@@ -30,14 +30,29 @@ class AudioDetailScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline_rounded, color: AppColors.hintTextColor, size: 48),
+                const Icon(
+                  Icons.error_outline_rounded,
+                  color: AppColors.hintTextColor,
+                  size: 48,
+                ),
                 const SizedBox(height: 12),
-                Text('Audio Story not found', style: text14(color: AppColors.secondaryTextColor)),
+                Text(
+                  'Audio Story not found',
+                  style: text14(color: AppColors.secondaryTextColor),
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => Get.back(),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryColor),
-                  child: Text('Go Back', style: text12(color: AppColors.black, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                  ),
+                  child: Text(
+                    'Go Back',
+                    style: text12(
+                      color: AppColors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -50,7 +65,9 @@ class AudioDetailScreen extends StatelessWidget {
             SliverToBoxAdapter(child: _buildStoryInfo(controller, story)),
             SliverToBoxAdapter(child: _buildPlayButton(context, controller)),
             if (story.episodes.isNotEmpty)
-              SliverToBoxAdapter(child: _buildEpisodesSection(context, controller, story)),
+              SliverToBoxAdapter(
+                child: _buildEpisodesSection(context, controller, story),
+              ),
             if (controller.moreLikeThis.isNotEmpty)
               SliverToBoxAdapter(child: _buildMoreLikeThis(controller)),
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
@@ -74,7 +91,11 @@ class AudioDetailScreen extends StatelessWidget {
               height: 260,
               color: AppColors.cardColor,
               child: const Center(
-                child: Icon(Icons.headphones_rounded, color: AppColors.hintTextColor, size: 60),
+                child: Icon(
+                  Icons.headphones_rounded,
+                  color: AppColors.hintTextColor,
+                  size: 60,
+                ),
               ),
             ),
           ),
@@ -121,7 +142,10 @@ class AudioDetailScreen extends StatelessWidget {
                   ),
                   if (story.isPremium)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [AppColors.accentColor, Color(0xFFFF5E97)],
@@ -131,11 +155,18 @@ class AudioDetailScreen extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.stars_rounded, color: Colors.white, size: 14),
+                          const Icon(
+                            Icons.stars_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'PREMIUM',
-                            style: text10(color: Colors.white, fontWeight: FontWeight.bold),
+                            style: text10(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -173,7 +204,10 @@ class AudioDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStoryInfo(AudioDetailController controller, AudioStoryModel story) {
+  Widget _buildStoryInfo(
+    AudioDetailController controller,
+    AudioStoryModel story,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Column(
@@ -253,7 +287,10 @@ class AudioDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlayButton(BuildContext context, AudioDetailController controller) {
+  Widget _buildPlayButton(
+    BuildContext context,
+    AudioDetailController controller,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: GestureDetector(
@@ -301,7 +338,10 @@ class AudioDetailScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Episodes', style: text16(fontWeight: FontWeight.bold)),
-              Text('${story.episodes.length} Total', style: text12(color: AppColors.hintTextColor)),
+              Text(
+                '${story.episodes.length} Total',
+                style: text12(color: AppColors.hintTextColor),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -319,7 +359,9 @@ class AudioDetailScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.surfaceColor,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.4)),
+                    border: Border.all(
+                      color: AppColors.borderColor.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -354,19 +396,30 @@ class AudioDetailScreen extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               _formatEpisodeDuration(ep.durationSeconds),
-                              style: text11(color: AppColors.secondaryTextColor),
+                              style: text11(
+                                color: AppColors.secondaryTextColor,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       if (ep.isPremium)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           margin: const EdgeInsets.only(right: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.accentColor.withValues(alpha: 0.15),
+                            color: AppColors.accentColor.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppColors.accentColor.withValues(alpha: 0.5)),
+                            border: Border.all(
+                              color: AppColors.accentColor.withValues(
+                                alpha: 0.5,
+                              ),
+                            ),
                           ),
                           child: Text(
                             'PREMIUM',
@@ -380,8 +433,12 @@ class AudioDetailScreen extends StatelessWidget {
                       // Download action / progress / completed
                       Obx(() {
                         final downloadService = AudioDownloadService.to;
-                        final isDownloaded = downloadService.isDownloaded(ep.id);
-                        final isDownloading = downloadService.isDownloading(ep.id);
+                        final isDownloaded = downloadService.isDownloaded(
+                          ep.id,
+                        );
+                        final isDownloading = downloadService.isDownloading(
+                          ep.id,
+                        );
                         final progress = downloadService.getProgress(ep.id);
 
                         if (isDownloading) {
@@ -409,7 +466,11 @@ class AudioDetailScreen extends StatelessWidget {
                             constraints: const BoxConstraints(),
                             tooltip: 'Downloaded',
                             onPressed: () {
-                              _showDownloadOptions(context, ep, downloadService);
+                              _showDownloadOptions(
+                                context,
+                                ep,
+                                downloadService,
+                              );
                             },
                           );
                         }
@@ -462,11 +523,20 @@ class AudioDetailScreen extends StatelessWidget {
           children: [
             Text(ep.title, style: text16(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('Downloaded for offline listening', style: text12(color: AppColors.secondaryTextColor)),
+            Text(
+              'Downloaded for offline listening',
+              style: text12(color: AppColors.secondaryTextColor),
+            ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.errorColor),
-              title: Text('Delete Download', style: text14(color: AppColors.errorColor)),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.errorColor,
+              ),
+              title: Text(
+                'Delete Download',
+                style: text14(color: AppColors.errorColor),
+              ),
               onTap: () {
                 Get.back();
                 downloadService.removeDownload(ep.id);
@@ -484,10 +554,7 @@ class AudioDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'You May Also Like',
-            style: text16(fontWeight: FontWeight.bold),
-          ),
+          Text('You May Also Like', style: text16(fontWeight: FontWeight.bold)),
           const SizedBox(height: 14),
           GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
@@ -516,7 +583,10 @@ class AudioDetailScreen extends StatelessWidget {
                           errorBuilder: (_, _, _) => Container(
                             color: AppColors.cardColor,
                             child: const Center(
-                              child: Icon(Icons.headphones_rounded, color: AppColors.hintTextColor),
+                              child: Icon(
+                                Icons.headphones_rounded,
+                                color: AppColors.hintTextColor,
+                              ),
                             ),
                           ),
                         ),

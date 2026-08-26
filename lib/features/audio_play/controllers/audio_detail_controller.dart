@@ -122,4 +122,22 @@ class AudioDetailController extends GetxController {
   void onMoreLikeThisTap(AudioStoryModel s) {
     Get.toNamed(AppRoutes.audioDetail, arguments: s.id.isNotEmpty ? s.id : s, preventDuplicates: false);
   }
+
+  Future<void> toggleLike() async {
+    final current = story.value;
+    if (current == null || current.id.isEmpty) return;
+    final res = await _repository.toggleLike(current.id);
+    if (res != null && res.success) {
+      story.value = current.copyWith(likes: res.totalLikes);
+    }
+  }
+
+  Future<void> toggleDislike() async {
+    final current = story.value;
+    if (current == null || current.id.isEmpty) return;
+    final res = await _repository.toggleDislike(current.id);
+    if (res != null && res.success) {
+      story.value = current.copyWith(likes: res.totalLikes);
+    }
+  }
 }

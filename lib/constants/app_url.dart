@@ -1,5 +1,5 @@
 class AppUrl {
-  //static const String baseUrl = 'http://192.168.1.9:5000';
+  // static const String baseUrl = 'http://192.168.1.9:5000';
   static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
@@ -104,4 +104,32 @@ class AppUrl {
       "$baseUrl/api/audio-progress/$episodeId/complete";
   static String audioEpisodeProgress(String episodeId) =>
       "$baseUrl/api/audio-progress/$episodeId";
+
+  // Interaction APIs (Toggle Like / Dislike)
+  static String toggleLike(String contentId) =>
+      "$baseUrl/api/interaction/toggle/like/$contentId";
+  static String toggleDislike(String contentId) =>
+      "$baseUrl/api/interaction/toggle/dislike/$contentId";
+
+  // AI Reels APIs
+  static String aiReelsFeed({int limit = 10, String? sessionId, bool? replay}) {
+    final params = <String>[];
+    params.add("limit=$limit");
+    if (sessionId != null && sessionId.isNotEmpty) {
+      params.add("sessionId=$sessionId");
+    }
+    if (replay != null && replay) {
+      params.add("replay=true");
+    }
+    return "$baseUrl/api/ai-reels?${params.join("&")}";
+  }
+
+  static String aiReelView(String reelId) =>
+      "$baseUrl/api/ai-reels/$reelId/view";
+  static String aiReelComplete(String reelId) =>
+      "$baseUrl/api/ai-reels/$reelId/complete";
+  static String toggleLikeAiReel(String id) =>
+      "$baseUrl/api/interaction/toggle/like/aiReel/$id";
+  static String aiReelShare(String reelId) =>
+      "$baseUrl/api/ai-reels/$reelId/share";
 }

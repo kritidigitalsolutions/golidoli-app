@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/home/widgets/continue_watching_helper.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
@@ -51,11 +50,11 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
     selectedCategoryIndex.value = index;
   }
 
-  void _onDramaTap(Microdrama drama) {
-    Get.to(
-      () => MicroDramaDetailScreen(id: drama.id),
-    )?.then((_) => _cwController.fetchContinueWatching());
-  }
+  // void _onDramaTap(Microdrama drama) {
+  //   Get.to(
+  //     () => MicroDramaDetailScreen(id: drama.id),
+  //   )?.then((_) => _cwController.fetchContinueWatching());
+  // }
 
   @override
   void initState() {
@@ -213,82 +212,82 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
     );
   }
 
-  // ── Hero banner section ────────────────────────────────────────────────────
-  Widget _buildHeroBannerSection() {
-    return Obx(() {
-      final allDramas = _controller.allMicroDrama.value?.microdramas ?? [];
-      if (allDramas.isEmpty) return const SizedBox.shrink();
-      final heroDrama = allDramas.first;
-      return _buildHeroBanner(heroDrama);
-    });
-  }
+  // // ── Hero banner section ────────────────────────────────────────────────────
+  // Widget _buildHeroBannerSection() {
+  //   return Obx(() {
+  //     final allDramas = _controller.allMicroDrama.value?.microdramas ?? [];
+  //     if (allDramas.isEmpty) return const SizedBox.shrink();
+  //     final heroDrama = allDramas.first;
+  //     return _buildHeroBanner(heroDrama);
+  //   });
+  // }
 
-  Widget _buildHeroBanner(Microdrama drama) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      child: GestureDetector(
-        onTap: () => _onDramaTap(drama),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Stack(
-            children: [
-              Image.network(
-                "${AppUrl.baseUrl}${drama.banner}",
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  height: 200,
-                  color: AppColors.cardColor,
-                  child: const Center(
-                    child: Icon(
-                      Icons.movie_outlined,
-                      color: AppColors.hintTextColor,
-                      size: 40,
-                    ),
-                  ),
-                ),
-              ),
-              // Gradient overlay
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      AppColors.backgroundColor.withValues(alpha: 0.92),
-                    ],
-                  ),
-                ),
-              ),
-              // Title at bottom
-              Positioned(
-                bottom: 14,
-                left: 14,
-                right: 14,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      drama.title,
-                      style: text20(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${drama.totalEpisodes} Episodes',
-                      style: text12(color: AppColors.secondaryTextColor),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget _buildHeroBanner(Microdrama drama) {
+  //   return Padding(
+  //     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+  //     child: GestureDetector(
+  //       onTap: () => _onDramaTap(drama),
+  //       child: ClipRRect(
+  //         borderRadius: BorderRadius.circular(16),
+  //         child: Stack(
+  //           children: [
+  //             Image.network(
+  //               "${AppUrl.baseUrl}${drama.banner}",
+  //               height: 200,
+  //               width: double.infinity,
+  //               fit: BoxFit.cover,
+  //               errorBuilder: (_, _, _) => Container(
+  //                 height: 200,
+  //                 color: AppColors.cardColor,
+  //                 child: const Center(
+  //                   child: Icon(
+  //                     Icons.movie_outlined,
+  //                     color: AppColors.hintTextColor,
+  //                     size: 40,
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //             // Gradient overlay
+  //             Container(
+  //               height: 200,
+  //               decoration: BoxDecoration(
+  //                 gradient: LinearGradient(
+  //                   begin: Alignment.topCenter,
+  //                   end: Alignment.bottomCenter,
+  //                   colors: [
+  //                     Colors.transparent,
+  //                     AppColors.backgroundColor.withValues(alpha: 0.92),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //             // Title at bottom
+  //             Positioned(
+  //               bottom: 14,
+  //               left: 14,
+  //               right: 14,
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Text(
+  //                     drama.title,
+  //                     style: text20(fontWeight: FontWeight.bold),
+  //                   ),
+  //                   const SizedBox(height: 4),
+  //                   Text(
+  //                     '${drama.totalEpisodes} Episodes',
+  //                     style: text12(color: AppColors.secondaryTextColor),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   // ── Continue Watching section ──────────────────────────────────────────────
   Widget _buildContinueWatchingSection() {
@@ -608,6 +607,52 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
                 ),
               ),
             ),
+            // Premium badge
+            if (drama.isPremium)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'PREMIUM',
+                    style: text8(
+                      color: AppColors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            // Coming soon badge
+            if (drama.isComingSoon)
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accentColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Coming Soon',
+                    style: text8(
+                      color: AppColors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             // Gradient overlay
             Positioned(
               bottom: 0,
@@ -643,4 +688,12 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
       ),
     );
   }
+}
+
+TextStyle text8({Color? color, FontWeight? fontWeight}) {
+  return TextStyle(
+    fontSize: 8,
+    color: color ?? AppColors.white,
+    fontWeight: fontWeight ?? FontWeight.normal,
+  );
 }

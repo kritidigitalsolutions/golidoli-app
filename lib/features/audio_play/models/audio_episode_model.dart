@@ -1,5 +1,16 @@
 import 'package:golidoli_app/utils/helpers.dart';
 
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class AudioEpisodeModel {
   final String id;
   final String title;
@@ -116,11 +127,18 @@ class AudioEpisodeModel {
           json['thumbnail']?.toString() ??
           json['imageUrl']?.toString() ??
           '',
-      isPremium: json['isPremium'] == true,
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
       progressSeconds: parsedProgress,
-      isCompleted: json['isCompleted'] == true,
+      isCompleted: _parseBool(
+        json['isCompleted'] ?? json['is_completed'] ?? false,
+      ),
       isPlaying: false,
-      isLocked: json['isLocked'] == true,
+      isLocked: _parseBool(json['isLocked'] ?? json['is_locked'] ?? false),
       status: json['status']?.toString() ?? 'Published',
       priority: (json['priority'] as num?) ?? 0,
       slug: json['slug']?.toString() ?? '',

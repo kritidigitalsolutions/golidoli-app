@@ -416,6 +416,28 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
                   ),
                 ),
               ),
+              if (story.isPremium)
+                Positioned(
+                  top: 14,
+                  right: 14,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'PREMIUM',
+                      style: text10(
+                        color: AppColors.black,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 bottom: 16,
                 left: 16,
@@ -496,7 +518,10 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(title, style: text16(fontWeight: FontWeight.bold)),
-                Text('${stories.length} Stories', style: text11(color: AppColors.hintTextColor)),
+                Text(
+                  '${stories.length} Stories',
+                  style: text11(color: AppColors.hintTextColor),
+                ),
               ],
             ),
           ),
@@ -532,11 +557,39 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  story.imageUrl,
-                  width: 100,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => _fallbackPlaceholder(100, 110),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      story.imageUrl,
+                      width: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) =>
+                          _fallbackPlaceholder(100, 110),
+                    ),
+                    if (story.isPremium)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'PREMIUM',
+                            style: text8(
+                              color: AppColors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
@@ -622,4 +675,12 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
       ),
     );
   }
+}
+
+TextStyle text8({Color? color, FontWeight? fontWeight}) {
+  return TextStyle(
+    fontSize: 8,
+    color: color ?? AppColors.white,
+    fontWeight: fontWeight ?? FontWeight.normal,
+  );
 }

@@ -8,6 +8,17 @@ export 'package:golidoli_app/features/audio_play/models/audio_home_feed_model.da
 export 'package:golidoli_app/features/audio_play/models/audio_progress_model.dart';
 export 'package:golidoli_app/features/audio_play/models/audio_stories_response_model.dart';
 
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class AudioStoryModel {
   final String id;
   final String title;
@@ -29,7 +40,7 @@ class AudioStoryModel {
   final bool isPremium;
   final bool isPublished;
   final num priority;
-  final List<dynamic> likes;
+  final int likes;
   final String slug;
   final int v;
   final bool isLocked;
@@ -58,7 +69,7 @@ class AudioStoryModel {
     this.isPremium = false,
     this.isPublished = true,
     this.priority = 0,
-    this.likes = const [],
+    this.likes = 0,
     this.slug = '',
     this.v = 0,
     this.isLocked = false,
@@ -175,9 +186,13 @@ class AudioStoryModel {
 
     // 7. Likes
     final rawLikes = json['likes'];
-    List<dynamic> parsedLikes = [];
-    if (rawLikes is List) {
-      parsedLikes = List<dynamic>.from(rawLikes);
+    int parsedLikes = 0;
+    if (rawLikes is num) {
+      parsedLikes = rawLikes.toInt();
+    } else if (rawLikes is List) {
+      parsedLikes = rawLikes.length;
+    } else if (rawLikes is String) {
+      parsedLikes = int.tryParse(rawLikes) ?? 0;
     }
 
     return AudioStoryModel(
@@ -200,13 +215,20 @@ class AudioStoryModel {
           (epCount > 0 ? '$epCount Episodes' : ''),
       totalPlays: parsedPlays,
       status: json['status']?.toString() ?? 'Published',
-      isPremium: json['isPremium'] == true,
-      isPublished: json['isPublished'] ?? true,
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
+      isPublished: _parseBool(
+        json['isPublished'] ?? json['is_published'] ?? true,
+      ),
       priority: (json['priority'] as num?) ?? 0,
       likes: parsedLikes,
       slug: json['slug']?.toString() ?? '',
       v: (json['__v'] as num?)?.toInt() ?? 0,
-      isLocked: json['isLocked'] == true,
+      isLocked: _parseBool(json['isLocked'] ?? json['is_locked'] ?? false),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString())
           : null,
@@ -238,7 +260,7 @@ class AudioStoryModel {
     bool? isPremium,
     bool? isPublished,
     num? priority,
-    List<dynamic>? likes,
+    int? likes,
     String? slug,
     int? v,
     bool? isLocked,

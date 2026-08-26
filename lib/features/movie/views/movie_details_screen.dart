@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -6,12 +8,16 @@ import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../constants/enums.dart';
 import '../models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
 
 class MovieDetailsScreen extends StatefulWidget {
   const MovieDetailsScreen({super.key, this.id});
@@ -167,8 +173,40 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                     ),
                   ),
                   GestureDetector(
-                    onTap: () {
-                      // Handle share
+                    onTap: () async {
+                      try {
+                        final imageUrl = formatMediaUrl(movie.banner);
+                        final response = await http.get(Uri.parse(imageUrl));
+
+                        if (response.statusCode != 200) {
+                          debugPrint(
+                            "⚠️ Failed to download poster for sharing",
+                          );
+                          return;
+                        }
+
+                        final tempDir = await getTemporaryDirectory();
+                        final file = File(
+                          '${tempDir.path}/goliDoli_poster_${movie.id}.jpg',
+                        );
+                        await file.writeAsBytes(response.bodyBytes);
+
+                        final shareText = movie.title.isNotEmpty
+                            ? 'Check out "${movie.title}" on GoliDoli!'
+                            : 'Check out this show on GoliDoli!';
+
+                        await SharePlus.instance.share(
+                          ShareParams(
+                            files: [XFile(file.path)],
+                            text: shareText,
+                            subject: movie.title.isNotEmpty
+                                ? movie.title
+                                : 'Movie',
+                          ),
+                        );
+                      } catch (e) {
+                        debugPrint("⚠️ Error sharing poster: $e");
+                      }
                     },
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -343,209 +381,263 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
 
   Widget _buildActions(MovieModel movie) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         children: [
-          // Watch Now + Watchlist row
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    if (movie.videoUrl.isNotEmpty) {
-                      if (checkPlayable(
-                        context,
-                        isPremium: movie.isPremium,
+          // Primary "Watch Now" Button
+          GestureDetector(
+            onTap: () {
+              if (movie.videoUrl.isNotEmpty) {
+                if (checkPlayable(
+                  context,
+                  isPremium: movie.isPremium,
+                  title: movie.title,
+                )) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MoviePlayerScreen(
+                        videoUrl: movie.videoUrl,
                         title: movie.title,
-                      )) {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => MoviePlayerScreen(
-                              videoUrl: movie.videoUrl,
-                              title: movie.title,
-                              contentId: movie.id,
-                              contentType: 'movie',
-                            ),
-                          ),
-                        );
-                      }
+                        contentId: movie.id,
+                        contentType: 'movie',
+                      ),
+                    ),
+                  );
+                }
+              } else {
+                Get.snackbar(
+                  'Notice',
+                  'Video is not available yet',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.black87,
+                  colorText: Colors.white,
+                );
+              }
+            },
+            child: Container(
+              height: 48,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryColor.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.play_arrow_rounded,
+                    color: AppColors.black,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Watch Now',
+                    style: text15(
+                      color: AppColors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Modern Quick Actions Row (Watchlist, Like, Dislike, Download, Share)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // 1. Watchlist
+              Obx(() {
+                final bool isInWatchlist =
+                    widget.id != null &&
+                    _watchlistController.isItemInWatchlist(widget.id!);
+                final bool isLoading =
+                    widget.id != null &&
+                    _watchlistController.isItemLoading(widget.id!);
+
+                return _buildQuickActionItem(
+                  icon: isInWatchlist
+                      ? Icons.bookmark_added_rounded
+                      : Icons.bookmark_add_outlined,
+                  label: isInWatchlist ? 'Saved' : 'Watchlist',
+                  isSelected: isInWatchlist,
+                  isLoading: isLoading,
+                  onTap: () {
+                    if (widget.id != null && !isLoading) {
+                      _watchlistController.toggleWatchlist(widget.id!);
+                    }
+                  },
+                );
+              }),
+              // 2. Like
+              Obx(() {
+                final interactionCtrl = InteractionController.to;
+                final likes = interactionCtrl.getLikes(movie.id, movie.likes);
+                final isLiked = interactionCtrl.isLiked(movie.id);
+                final isLoading = interactionCtrl.isLoading(movie.id);
+
+                return _buildQuickActionItem(
+                  icon: isLiked
+                      ? Icons.thumb_up_alt_rounded
+                      : Icons.thumb_up_alt_outlined,
+                  label: likes > 0 ? '$likes' : 'Like',
+                  isSelected: isLiked,
+                  isLoading: isLoading,
+                  onTap: () {
+                    interactionCtrl.toggleLike(movie.id, showToast: true);
+                  },
+                );
+              }),
+              // 3. Dislike
+              Obx(() {
+                final interactionCtrl = InteractionController.to;
+                final dislikes = interactionCtrl.getDislikes(
+                  movie.id,
+                  movie.dislikes,
+                );
+                final isDisliked = interactionCtrl.isDisliked(movie.id);
+                final isLoading = interactionCtrl.isLoading(movie.id);
+
+                return _buildQuickActionItem(
+                  icon: isDisliked
+                      ? Icons.thumb_down_alt_rounded
+                      : Icons.thumb_down_alt_outlined,
+                  label: dislikes > 0 ? '$dislikes' : 'Dislike',
+                  isSelected: isDisliked,
+                  activeColor: AppColors.errorColor,
+                  isLoading: isLoading,
+                  onTap: () {
+                    interactionCtrl.toggleDislike(movie.id, showToast: true);
+                  },
+                );
+              }),
+              // 4. Download
+              Obx(() {
+                final downloadService = AppDownloadService.to;
+                final isDownloaded = downloadService.isDownloaded(movie.id);
+                final isDownloading = downloadService.isDownloading(movie.id);
+                final progress = downloadService.getProgress(movie.id);
+
+                return _buildQuickActionItem(
+                  icon: isDownloading
+                      ? Icons.hourglass_top_rounded
+                      : (isDownloaded
+                            ? Icons.download_done_rounded
+                            : Icons.download_rounded),
+                  label: isDownloading
+                      ? '${(progress * 100).toInt()}%'
+                      : (isDownloaded ? 'Downloaded' : 'Download'),
+                  isSelected: isDownloaded || isDownloading,
+                  isLoading: false,
+                  onTap: () {
+                    if (isDownloading) return;
+                    if (isDownloaded) {
+                      _showDownloadOptions(context, movie, downloadService);
                     } else {
-                      Get.snackbar(
-                        'Notice',
-                        'Video is not available yet',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: Colors.black87,
-                        colorText: Colors.white,
+                      downloadService.downloadMedia(
+                        id: movie.id,
+                        title: movie.title,
+                        parentTitle: movie.genre.join(', '),
+                        coverImage: movie.poster.isNotEmpty
+                            ? movie.poster
+                            : movie.banner,
+                        remoteUrl: movie.videoUrl,
+                        mediaType: DownloadMediaType.movie,
                       );
                     }
                   },
-                  child: Container(
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.play_arrow_rounded,
-                          color: AppColors.black,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Watch Now',
-                          style: text13(
-                            color: AppColors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Obx(() {
-                  final bool isInWatchlist =
-                      widget.id != null &&
-                      _watchlistController.isItemInWatchlist(widget.id!);
-                  final bool isLoading =
-                      widget.id != null &&
-                      _watchlistController.isItemLoading(widget.id!);
-
-                  return GestureDetector(
-                    onTap: () {
-                      if (widget.id != null && !isLoading) {
-                        _watchlistController.toggleWatchlist(widget.id!);
-                      }
-                    },
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceColor,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: AppColors.borderColor.withOpacity(0.5),
-                        ),
-                      ),
-                      child: Center(
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.primaryColor,
-                                ),
-                              )
-                            : Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isInWatchlist
-                                        ? Icons.bookmark_rounded
-                                        : Icons.bookmark_add_outlined,
-                                    color: isInWatchlist
-                                        ? AppColors.primaryColor
-                                        : AppColors.secondaryTextColor,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    isInWatchlist ? 'Saved' : '+ Watchlist',
-                                    style: text13(
-                                      color: isInWatchlist
-                                          ? AppColors.primaryColor
-                                          : AppColors.secondaryTextColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
+                );
+              }),
+              // 5. Share
+              // _buildQuickActionItem(
+              //   icon: Icons.share_outlined,
+              //   label: 'Share',
+              //   onTap: () {
+              //     Get.snackbar(
+              //       'Share',
+              //       'Sharing ${movie.title}...',
+              //       snackPosition: SnackPosition.BOTTOM,
+              //       backgroundColor: Colors.black87,
+              //       colorText: Colors.white,
+              //       duration: const Duration(seconds: 2),
+              //     );
+              //   },
+              // ),
             ],
           ),
-          const SizedBox(height: 10),
-          // Download button
-          Obx(() {
-            final downloadService = AppDownloadService.to;
-            final isDownloaded = downloadService.isDownloaded(movie.id);
-            final isDownloading = downloadService.isDownloading(movie.id);
-            final progress = downloadService.getProgress(movie.id);
+        ],
+      ),
+    );
+  }
 
-            return GestureDetector(
-              onTap: () {
-                if (isDownloading) return;
-                if (isDownloaded) {
-                  _showDownloadOptions(context, movie, downloadService);
-                } else {
-                  downloadService.downloadMedia(
-                    id: movie.id,
-                    title: movie.title,
-                    parentTitle: movie.genre.join(', '),
-                    coverImage: movie.poster.isNotEmpty ? movie.poster : movie.banner,
-                    remoteUrl: movie.videoUrl,
-                    mediaType: DownloadMediaType.movie,
-                  );
-                }
-              },
-              child: Container(
-                height: 44,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: isDownloaded
-                      ? AppColors.primaryColor.withValues(alpha: 0.15)
-                      : AppColors.surfaceColor,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDownloaded
-                        ? AppColors.primaryColor
-                        : AppColors.borderColor.withValues(alpha: 0.4),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isDownloading)
-                      Container(
-                        width: 18,
-                        height: 18,
-                        margin: const EdgeInsets.only(right: 8),
-                        child: CircularProgressIndicator(
-                          value: progress > 0 ? progress : null,
-                          strokeWidth: 2,
-                          color: AppColors.primaryColor,
-                        ),
-                      )
-                    else
-                      Icon(
-                        isDownloaded ? Icons.download_done_rounded : Icons.download_outlined,
-                        color: isDownloaded ? AppColors.primaryColor : AppColors.secondaryTextColor,
-                        size: 18,
-                      ),
-                    const SizedBox(width: 8),
-                    Text(
-                      isDownloading
-                          ? 'Downloading ${(progress * 100).toInt()}%'
-                          : (isDownloaded ? 'Downloaded (Offline Ready)' : 'Download Movie'),
-                      style: text13(
-                        color: isDownloaded ? AppColors.primaryColor : AppColors.secondaryTextColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+  Widget _buildQuickActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isSelected = false,
+    Color activeColor = AppColors.primaryColor,
+    Color inactiveColor = AppColors.secondaryTextColor,
+    bool isLoading = false,
+  }) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 35,
+              height: 35,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? activeColor.withValues(alpha: 0.16)
+                    : AppColors.surfaceColor,
+                border: Border.all(
+                  color: isSelected
+                      ? activeColor.withValues(alpha: 0.7)
+                      : AppColors.borderColor.withValues(alpha: 0.4),
+                  width: 1.2,
                 ),
               ),
-            );
-          }),
-        ],
+              child: Center(
+                child: isLoading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: activeColor,
+                        ),
+                      )
+                    : Icon(
+                        icon,
+                        color: isSelected ? activeColor : inactiveColor,
+                        size: 16,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: text10(
+                color: isSelected ? activeColor : AppColors.secondaryTextColor,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -568,11 +660,20 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           children: [
             Text(movie.title, style: text16(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('Downloaded for offline viewing', style: text12(color: AppColors.secondaryTextColor)),
+            Text(
+              'Downloaded for offline viewing',
+              style: text12(color: AppColors.secondaryTextColor),
+            ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.play_circle_fill_rounded, color: AppColors.primaryColor),
-              title: Text('Watch Offline', style: text14(color: AppColors.white)),
+              leading: const Icon(
+                Icons.play_circle_fill_rounded,
+                color: AppColors.primaryColor,
+              ),
+              title: Text(
+                'Watch Offline',
+                style: text14(color: AppColors.white),
+              ),
               onTap: () {
                 Get.back();
                 final localPath = downloadService.getLocalFilePath(movie.id);
@@ -589,8 +690,14 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.errorColor),
-              title: Text('Delete Download', style: text14(color: AppColors.errorColor)),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.errorColor,
+              ),
+              title: Text(
+                'Delete Download',
+                style: text14(color: AppColors.errorColor),
+              ),
               onTap: () {
                 Get.back();
                 downloadService.removeDownload(movie.id);

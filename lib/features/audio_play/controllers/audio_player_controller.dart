@@ -6,6 +6,7 @@ import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
 import 'package:golidoli_app/features/audio_play/repositories/audio_repository.dart';
 import 'package:golidoli_app/features/audio_play/services/audio_download_service.dart';
 import 'package:golidoli_app/features/audio_play/services/audio_handler.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -231,6 +232,25 @@ class AudioPlayerController extends GetxController {
 
   Future<void> loadAndPlayEpisode(AudioEpisodeModel episode, {int startPositionSeconds = 0}) async {
     try {
+      // 0. Enforce Subscription Access Control for Premium Episodes / Stories
+      final isPremiumEpisode = episode.isPremium ||
+          (story.value?.isPremium ?? false) ||
+          episode.isLocked;
+      if (isPremiumEpisode) {
+        final subController = Get.isRegistered<SubscriptionStatusController>()
+            ? Get.find<SubscriptionStatusController>()
+            : Get.put(SubscriptionStatusController());
+        if (!subController.isPremiumUser.value) {
+          _audio.pause();
+          isPlaying.value = false;
+          isLoadingAudio.value = false;
+          if (Get.context != null) {
+            showPremiumPrompt(Get.context!, title: episode.title);
+          }
+          return;
+        }
+      }
+
       // 1. INSTANTLY STOP previous playback (0ms delay) so previous audio never lingers!
       _audio.pause();
       isPlaying.value = false;

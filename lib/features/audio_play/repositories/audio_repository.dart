@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
+import 'package:golidoli_app/shared/models/like_dislike_response.dart';
 
 class AudioRepository {
   final NetworkApiService _apiService = NetworkApiService();
@@ -195,6 +196,42 @@ class AudioRepository {
       return null;
     } catch (e) {
       debugPrint("AudioRepository.getEpisodeProgress Error: $e");
+      return null;
+    }
+  }
+
+  /// 11. TOGGLE LIKE (Auth Required)
+  /// Endpoint: POST /api/interaction/toggle/like/{content_id}
+  Future<LikeDislikeResponse?> toggleLike(String contentId) async {
+    try {
+      final response = await _apiService.postApi(
+        AppUrl.toggleLike(contentId),
+        {},
+      );
+      if (response != null && response is Map) {
+        return LikeDislikeResponse.fromJson(Map<String, dynamic>.from(response));
+      }
+      return null;
+    } catch (e) {
+      debugPrint("AudioRepository.toggleLike Error: $e");
+      return null;
+    }
+  }
+
+  /// 12. TOGGLE DISLIKE (Auth Required)
+  /// Endpoint: POST /api/interaction/toggle/dislike/{content_id}
+  Future<LikeDislikeResponse?> toggleDislike(String contentId) async {
+    try {
+      final response = await _apiService.postApi(
+        AppUrl.toggleDislike(contentId),
+        {},
+      );
+      if (response != null && response is Map) {
+        return LikeDislikeResponse.fromJson(Map<String, dynamic>.from(response));
+      }
+      return null;
+    } catch (e) {
+      debugPrint("AudioRepository.toggleDislike Error: $e");
       return null;
     }
   }

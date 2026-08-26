@@ -9,7 +9,9 @@ import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
+import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
@@ -250,6 +252,14 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   bool _hasCompleted = false;
   bool _autoPlayPending = false;
 
+  bool get isEpisodeLocked {
+    final subController = Get.isRegistered<SubscriptionStatusController>()
+        ? Get.find<SubscriptionStatusController>()
+        : Get.put(SubscriptionStatusController());
+    final isPrem = widget.episode.isPremium || widget.episode.isLocked;
+    return isPrem && !subController.isPremiumUser.value;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -278,7 +288,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
         .then((_) {
           if (!mounted) return;
           isInitialized.value = true;
-          if (widget.isActive || _autoPlayPending) {
+          if ((widget.isActive || _autoPlayPending) && !isEpisodeLocked) {
             _autoPlayPending = false;
             _vpc.setLooping(false);
             if (widget.initialPositionSeconds != null &&
@@ -307,6 +317,10 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   void ensurePlaying() {
     if (!mounted) return;
     _hasCompleted = false;
+    if (isEpisodeLocked) {
+      if (isInitialized.value) _vpc.pause();
+      return;
+    }
     if (isInitialized.value) {
       _vpc.setLooping(false);
       _vpc.play();
@@ -536,12 +550,12 @@ class _DramaReelItemState extends State<_DramaReelItem> {
 
                         return _ActionButton(
                           icon: isSaved
-                              ? Icons.favorite
-                              : Icons.favorite_border_outlined,
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
                           iconColor: isSaved
-                              ? AppColors.accentColor
+                              ? AppColors.primaryColor
                               : AppColors.white,
-                          label: isSaved ? 'Saved' : 'Like',
+                          label: isSaved ? 'Saved' : 'Watchlist',
                           onTap: () =>
                               watchlistCtrl.toggleWatchlist(widget.dramaId),
                         );
@@ -673,6 +687,83 @@ class _DramaReelItemState extends State<_DramaReelItem> {
               );
             }),
           ),
+
+          // ── Premium Lock Overlay ──────────────────────────────────────────
+          if (isEpisodeLocked)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.92),
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.amber.withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.lock_rounded,
+                          color: Colors.amber,
+                          size: 42,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Premium Episode',
+                        style: text20(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Episode ${widget.episode.episodeNumber} is for Premium members. Subscribe now to unlock unlimited streaming.',
+                        style: text13(color: AppColors.secondaryTextColor),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 20),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          showPremiumPrompt(
+                            context,
+                            title: widget.episode.title,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.stars_rounded,
+                          color: Colors.black,
+                        ),
+                        label: Text(
+                          'Unlock with Premium',
+                          style: text13(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

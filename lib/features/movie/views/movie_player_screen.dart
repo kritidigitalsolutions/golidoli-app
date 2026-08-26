@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -80,6 +81,25 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         if (status == Status.success &&
             _episodeController!.episodeDetail.value != null) {
           final episodeDetailVal = _episodeController!.episodeDetail.value!;
+          if (episodeDetailVal.episode.isPremium) {
+            final subController =
+                Get.isRegistered<SubscriptionStatusController>()
+                ? Get.find<SubscriptionStatusController>()
+                : Get.put(SubscriptionStatusController());
+            if (!subController.isPremiumUser.value) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                  _errorMessage = 'Premium subscription required';
+                });
+                showPremiumPrompt(
+                  context,
+                  title: episodeDetailVal.episode.title,
+                );
+              }
+              return;
+            }
+          }
           final videoUrl = formatMediaUrl(episodeDetailVal.episode.videoUrl);
           if (videoUrl.isNotEmpty) {
             _qualityUrls['Auto'] = videoUrl;

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -12,6 +14,10 @@ import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 class MicroDramaDetailScreen extends StatefulWidget {
   final String id;
@@ -158,49 +164,80 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                     Icons.arrow_back_ios_new_rounded,
                     () => Navigator.of(context).maybePop(),
                   ),
-                  // AI label
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.overlayColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: AppColors.borderColor.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.auto_awesome_rounded,
-                          color: AppColors.primaryColor,
-                          size: 14,
+                  _iconBtn(Icons.share_outlined, () async {
+                    try {
+                      final imageUrl = formatMediaUrl(drama.banner);
+                      final response = await http.get(Uri.parse(imageUrl));
+
+                      if (response.statusCode != 200) {
+                        debugPrint("⚠️ Failed to download poster for sharing");
+                        return;
+                      }
+
+                      final tempDir = await getTemporaryDirectory();
+                      final file = File(
+                        '${tempDir.path}/goliDoli_poster_${drama.id}.jpg',
+                      );
+                      await file.writeAsBytes(response.bodyBytes);
+
+                      final shareText = drama.title.isNotEmpty
+                          ? 'Check out "${drama.title}" on GoliDoli!'
+                          : 'Check out this show on GoliDoli!';
+
+                      await SharePlus.instance.share(
+                        ShareParams(
+                          files: [XFile(file.path)],
+                          text: shareText,
+                          subject: drama.title.isNotEmpty
+                              ? drama.title
+                              : 'Web Series',
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Ai',
-                          style: text11(
-                            color: AppColors.primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      );
+                    } catch (e) {
+                      debugPrint("⚠️ Error sharing poster: $e");
+                    }
+                  }),
                 ],
               ),
             ),
           ),
         ),
-        // Title at bottom of hero
+        // Title at bottom of hero with Premium badge
         Positioned(
           bottom: 14,
           left: 16,
           right: 16,
-          child: Text(drama.title, style: text22(fontWeight: FontWeight.bold)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  drama.title,
+                  style: text22(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (drama.isPremium) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.amber,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'PREMIUM',
+                    style: text10(
+                      color: AppColors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ],
     );
@@ -240,8 +277,36 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
           // Additional tags: total episodes, language, etc.
           _buildTag('${drama.totalEpisodes} Episodes'),
           _buildTag(drama.language),
-          if (drama.isPremium) _buildTag('Premium'),
-          if (drama.isComingSoon) _buildTag('Coming Soon'),
+          if (drama.isPremium)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.amber,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'PREMIUM',
+                style: text10(
+                  color: AppColors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          if (drama.isComingSoon)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.accentColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Coming Soon',
+                style: text10(
+                  color: AppColors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -279,112 +344,183 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
 
   // ── Actions ────────────────────────────────────────────────────────────────
   Widget _buildActions(Microdrama drama) {
+    final dramaId = drama.id.isNotEmpty ? drama.id : widget.id;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
         children: [
-          // Start Watching
-          Expanded(
-            child: GestureDetector(
-              onTap: _onStartWatching,
-              child: Container(
-                height: 46,
-                decoration: BoxDecoration(
-                  color: AppColors.accentColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.play_arrow_rounded,
+          // Primary "Start Watching" Button
+          GestureDetector(
+            onTap: _onStartWatching,
+            child: Container(
+              height: 48,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.accentColor,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.accentColor.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.play_arrow_rounded,
+                    color: AppColors.white,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Start Watching',
+                    style: text15(
                       color: AppColors.white,
-                      size: 22,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Start Watching',
-                      style: text13(
-                        color: AppColors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          // Watchlist
-          Expanded(
-            child: Obx(() {
-              final dramaId = drama.id.isNotEmpty ? drama.id : widget.id;
-              final bool isInWatchlist =
-                  dramaId.isNotEmpty &&
-                  _watchlistController.isItemInWatchlist(dramaId);
-              final bool isLoading =
-                  dramaId.isNotEmpty &&
-                  _watchlistController.isItemLoading(dramaId);
+          const SizedBox(height: 18),
+          // Modern Quick Actions Row (Watchlist, Like, Dislike, Share)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // 1. Watchlist
+              Obx(() {
+                final bool isInWatchlist =
+                    dramaId.isNotEmpty &&
+                    _watchlistController.isItemInWatchlist(dramaId);
+                final bool isLoading =
+                    dramaId.isNotEmpty &&
+                    _watchlistController.isItemLoading(dramaId);
 
-              return GestureDetector(
-                onTap: () {
-                  if (dramaId.isNotEmpty && !isLoading) {
-                    _watchlistController.toggleWatchlist(dramaId);
-                  }
-                },
-                child: Container(
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceColor,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: isInWatchlist
-                          ? AppColors.primaryColor.withValues(alpha: 0.6)
-                          : AppColors.borderColor.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Center(
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primaryColor,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                isInWatchlist
-                                    ? Icons.bookmark_rounded
-                                    : Icons.bookmark_add_outlined,
-                                color: isInWatchlist
-                                    ? AppColors.primaryColor
-                                    : AppColors.secondaryTextColor,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                isInWatchlist ? 'Saved' : '+ Watchlist',
-                                style: text13(
-                                  color: isInWatchlist
-                                      ? AppColors.primaryColor
-                                      : AppColors.secondaryTextColor,
-                                  fontWeight: isInWatchlist
-                                      ? FontWeight.bold
-                                      : FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              );
-            }),
+                return _buildQuickActionItem(
+                  icon: isInWatchlist
+                      ? Icons.bookmark_added_rounded
+                      : Icons.bookmark_add_outlined,
+                  label: isInWatchlist ? 'Saved' : 'Watchlist',
+                  isSelected: isInWatchlist,
+                  isLoading: isLoading,
+                  onTap: () {
+                    if (dramaId.isNotEmpty && !isLoading) {
+                      _watchlistController.toggleWatchlist(dramaId);
+                    }
+                  },
+                );
+              }),
+              // 2. Like
+              Obx(() {
+                final interactionCtrl = InteractionController.to;
+                final isLiked = interactionCtrl.isLiked(dramaId);
+                final likes = interactionCtrl.getLikes(dramaId, 0);
+                final isLoading = interactionCtrl.isLoading(dramaId);
+
+                return _buildQuickActionItem(
+                  icon: isLiked
+                      ? Icons.thumb_up_alt_rounded
+                      : Icons.thumb_up_alt_outlined,
+                  label: likes > 0 ? '$likes' : 'Like',
+                  isSelected: isLiked,
+                  isLoading: isLoading,
+                  onTap: () {
+                    interactionCtrl.toggleLike(dramaId, showToast: true);
+                  },
+                );
+              }),
+              // 3. Dislike
+              Obx(() {
+                final interactionCtrl = InteractionController.to;
+                final isDisliked = interactionCtrl.isDisliked(dramaId);
+                final dislikes = interactionCtrl.getDislikes(dramaId, 0);
+                final isLoading = interactionCtrl.isLoading(dramaId);
+
+                return _buildQuickActionItem(
+                  icon: isDisliked
+                      ? Icons.thumb_down_alt_rounded
+                      : Icons.thumb_down_alt_outlined,
+                  label: dislikes > 0 ? '$dislikes' : 'Dislike',
+                  isSelected: isDisliked,
+                  activeColor: AppColors.errorColor,
+                  isLoading: isLoading,
+                  onTap: () {
+                    interactionCtrl.toggleDislike(dramaId, showToast: true);
+                  },
+                );
+              }),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isSelected = false,
+    Color activeColor = AppColors.primaryColor,
+    Color inactiveColor = AppColors.secondaryTextColor,
+    bool isLoading = false,
+  }) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 35,
+              height: 35,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? activeColor.withValues(alpha: 0.16)
+                    : AppColors.surfaceColor,
+                border: Border.all(
+                  color: isSelected
+                      ? activeColor.withValues(alpha: 0.7)
+                      : AppColors.borderColor.withValues(alpha: 0.4),
+                  width: 1.2,
+                ),
+              ),
+              child: Center(
+                child: isLoading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: activeColor,
+                        ),
+                      )
+                    : Icon(
+                        icon,
+                        color: isSelected ? activeColor : inactiveColor,
+                        size: 16,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: text10(
+                color: isSelected ? activeColor : AppColors.secondaryTextColor,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

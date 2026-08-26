@@ -29,7 +29,9 @@ bool checkPlayable(
 }) {
   if (!isPremium) return true;
 
-  final subController = Get.find<SubscriptionStatusController>();
+  final subController = Get.isRegistered<SubscriptionStatusController>()
+      ? Get.find<SubscriptionStatusController>()
+      : Get.put(SubscriptionStatusController());
   if (subController.isPremiumUser.value) {
     return true;
   }

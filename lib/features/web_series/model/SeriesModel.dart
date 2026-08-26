@@ -1,3 +1,14 @@
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class SeriesResponse {
   final bool success;
   final List<Series> series;
@@ -49,8 +60,8 @@ class Series {
   final bool isPopular;
   final List<dynamic> cast;
   final List<dynamic> category;
-  final List<dynamic> likes;
-  final List<dynamic> dislikes;
+  final int likes;
+  final int dislikes;
   final int totalSeasons;
   final int totalEpisodes;
   final String createdAt;
@@ -78,8 +89,8 @@ class Series {
     this.isPopular = false,
     required this.cast,
     required this.category,
-    required this.likes,
-    required this.dislikes,
+    this.likes = 0,
+    this.dislikes = 0,
     required this.totalSeasons,
     required this.totalEpisodes,
     required this.createdAt,
@@ -100,19 +111,36 @@ class Series {
       language: json['language'] ?? '',
       poster: json['poster'] ?? '',
       banner: json['banner'] ?? '',
-      isComingSoon: json['isComingSoon'] ?? false,
+      isComingSoon: _parseBool(
+        json['isComingSoon'] ?? json['is_coming_soon'] ?? json['comingSoon'],
+      ),
       releaseDate: json['releaseDate'],
       trailerUrl: json['trailerUrl'] ?? '',
-      isPremium: json['isPremium'] ?? false,
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
       priority: json['priority'] ?? 0,
       rating: (json['rating'] is num)
           ? (json['rating'] as num).toDouble()
           : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
-      isPopular: json['isPopular'] ?? false,
+      isPopular: _parseBool(
+        json['isPopular'] ?? json['is_popular'] ?? json['popularSeries'],
+      ),
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<dynamic>.from(json['category'] ?? []),
-      likes: List<dynamic>.from(json['likes'] ?? []),
-      dislikes: List<dynamic>.from(json['dislikes'] ?? []),
+      likes: (json['likes'] is num)
+          ? (json['likes'] as num).toInt()
+          : (json['likes'] is List
+              ? (json['likes'] as List).length
+              : int.tryParse(json['likes']?.toString() ?? '0') ?? 0),
+      dislikes: (json['dislikes'] is num)
+          ? (json['dislikes'] as num).toInt()
+          : (json['dislikes'] is List
+              ? (json['dislikes'] as List).length
+              : int.tryParse(json['dislikes']?.toString() ?? '0') ?? 0),
       totalSeasons: json['totalSeasons'] ?? 0,
       totalEpisodes: json['totalEpisodes'] ?? 0,
       createdAt: json['createdAt'] ?? '',
@@ -174,8 +202,8 @@ class Series {
     bool? isPopular,
     List<dynamic>? cast,
     List<dynamic>? category,
-    List<dynamic>? likes,
-    List<dynamic>? dislikes,
+    int? likes,
+    int? dislikes,
     int? totalSeasons,
     int? totalEpisodes,
     String? createdAt,

@@ -23,6 +23,17 @@ class EpisodeModel {
   }
 }
 
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class Episode {
   final String id;
   final String title;
@@ -33,6 +44,8 @@ class Episode {
   final String videoUrl;
   final String thumbnail;
   final String duration;
+  final bool isPremium;
+  final bool isLocked;
   final DateTime createdAt;
   final DateTime updatedAt;
   final int version;
@@ -47,6 +60,8 @@ class Episode {
     required this.videoUrl,
     required this.thumbnail,
     required this.duration,
+    this.isPremium = false,
+    this.isLocked = false,
     required this.createdAt,
     required this.updatedAt,
     required this.version,
@@ -63,6 +78,13 @@ class Episode {
       videoUrl: json['videoUrl'] ?? '',
       thumbnail: json['thumbnail'] ?? '',
       duration: json['duration'] ?? '',
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
+      isLocked: _parseBool(json['isLocked'] ?? json['is_locked'] ?? false),
       createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
       updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
       version: json['__v'] ?? 0,

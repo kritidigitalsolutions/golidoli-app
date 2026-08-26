@@ -5,6 +5,7 @@ import '../models/category_detail_model.dart';
 import '../models/content_model.dart';
 
 import '../models/home_banner_model.dart';
+import 'package:golidoli_app/shared/models/like_dislike_response.dart';
 
 class HomeDatasource {
   final NetworkApiService _apiService = NetworkApiService();
@@ -72,6 +73,36 @@ class HomeDatasource {
       return null;
     } catch (e) {
       return null;
+    }
+  }
+
+  Future<LikeDislikeResponse?> toggleLike(String contentId) async {
+    try {
+      final response = await _apiService.postApi(
+        AppUrl.toggleLike(contentId),
+        {},
+      );
+      if (response != null && response is Map) {
+        return LikeDislikeResponse.fromJson(Map<String, dynamic>.from(response));
+      }
+      return null;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<LikeDislikeResponse?> toggleDislike(String contentId) async {
+    try {
+      final response = await _apiService.postApi(
+        AppUrl.toggleDislike(contentId),
+        {},
+      );
+      if (response != null && response is Map) {
+        return LikeDislikeResponse.fromJson(Map<String, dynamic>.from(response));
+      }
+      return null;
+    } catch (e) {
+      rethrow;
     }
   }
 }

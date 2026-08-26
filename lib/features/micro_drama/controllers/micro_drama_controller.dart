@@ -4,6 +4,7 @@ import 'package:golidoli_app/features/micro_drama/datasource/micro_drama_datasou
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_detail_response.dart' hide Microdrama;
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
+import 'package:golidoli_app/shared/models/like_dislike_response.dart';
 
 class MicroDramaController extends GetxController {
   // ── State ─────────────────────────────────────────────────────────────────
@@ -89,6 +90,35 @@ class MicroDramaController extends GetxController {
       episodeDetailStatus.value = Status.success;
     } else {
       episodeDetailStatus.value = Status.error;
+    }
+  }
+
+  Future<LikeDislikeResponse?> toggleLike(String id) async {
+    try {
+      final res = await _api.toggleLike(id);
+      if (res != null && res.success) {
+        if (episodeDetail.value != null) {
+          final eps = episodeDetail.value!.episodes.map((ep) {
+            if (ep.id == id) {
+              return ep.copyWith(likes: res.totalLikes);
+            }
+            return ep;
+          }).toList();
+          episodeDetail.value = episodeDetail.value!.copyWith(episodes: eps);
+        }
+      }
+      return res;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<LikeDislikeResponse?> toggleDislike(String id) async {
+    try {
+      final res = await _api.toggleDislike(id);
+      return res;
+    } catch (_) {
+      return null;
     }
   }
 }

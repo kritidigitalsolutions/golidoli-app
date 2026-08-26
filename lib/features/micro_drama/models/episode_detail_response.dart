@@ -34,6 +34,17 @@ class MicroDramaEpisodesResponse {
   }
 }
 
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class MicroDramaEpisode {
   final String id;
   final String tvShowId;
@@ -43,6 +54,7 @@ class MicroDramaEpisode {
   final String videoUrl;
   final String thumbnail;
   final String duration;
+  final bool isPremium;
   final bool isLocked;
   final bool isVertical;
   final int views;
@@ -60,6 +72,7 @@ class MicroDramaEpisode {
     required this.videoUrl,
     required this.thumbnail,
     required this.duration,
+    this.isPremium = false,
     required this.isLocked,
     required this.isVertical,
     required this.views,
@@ -81,10 +94,26 @@ class MicroDramaEpisode {
       videoUrl: json['videoUrl'] ?? '',
       thumbnail: json['thumbnail'] ?? '',
       duration: json['duration'] ?? '',
-      isLocked: json['isLocked'] ?? false,
-      isVertical: json['isVertical'] ?? false,
-      views: (json['views'] is num) ? (json['views'] as num).toInt() : 0,
-      likes: (json['likes'] is num) ? (json['likes'] as num).toInt() : 0,
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
+      isLocked: _parseBool(json['isLocked'] ?? json['is_locked'] ?? false),
+      isVertical: _parseBool(
+        json['isVertical'] ?? json['is_vertical'] ?? false,
+      ),
+      views: (json['views'] is num)
+          ? (json['views'] as num).toInt()
+          : (json['views'] is List
+              ? (json['views'] as List).length
+              : int.tryParse(json['views']?.toString() ?? '0') ?? 0),
+      likes: (json['likes'] is num)
+          ? (json['likes'] as num).toInt()
+          : (json['likes'] is List
+              ? (json['likes'] as List).length
+              : int.tryParse(json['likes']?.toString() ?? '0') ?? 0),
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       version: json['__v'] ?? 0,

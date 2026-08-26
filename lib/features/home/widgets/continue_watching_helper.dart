@@ -17,6 +17,14 @@ class ContinueWatchingHelper {
     ContinueWatchingItem item, {
     VoidCallback? onFinished,
   }) {
+    final bool isItemPremium =
+        item.content?.isPremium ?? item.episode?.isPremium ?? false;
+    if (isItemPremium) {
+      if (!checkPlayable(context, isPremium: true, title: item.displayTitle)) {
+        return;
+      }
+    }
+
     final type = item.contentType.toLowerCase();
     final contentId = item.contentId;
     final progressSeconds = item.progressSeconds;

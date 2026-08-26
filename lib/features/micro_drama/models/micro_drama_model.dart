@@ -1,3 +1,14 @@
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class MicrodramasResponse {
   final bool success;
   final List<Microdrama> microdramas;
@@ -103,10 +114,17 @@ class Microdrama {
       poster: json['poster'] ?? '',
       banner: json['banner'] ?? '',
       trailerUrl: json['trailerUrl'] ?? '',
-      isComingSoon: json['isComingSoon'] ?? false,
+      isComingSoon: _parseBool(
+        json['isComingSoon'] ?? json['is_coming_soon'] ?? json['comingSoon'],
+      ),
       totalEpisodes: json['totalEpisodes'] ?? 0,
       totalViews: json['totalViews'] ?? 0,
-      isPremium: json['isPremium'] ?? false,
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
       priority: json['priority'] ?? 0,
       status: json['status'] ?? '',
       cast: List<dynamic>.from(json['cast'] ?? []),
@@ -115,7 +133,9 @@ class Microdrama {
       updatedAt: json['updatedAt'] ?? '',
       slug: json['slug'] ?? '',
       v: json['__v'] ?? 0,
-      isPublished: json['isPublished'] ?? false,
+      isPublished: _parseBool(
+        json['isPublished'] ?? json['is_published'] ?? json['published'],
+      ),
     );
   }
 

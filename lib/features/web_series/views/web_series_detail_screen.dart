@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -9,11 +11,15 @@ import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/model/episode_response.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../constants/enums.dart';
 import '../../movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
   const WebSeriesDetailScreen({super.key, required this.id});
@@ -25,7 +31,9 @@ class WebSeriesDetailScreen extends StatefulWidget {
 }
 
 class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
-  final WatchlistController _watchlistController = Get.put(WatchlistController());
+  final WatchlistController _watchlistController = Get.put(
+    WatchlistController(),
+  );
   int _selectedSeasonIndex = 0;
   final SeriesController _seriesController = Get.put(SeriesController());
   final EpisodeController _episodeController = Get.put(EpisodeController());
@@ -112,7 +120,6 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
               SliverToBoxAdapter(child: _buildHero(seriesDetail)),
               SliverToBoxAdapter(child: _buildInfo(seriesDetail)),
               SliverToBoxAdapter(child: _buildActions(seriesDetail)),
-              SliverToBoxAdapter(child: _buildDownloadBtn(seriesDetail)),
               SliverToBoxAdapter(child: _buildSeasonTabs(seriesDetail)),
               SliverToBoxAdapter(child: _buildEpisodeList(seriesDetail)),
               SliverToBoxAdapter(child: _buildExploreMore()),
@@ -126,13 +133,14 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
 
   // ── Hero ──────────────────────────────────────────────────────────────────
   Widget _buildHero(Series series) {
+    final bannerImg = formatMediaUrl(series.banner);
     return Stack(
       children: [
         SizedBox(
           height: 240,
           width: double.infinity,
           child: Image.network(
-            "${AppUrl.baseUrl}${series.banner}",
+            bannerImg,
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) =>
                 Container(height: 240, color: AppColors.cardColor),
@@ -160,45 +168,136 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   _iconBtn(Icons.arrow_back_ios_new_rounded, () => Get.back()),
-                  _iconBtn(Icons.share_outlined, () {}),
+                  _iconBtn(Icons.share_outlined, () async {
+                    try {
+                      final imageUrl = formatMediaUrl(series.banner);
+                      final response = await http.get(Uri.parse(imageUrl));
+
+                      if (response.statusCode != 200) {
+                        debugPrint("⚠️ Failed to download poster for sharing");
+                        return;
+                      }
+
+                      final tempDir = await getTemporaryDirectory();
+                      final file = File(
+                        '${tempDir.path}/goliDoli_poster_${series.id}.jpg',
+                      );
+                      await file.writeAsBytes(response.bodyBytes);
+
+                      final shareText = series.title.isNotEmpty
+                          ? 'Check out "${series.title}" on GoliDoli!'
+                          : 'Check out this show on GoliDoli!';
+
+                      await SharePlus.instance.share(
+                        ShareParams(
+                          files: [XFile(file.path)],
+                          text: shareText,
+                          subject: series.title.isNotEmpty
+                              ? series.title
+                              : 'Web Series',
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint("⚠️ Error sharing poster: $e");
+                    }
+                  }),
                 ],
               ),
             ),
           ),
         ),
+
+        // Premium badge on hero banner
+        if (series.isComingSoon)
+          Positioned(
+            bottom: 16,
+            left: series.isPremium ? 90 : 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.accentColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Coming Soon',
+                style: text10(
+                  color: AppColors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
 
   // ── Info row (poster + title/rating/tags/description) ─────────────────────
   Widget _buildInfo(Series series) {
+    final posterImg = formatMediaUrl(series.poster);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Poster
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              "${AppUrl.baseUrl}${series.poster}",
-              width: 90,
-              height: 120,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: 90,
-                height: 120,
-                color: AppColors.cardColor,
-                child: const Icon(Icons.movie, color: AppColors.hintTextColor),
+          // Poster with Premium badge overlay
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  posterImg,
+                  width: 90,
+                  height: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 90,
+                    height: 120,
+                    color: AppColors.cardColor,
+                    child: const Icon(
+                      Icons.tv_rounded,
+                      color: AppColors.hintTextColor,
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(series.title, style: text18(fontWeight: FontWeight.bold)),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        series.title,
+                        style: text18(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (series.isPremium) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'PREMIUM',
+                          style: text10(
+                            color: AppColors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 6),
                 // Rating
                 Row(
@@ -262,165 +361,216 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
   // ── Action buttons ─────────────────────────────────────────────────────────
   Widget _buildActions(Series series) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
         children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                final episodes = _episodeController.allEpisode.value?.episodes;
-                if (episodes != null && episodes.isNotEmpty) {
-                  final sorted = List<Episode>.from(episodes)
-                    ..sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
-                  final firstEp = sorted.first;
-                  final isPremium = series.isPremium;
-                  final title = series.title;
-                  if (checkPlayable(context, isPremium: isPremium, title: title)) {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => MoviePlayerScreen(
-                          episodeId: firstEp.id,
-                          title: "${series.title} - EP ${firstEp.episodeNumber}",
-                          contentId: widget.id,
-                          contentType: 'series',
-                        ),
+          // Primary "Watch Now" Button
+          GestureDetector(
+            onTap: () {
+              final episodes = _episodeController.allEpisode.value?.episodes;
+              if (episodes != null && episodes.isNotEmpty) {
+                final sorted = List<Episode>.from(episodes)
+                  ..sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+                final firstEp = sorted.first;
+                final isPremium = series.isPremium;
+                final title = series.title;
+                if (checkPlayable(
+                  context,
+                  isPremium: isPremium,
+                  title: title,
+                )) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MoviePlayerScreen(
+                        episodeId: firstEp.id,
+                        title: "${series.title} - EP ${firstEp.episodeNumber}",
+                        contentId: widget.id,
+                        contentType: 'series',
                       ),
-                    );
-                  }
-                } else {
-                  Get.snackbar(
-                    'Notice',
-                    'No episodes available yet',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: Colors.black87,
-                    colorText: Colors.white,
+                    ),
                   );
                 }
-              },
-              child: Container(
-                height: 44,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryColor,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.play_arrow_rounded,
+              } else {
+                Get.snackbar(
+                  'Notice',
+                  'No episodes available yet',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.black87,
+                  colorText: Colors.white,
+                );
+              }
+            },
+            child: Container(
+              height: 48,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primaryColor.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.play_arrow_rounded,
+                    color: AppColors.black,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Watch Now',
+                    style: text15(
                       color: AppColors.black,
-                      size: 20,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Watch Now',
-                      style: text13(
-                        color: AppColors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Obx(() {
-              final bool isInWatchlist =
-                  widget.id.isNotEmpty && _watchlistController.isItemInWatchlist(widget.id);
-              final bool isLoading =
-                  widget.id.isNotEmpty && _watchlistController.isItemLoading(widget.id);
+          const SizedBox(height: 18),
+          // Modern Quick Actions Row (Watchlist, Like, Dislike, Share)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              // 1. Watchlist
+              Obx(() {
+                final bool isInWatchlist =
+                    widget.id.isNotEmpty &&
+                    _watchlistController.isItemInWatchlist(widget.id);
+                final bool isLoading =
+                    widget.id.isNotEmpty &&
+                    _watchlistController.isItemLoading(widget.id);
 
-              return GestureDetector(
-                onTap: () {
-                  if (widget.id.isNotEmpty && !isLoading) {
-                    _watchlistController.toggleWatchlist(widget.id);
-                  }
-                },
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceColor,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppColors.borderColor.withOpacity(0.5),
-                    ),
-                  ),
-                  child: Center(
-                    child: isLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.primaryColor,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                isInWatchlist
-                                    ? Icons.bookmark_rounded
-                                    : Icons.bookmark_add_outlined,
-                                color: isInWatchlist
-                                    ? AppColors.primaryColor
-                                    : AppColors.secondaryTextColor,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                isInWatchlist ? 'Saved' : '+ Watchlist',
-                                style: text13(
-                                  color: isInWatchlist
-                                      ? AppColors.primaryColor
-                                      : AppColors.secondaryTextColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              );
-            }),
+                return _buildQuickActionItem(
+                  icon: isInWatchlist
+                      ? Icons.bookmark_added_rounded
+                      : Icons.bookmark_add_outlined,
+                  label: isInWatchlist ? 'Saved' : 'Watchlist',
+                  isSelected: isInWatchlist,
+                  isLoading: isLoading,
+                  onTap: () {
+                    if (widget.id.isNotEmpty && !isLoading) {
+                      _watchlistController.toggleWatchlist(widget.id);
+                    }
+                  },
+                );
+              }),
+              // 2. Like
+              Obx(() {
+                final interactionCtrl = InteractionController.to;
+                final likes = interactionCtrl.getLikes(series.id, series.likes);
+                final isLiked = interactionCtrl.isLiked(series.id);
+                final isLoading = interactionCtrl.isLoading(series.id);
+
+                return _buildQuickActionItem(
+                  icon: isLiked
+                      ? Icons.thumb_up_alt_rounded
+                      : Icons.thumb_up_alt_outlined,
+                  label: likes > 0 ? '$likes' : 'Like',
+                  isSelected: isLiked,
+                  isLoading: isLoading,
+                  onTap: () {
+                    interactionCtrl.toggleLike(series.id, showToast: true);
+                  },
+                );
+              }),
+              // 3. Dislike
+              Obx(() {
+                final interactionCtrl = InteractionController.to;
+                final dislikes = interactionCtrl.getDislikes(
+                  series.id,
+                  series.dislikes,
+                );
+                final isDisliked = interactionCtrl.isDisliked(series.id);
+                final isLoading = interactionCtrl.isLoading(series.id);
+
+                return _buildQuickActionItem(
+                  icon: isDisliked
+                      ? Icons.thumb_down_alt_rounded
+                      : Icons.thumb_down_alt_outlined,
+                  label: dislikes > 0 ? '$dislikes' : 'Dislike',
+                  isSelected: isDisliked,
+                  activeColor: AppColors.errorColor,
+                  isLoading: isLoading,
+                  onTap: () {
+                    interactionCtrl.toggleDislike(series.id, showToast: true);
+                  },
+                );
+              }),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDownloadBtn(Series series) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.download_outlined,
-                color: AppColors.secondaryTextColor,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Download',
-                style: text13(
-                  color: AppColors.secondaryTextColor,
-                  fontWeight: FontWeight.w500,
+  Widget _buildQuickActionItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    bool isSelected = false,
+    Color activeColor = AppColors.primaryColor,
+    Color inactiveColor = AppColors.secondaryTextColor,
+    bool isLoading = false,
+  }) {
+    return GestureDetector(
+      onTap: isLoading ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 35,
+              height: 35,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? activeColor.withValues(alpha: 0.16)
+                    : AppColors.surfaceColor,
+                border: Border.all(
+                  color: isSelected
+                      ? activeColor.withValues(alpha: 0.7)
+                      : AppColors.borderColor.withValues(alpha: 0.4),
+                  width: 1.2,
                 ),
               ),
-            ],
-          ),
+              child: Center(
+                child: isLoading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: activeColor,
+                        ),
+                      )
+                    : Icon(
+                        icon,
+                        color: isSelected ? activeColor : inactiveColor,
+                        size: 16,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: text10(
+                color: isSelected ? activeColor : AppColors.secondaryTextColor,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
@@ -599,7 +749,9 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
         decoration: BoxDecoration(
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: AppColors.borderColor.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           children: [
@@ -697,7 +849,9 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                     id: ep.id,
                     title: ep.title,
                     parentTitle: series?.title ?? 'Web Series',
-                    coverImage: ep.thumbnail.isNotEmpty ? '${AppUrl.baseUrl}${ep.thumbnail}' : '',
+                    coverImage: ep.thumbnail.isNotEmpty
+                        ? '${AppUrl.baseUrl}${ep.thumbnail}'
+                        : '',
                     remoteUrl: ep.videoUrl,
                     mediaType: DownloadMediaType.webSeries,
                     episodeNumber: ep.episodeNumber,
@@ -746,11 +900,20 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           children: [
             Text(ep.title, style: text16(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            Text('Downloaded for offline viewing', style: text12(color: AppColors.secondaryTextColor)),
+            Text(
+              'Downloaded for offline viewing',
+              style: text12(color: AppColors.secondaryTextColor),
+            ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.errorColor),
-              title: Text('Delete Download', style: text14(color: AppColors.errorColor)),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.errorColor,
+              ),
+              title: Text(
+                'Delete Download',
+                style: text14(color: AppColors.errorColor),
+              ),
               onTap: () {
                 Get.back();
                 downloadService.removeDownload(ep.id);

@@ -127,8 +127,8 @@ class ContentModel {
   final num rating;
   final List<dynamic> cast;
   final List<String> category;
-  final List<dynamic> likes;
-  final List<dynamic> dislikes;
+  final int likes;
+  final int dislikes;
   final String createdAt;
   final String updatedAt;
   final String slug;
@@ -152,8 +152,8 @@ class ContentModel {
     required this.rating,
     required this.cast,
     required this.category,
-    required this.likes,
-    required this.dislikes,
+    this.likes = 0,
+    this.dislikes = 0,
     required this.createdAt,
     required this.updatedAt,
     required this.slug,
@@ -179,8 +179,16 @@ class ContentModel {
       rating: json['rating'] ?? 0,
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<String>.from(json['category'] ?? []),
-      likes: List<dynamic>.from(json['likes'] ?? []),
-      dislikes: List<dynamic>.from(json['dislikes'] ?? []),
+      likes: (json['likes'] is num)
+          ? (json['likes'] as num).toInt()
+          : (json['likes'] is List
+              ? (json['likes'] as List).length
+              : int.tryParse(json['likes']?.toString() ?? '0') ?? 0),
+      dislikes: (json['dislikes'] is num)
+          ? (json['dislikes'] as num).toInt()
+          : (json['dislikes'] is List
+              ? (json['dislikes'] as List).length
+              : int.tryParse(json['dislikes']?.toString() ?? '0') ?? 0),
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',
       slug: json['slug'] ?? '',
@@ -234,8 +242,8 @@ class ContentModel {
     num? rating,
     List<dynamic>? cast,
     List<String>? category,
-    List<dynamic>? likes,
-    List<dynamic>? dislikes,
+    int? likes,
+    int? dislikes,
     String? createdAt,
     String? updatedAt,
     String? slug,

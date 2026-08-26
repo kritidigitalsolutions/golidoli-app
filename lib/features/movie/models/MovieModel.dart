@@ -1,3 +1,14 @@
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) {
+    final s = val.trim().toLowerCase();
+    return s == 'true' || s == '1' || s == 'yes';
+  }
+  return false;
+}
+
 class MovieModel {
   final String id;
   final String title;
@@ -18,8 +29,8 @@ class MovieModel {
   final bool isPopular;
   final List<dynamic> cast;
   final List<dynamic> category;
-  final List<dynamic> likes;
-  final List<dynamic> dislikes;
+  final int likes;
+  final int dislikes;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String slug;
@@ -44,8 +55,8 @@ class MovieModel {
     this.isPopular = false,
     required this.cast,
     required this.category,
-    required this.likes,
-    required this.dislikes,
+    this.likes = 0,
+    this.dislikes = 0,
     required this.createdAt,
     required this.updatedAt,
     required this.slug,
@@ -71,8 +82,8 @@ class MovieModel {
     bool? isPopular,
     List<dynamic>? cast,
     List<dynamic>? category,
-    List<dynamic>? likes,
-    List<dynamic>? dislikes,
+    int? likes,
+    int? dislikes,
     DateTime? createdAt,
     DateTime? updatedAt,
     String? slug,
@@ -116,7 +127,9 @@ class MovieModel {
       language: json['language'] ?? '',
       poster: json['poster'] ?? '',
       banner: json['banner'] ?? '',
-      isComingSoon: json['isComingSoon'] ?? false,
+      isComingSoon: _parseBool(
+        json['isComingSoon'] ?? json['is_coming_soon'] ?? json['comingSoon'],
+      ),
       releaseDate: json['releaseDate'] != null
           ? DateTime.tryParse(json['releaseDate'].toString())
           : null,
@@ -125,19 +138,33 @@ class MovieModel {
           : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
       videoUrl: json['videoUrl'] ?? '',
       trailerUrl: json['trailerUrl'] ?? '',
-      isPremium: json['isPremium'] ?? false,
+      isPremium: _parseBool(
+        json['isPremium'] ??
+            json['is_premium'] ??
+            json['premium'] ??
+            json['isPremimu'],
+      ),
       rating: (json['rating'] is num)
           ? (json['rating'] as num).toDouble()
           : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
-      isPopular:
-          json['isPopular'] ??
-          json['popularMovie'] ??
-          json['isPopularMovie'] ??
-          false,
+      isPopular: _parseBool(
+        json['isPopular'] ??
+            json['popularMovie'] ??
+            json['isPopularMovie'] ??
+            json['is_popular'],
+      ),
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<dynamic>.from(json['category'] ?? []),
-      likes: List<dynamic>.from(json['likes'] ?? []),
-      dislikes: List<dynamic>.from(json['dislikes'] ?? []),
+      likes: (json['likes'] is num)
+          ? (json['likes'] as num).toInt()
+          : (json['likes'] is List
+              ? (json['likes'] as List).length
+              : int.tryParse(json['likes']?.toString() ?? '0') ?? 0),
+      dislikes: (json['dislikes'] is num)
+          ? (json['dislikes'] as num).toInt()
+          : (json['dislikes'] is List
+              ? (json['dislikes'] as List).length
+              : int.tryParse(json['dislikes']?.toString() ?? '0') ?? 0),
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
