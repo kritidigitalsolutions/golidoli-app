@@ -9,7 +9,12 @@ class NotificationSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(NotificationSettingsController());
+    final controller = NotificationSettingsController.to;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.fetchSettings(silent: controller.isLoaded.value);
+    });
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
@@ -17,44 +22,93 @@ class NotificationSettingsScreen extends StatelessWidget {
           children: [
             _buildAppBar(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Push Notifications',
-                      style: text14(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildToggleTile('New Episodes', controller.newEpisodes),
-                    _buildToggleTile('New Movies', controller.newMovies),
-                    _buildToggleTile(
-                      'Recommendations',
-                      controller.recommendations,
-                    ),
-                    _buildToggleTile('Downloads', controller.downloads),
-                    _buildToggleTile(
-                      'Continue Watching Reminder',
-                      controller.continueWatchingReminder,
-                    ),
-                    _buildToggleTile(
-                      'Subscription Alerts',
-                      controller.subscriptionAlerts,
-                    ),
-                    _buildToggleTile(
-                      'Promotional Offers',
-                      controller.promotionalOffers,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSaveButton(controller),
-                    const SizedBox(height: 30),
-                  ],
-                ),
-              ),
+              child: Obx(() {
+                if (controller.isLoading.value && !controller.isLoaded.value) {
+                  return _buildShimmerLoading();
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Push Notifications',
+                        style: text14(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildToggleTile('New Episodes', controller.newEpisodes),
+                      _buildToggleTile('New Movies', controller.newMovies),
+                      _buildToggleTile(
+                        'Recommendations',
+                        controller.recommendations,
+                      ),
+                      _buildToggleTile('Downloads', controller.downloads),
+                      _buildToggleTile(
+                        'Continue Watching Reminder',
+                        controller.continueWatchingReminder,
+                      ),
+                      _buildToggleTile(
+                        'Subscription Alerts',
+                        controller.subscriptionAlerts,
+                      ),
+                      _buildToggleTile(
+                        'Promotional Offers',
+                        controller.promotionalOffers,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSaveButton(controller),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                );
+              }),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 140,
+            height: 18,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...List.generate(
+            7,
+            (index) => Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              height: 54,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.borderColor.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            height: 52,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor,
+              borderRadius: BorderRadius.circular(14),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -90,7 +144,9 @@ class NotificationSettingsScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
+          border: Border.all(
+            color: AppColors.borderColor.withValues(alpha: 0.4),
+          ),
         ),
         child: Row(
           children: [
@@ -117,7 +173,7 @@ class NotificationSettingsScreen extends StatelessWidget {
   Widget _buildSaveButton(NotificationSettingsController controller) {
     return GestureDetector(
       onTap: () {
-        if (!controller.isLoading.value) {
+        if (!controller.isSaving.value) {
           controller.saveChanges();
         }
       },
@@ -130,7 +186,7 @@ class NotificationSettingsScreen extends StatelessWidget {
         ),
         child: Center(
           child: Obx(() {
-            if (controller.isLoading.value) {
+            if (controller.isSaving.value) {
               return const SizedBox(
                 height: 24,
                 width: 24,

@@ -187,6 +187,8 @@ class AudioStoriesController extends GetxController {
     }
   }
 
+  final RxBool isCategoryLoading = false.obs;
+
   /// Helper to check if a story belongs to a given category
   bool _storyMatchesCategory(AudioStoryModel story, AudioCategoryModel cat) {
     if (cat.id == 'all') return true;
@@ -208,10 +210,16 @@ class AudioStoriesController extends GetxController {
       }
     }
 
-    // Check name
+    // Check name / genre
     if (targetName.isNotEmpty) {
-      if (story.genre.trim().toLowerCase() == targetName) return true;
-      if (story.categories.any((c) => c.name.trim().toLowerCase() == targetName)) {
+      final genre = story.genre.trim().toLowerCase();
+      if (genre == targetName || genre.contains(targetName) || targetName.contains(genre)) {
+        return true;
+      }
+      if (story.categories.any((c) {
+        final cName = c.name.trim().toLowerCase();
+        return cName == targetName || cName.contains(targetName) || targetName.contains(cName);
+      })) {
         return true;
       }
     }
@@ -220,9 +228,34 @@ class AudioStoriesController extends GetxController {
   }
 
   /// 5. Category Selection
-  void onCategorySelected(int index) {
+  Future<void> onCategorySelected(int index) async {
     selectedCategoryIndex.value = index;
     _updateCategoryStories();
+
+    if (index > 0 && index < categories.length) {
+      final selectedCat = categories[index];
+      if (selectedCat.id != 'all' && selectedCat.id.isNotEmpty) {
+        try {
+          isCategoryLoading.value = true;
+          final catStories = await _repository.getAudioStories(
+            categoryId: selectedCat.id,
+            limit: 30,
+          );
+          if (catStories.isNotEmpty) {
+            final existingIds = allStories.map((s) => s.id).toSet();
+            final newItems = catStories.where((s) => !existingIds.contains(s.id)).toList();
+            if (newItems.isNotEmpty) {
+              allStories.addAll(newItems);
+            }
+            _updateCategoryStories();
+          }
+        } catch (e) {
+          debugPrint("onCategorySelected fetch error: $e");
+        } finally {
+          isCategoryLoading.value = false;
+        }
+      }
+    }
   }
 
   void _updateCategoryStories() {
@@ -233,7 +266,13 @@ class AudioStoriesController extends GetxController {
     }
 
     final selectedCat = categories[index];
-    final filtered = allStories.where((s) => _storyMatchesCategory(s, selectedCat)).toList();
+    final allKnown = <AudioStoryModel>{
+      ...allStories,
+      ...featuredStories,
+      ...recentlyAddedStories,
+      ...topRatedStories,
+    };
+    final filtered = allKnown.where((s) => _storyMatchesCategory(s, selectedCat)).toList();
     categoryStories.assignAll(filtered);
   }
 
@@ -242,27 +281,53 @@ class AudioStoriesController extends GetxController {
     if (index <= 0 || index >= categories.length) return allStories;
 
     final selectedCat = categories[index];
-    return allStories.where((s) => _storyMatchesCategory(s, selectedCat)).toList();
+    final allKnown = <AudioStoryModel>{
+      ...allStories,
+      ...featuredStories,
+      ...recentlyAddedStories,
+      ...topRatedStories,
+    };
+    final filtered = allKnown.where((s) => _storyMatchesCategory(s, selectedCat)).toList();
+    return filtered.isNotEmpty ? filtered : categoryStories;
   }
 
-  /// 6. Search Stories
-  Future<void> onSearchChanged(String query) async {
+  /// 6. Search Stories (Instant local filter on all loaded content)
+  void onSearchChanged(String query) {
+    final q = query.trim().toLowerCase();
     searchQuery.value = query.trim();
-    if (searchQuery.value.isEmpty) {
+    if (q.isEmpty) {
       searchResults.clear();
       isSearching.value = false;
       return;
     }
 
-    try {
-      isSearching.value = true;
-      final results = await _repository.searchAudioStories(searchQuery.value);
-      searchResults.assignAll(results);
-    } catch (e) {
-      debugPrint("search error: $e");
-    } finally {
-      isSearching.value = false;
-    }
+    final allKnown = <AudioStoryModel>{
+      ...allStories,
+      ...featuredStories,
+      ...recentlyAddedStories,
+      ...topRatedStories,
+    };
+
+    final matches = allKnown.where((story) {
+      final titleMatch = story.title.toLowerCase().contains(q);
+      final subtitleMatch = story.subtitle.toLowerCase().contains(q);
+      final authorMatch = story.author.toLowerCase().contains(q);
+      final narratorMatch = story.narrator.toLowerCase().contains(q);
+      final genreMatch = story.genre.toLowerCase().contains(q);
+      final descMatch = story.description.toLowerCase().contains(q);
+      final catMatch = story.categories.any((c) => c.name.toLowerCase().contains(q));
+
+      return titleMatch ||
+          subtitleMatch ||
+          authorMatch ||
+          narratorMatch ||
+          genreMatch ||
+          descMatch ||
+          catMatch;
+    }).toList();
+
+    searchResults.assignAll(matches);
+    isSearching.value = false;
   }
 
   void clearSearch() {
@@ -287,6 +352,14 @@ class AudioStoriesController extends GetxController {
       ? recentlyAddedStories
       : allStories.skip(2).take(5).toList();
 
+  AudioStoryModel? getStoryById(String storyId) {
+    if (storyId.isEmpty) return null;
+    return allStories.firstWhereOrNull((s) => s.id == storyId) ??
+        featuredStories.firstWhereOrNull((s) => s.id == storyId) ??
+        recentlyAddedStories.firstWhereOrNull((s) => s.id == storyId) ??
+        topRatedStories.firstWhereOrNull((s) => s.id == storyId);
+  }
+
   void onStoryTap(AudioStoryModel story) {
     Get.toNamed(
       AppRoutes.audioDetail,
@@ -296,29 +369,23 @@ class AudioStoriesController extends GetxController {
 
   void onContinueListeningTap(AudioProgressModel item) {
     final ep = item.episode;
-    if (ep != null) {
-      final storyId = ep.storyId;
-      AudioStoryModel? cachedStory = allStories.firstWhereOrNull(
-        (s) => s.id == storyId,
-      );
-      cachedStory ??= featuredStories.firstWhereOrNull(
-        (s) => s.id == storyId,
-      );
+    final storyId = item.storyId.isNotEmpty
+        ? item.storyId
+        : (ep?.storyId ?? '');
 
-      final Map<String, dynamic> args = {
-        'storyId': storyId,
-        'episodeId': ep.id,
-        'episode': ep,
-        'progressSeconds': item.progressSeconds,
-      };
-      if (cachedStory != null) {
-        args['story'] = cachedStory;
-      }
+    final cachedStory = getStoryById(storyId);
 
-      Get.toNamed(
-        AppRoutes.audioPlayer,
-        arguments: args,
-      );
-    }
+    final Map<String, dynamic> args = {
+      'storyId': storyId,
+      'episodeId': item.episodeId.isNotEmpty ? item.episodeId : (ep?.id ?? ''),
+      'progressSeconds': item.progressSeconds,
+    };
+    if (ep != null) args['episode'] = ep;
+    if (cachedStory != null) args['story'] = cachedStory;
+
+    Get.toNamed(
+      AppRoutes.audioPlayer,
+      arguments: args,
+    );
   }
 }

@@ -21,6 +21,7 @@ class ReelsTab extends StatefulWidget {
 class _ReelsTabState extends State<ReelsTab> {
   final AiReelsController _reelsController = Get.put(AiReelsController());
   late PageController _pageController;
+  Worker? _tabWorker;
 
   // Video controller cache: Map<index, VideoPlayerController>
   final Map<int, VideoPlayerController> _controllers = {};
@@ -29,10 +30,37 @@ class _ReelsTabState extends State<ReelsTab> {
   void initState() {
     super.initState();
     _pageController = PageController();
+
+    final homeController = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>()
+        : Get.put(HomeController());
+
+    _tabWorker = ever(homeController.selectedIndex, (index) {
+      if (index == 2) {
+        _checkAndShowAllWatchedPrompt();
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (homeController.selectedIndex.value == 2) {
+        _checkAndShowAllWatchedPrompt();
+      }
+    });
+  }
+
+  void _checkAndShowAllWatchedPrompt() {
+    if (_reelsController.allWatched.value &&
+        _reelsController.reels.isEmpty &&
+        !_reelsController.isLoading.value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _reelsController.showAllWatchedPrompt();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _tabWorker?.dispose();
     _pageController.dispose();
     _disposeAllControllers();
     super.dispose();

@@ -18,6 +18,7 @@ import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 
 class MovieDetailsScreen extends StatefulWidget {
   const MovieDetailsScreen({super.key, this.id});
@@ -47,11 +48,9 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
     return Obx(() {
       // Handle loading state
       if (_controller.movieDetailStatus.value == Status.loading) {
-        return Scaffold(
+        return const Scaffold(
           backgroundColor: AppColors.backgroundColor,
-          body: const Center(
-            child: CircularProgressIndicator(color: AppColors.accentColor),
-          ),
+          body: DetailScreenShimmer(),
         );
       }
 

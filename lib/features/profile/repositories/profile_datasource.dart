@@ -58,11 +58,9 @@ class ProfileDatasource {
     }
   }
 
-  Future<SubscriptionPlansResponse?> allSubscriptionPlans({
-    required String name,
-  }) async {
+  Future<SubscriptionPlansResponse?> allSubscriptionPlans() async {
     try {
-      final jsonData = await _apiService.getApi(AppUrl.plan(name: name));
+      final jsonData = await _apiService.getApi(AppUrl.plan);
       if (jsonData != null) {
         return SubscriptionPlansResponse.fromJson(jsonData);
       }

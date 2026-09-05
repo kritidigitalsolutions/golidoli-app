@@ -4,6 +4,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/audio_play/controllers/audio_stories_controller.dart';
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
 import 'package:golidoli_app/features/audio_play/widgets/audio_mini_player.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class AudioStoriesScreen extends StatefulWidget {
@@ -46,40 +47,55 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
       backgroundColor: AppColors.backgroundColor,
       bottomNavigationBar: const AudioMiniPlayer(withSystemPadding: true),
       body: SafeArea(
-        child: RefreshIndicator(
-          color: AppColors.primaryColor,
-          backgroundColor: AppColors.surfaceColor,
-          onRefresh: controller.loadInitialData,
-          child: CustomScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: _buildTopBar(controller)),
-              SliverToBoxAdapter(child: _buildSearchBar(controller)),
-              SliverToBoxAdapter(child: _buildBody(controller)),
-              SliverToBoxAdapter(
-                child: Obx(() {
-                  if (controller.isLoadingMore.value) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            color: AppColors.primaryColor,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                }),
+        child: Column(
+          children: [
+            _buildTopBar(controller),
+            _buildSearchBar(controller),
+            Obx(() {
+              if (controller.searchQuery.value.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: _buildCategoryTabs(controller),
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primaryColor,
+                backgroundColor: AppColors.surfaceColor,
+                onRefresh: controller.loadInitialData,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(child: _buildBody(controller)),
+                    SliverToBoxAdapter(
+                      child: Obx(() {
+                        if (controller.isLoadingMore.value) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: AppColors.primaryColor,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                  ],
+                ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 40)),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -163,15 +179,6 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
     return Obx(() {
       // 1. Search Mode
       if (controller.searchQuery.value.isNotEmpty) {
-        if (controller.isSearching.value) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor),
-            ),
-          );
-        }
-
         if (controller.searchResults.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 60),
@@ -200,19 +207,13 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
 
       // 2. Loading State
       if (controller.isLoading.value && controller.allStories.isEmpty) {
-        return const Padding(
-          padding: EdgeInsets.symmetric(vertical: 60),
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.primaryColor),
-          ),
-        );
+        return const AudioStoriesFeedShimmer();
       }
 
       // 3. Normal Feed
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildCategoryTabs(controller),
           if (controller.selectedCategoryIndex.value == 0) ...[
             if (controller.continueListeningList.isNotEmpty)
               _buildContinueListening(controller),
@@ -318,6 +319,22 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
               itemBuilder: (_, i) {
                 final item = controller.continueListeningList[i];
                 final ep = item.episode;
+                final story = controller.getStoryById(
+                  item.storyId.isNotEmpty ? item.storyId : (ep?.storyId ?? ''),
+                );
+
+                final displayImageUrl = item.imageUrl.isNotEmpty
+                    ? item.imageUrl
+                    : (ep?.imageUrl.isNotEmpty == true
+                        ? ep!.imageUrl
+                        : (story?.imageUrl ?? ''));
+
+                final displayStoryTitle = (ep?.storyTitle.isNotEmpty == true)
+                    ? ep!.storyTitle
+                    : (item.storyTitle.isNotEmpty
+                        ? item.storyTitle
+                        : (story?.title ?? 'Audio Story'));
+
                 return GestureDetector(
                   onTap: () => controller.onContinueListeningTap(item),
                   child: Container(
@@ -332,9 +349,9 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: ep != null && ep.imageUrl.isNotEmpty
+                          child: displayImageUrl.isNotEmpty
                               ? Image.network(
-                                  ep.imageUrl,
+                                  displayImageUrl,
                                   width: 70,
                                   height: 70,
                                   fit: BoxFit.cover,
@@ -349,7 +366,7 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                ep?.storyTitle ?? 'Audio Story',
+                                displayStoryTitle,
                                 style: text12(fontWeight: FontWeight.bold),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -613,14 +630,29 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
   }
 
   Widget _buildCategoryFilteredList(AudioStoriesController controller) {
+    if (controller.isCategoryLoading.value && controller.filteredCategoryStories.isEmpty) {
+      return const AudioStoryGridShimmer(itemCount: 6);
+    }
+
     final stories = controller.filteredCategoryStories;
     if (stories.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Center(
-          child: Text(
-            'No stories found in this category.',
-            style: text13(color: AppColors.secondaryTextColor),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.library_music_outlined,
+                size: 44,
+                color: AppColors.hintTextColor.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No stories found in this category.',
+                style: text13(color: AppColors.secondaryTextColor),
+              ),
+            ],
           ),
         ),
       );
@@ -646,17 +678,36 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
   Widget _buildSearchResultsGrid(AudioStoriesController controller) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: controller.searchResults.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 16,
-          childAspectRatio: 0.62,
-        ),
-        itemBuilder: (_, i) => _buildStoryCard(controller.searchResults[i], controller),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Search Results',
+                style: text15(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                '${controller.searchResults.length} Found',
+                style: text11(color: AppColors.hintTextColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: controller.searchResults.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 16,
+              childAspectRatio: 0.62,
+            ),
+            itemBuilder: (_, i) => _buildStoryCard(controller.searchResults[i], controller),
+          ),
+        ],
       ),
     );
   }

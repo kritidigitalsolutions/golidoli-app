@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/models/ai_reel_model.dart';
 import 'package:golidoli_app/features/home/repositories/ai_reels_datasource.dart';
 
@@ -80,7 +81,9 @@ class AiReelsController extends GetxController {
       }
 
       if (response.data.isEmpty && allWatched.value) {
-        showAllWatchedPrompt();
+        if (isReelsTabActive) {
+          showAllWatchedPrompt();
+        }
       }
     } catch (e) {
       debugPrint("❌ Error fetching initial AI Reels: $e");
@@ -243,8 +246,17 @@ class AiReelsController extends GetxController {
     return sharesCountMap[reelId] ?? fallback;
   }
 
+  /// Whether the user is currently viewing the AI Reels tab (index 2)
+  bool get isReelsTabActive {
+    if (Get.isRegistered<HomeController>()) {
+      return Get.find<HomeController>().selectedIndex.value == 2;
+    }
+    return true;
+  }
+
   /// Shows the "All Watched" congratulations modal
   void showAllWatchedPrompt() {
+    if (!isReelsTabActive) return;
     if (Get.isDialogOpen == true) return;
 
     Get.dialog(

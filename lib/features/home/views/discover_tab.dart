@@ -13,6 +13,7 @@ import 'package:golidoli_app/features/home/controllers/discover_controller.dart'
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class DiscoverTab extends StatefulWidget {
@@ -80,18 +81,30 @@ class _DiscoverTabState extends State<DiscoverTab> {
       child: Obx(() {
         final bool isSearching = _currentQuery.value.isNotEmpty;
 
-        return CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildSearchBar()),
-            if (!isSearching) ...[
-              SliverToBoxAdapter(child: _buildCategoryGrid()),
-              SliverToBoxAdapter(child: _buildExcitingBanner()),
-            ] else ...[
-              SliverToBoxAdapter(child: _buildSearchResults()),
+        return RefreshIndicator(
+          onRefresh: () async {
+            if (_currentQuery.value.isNotEmpty) {
+              await _contentController.searchContent(_currentQuery.value);
+            }
+          },
+          color: AppColors.primaryColor,
+          backgroundColor: AppColors.surfaceColor,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: _buildSearchBar()),
+              if (!isSearching) ...[
+                SliverToBoxAdapter(child: _buildCategoryGrid()),
+                SliverToBoxAdapter(child: _buildExcitingBanner()),
+              ] else ...[
+                SliverToBoxAdapter(child: _buildSearchResults()),
+              ],
+              const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+          ),
         );
       }),
     );
@@ -167,10 +180,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     final items = _contentController.searchContents.value?.content ?? [];
 
     if (status == Status.loading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 60),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return const ShimmerGrid(itemCount: 9);
     }
 
     if (status == Status.error) {

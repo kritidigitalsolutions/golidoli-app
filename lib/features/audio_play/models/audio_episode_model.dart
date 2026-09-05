@@ -83,9 +83,38 @@ class AudioEpisodeModel {
       resolvedStoryCover =
           s['coverImage']?.toString() ??
           s['bannerImage']?.toString() ??
+          s['imageUrl']?.toString() ??
+          s['poster']?.toString() ??
+          s['thumbnail']?.toString() ??
           resolvedStoryCover;
-    } else if (json['storyId'] is String) {
+    } else if (json['story'] is Map) {
+      final s = json['story'] as Map<String, dynamic>;
+      resolvedStoryId =
+          s['_id']?.toString() ?? s['id']?.toString() ?? resolvedStoryId;
+      resolvedStoryTitle = s['title']?.toString() ?? resolvedStoryTitle;
+      resolvedStoryCover =
+          s['coverImage']?.toString() ??
+          s['bannerImage']?.toString() ??
+          s['imageUrl']?.toString() ??
+          s['poster']?.toString() ??
+          s['thumbnail']?.toString() ??
+          resolvedStoryCover;
+    } else if (json['audioStory'] is Map) {
+      final s = json['audioStory'] as Map<String, dynamic>;
+      resolvedStoryId =
+          s['_id']?.toString() ?? s['id']?.toString() ?? resolvedStoryId;
+      resolvedStoryTitle = s['title']?.toString() ?? resolvedStoryTitle;
+      resolvedStoryCover =
+          s['coverImage']?.toString() ??
+          s['bannerImage']?.toString() ??
+          s['imageUrl']?.toString() ??
+          s['poster']?.toString() ??
+          s['thumbnail']?.toString() ??
+          resolvedStoryCover;
+    } else if (json['storyId'] is String && json['storyId'].toString().isNotEmpty) {
       resolvedStoryId = json['storyId'].toString();
+    } else if (json['story'] is String && json['story'].toString().isNotEmpty) {
+      resolvedStoryId = json['story'].toString();
     }
 
     final rawDuration = json['duration'] ?? json['durationSeconds'];
@@ -126,6 +155,8 @@ class AudioEpisodeModel {
           json['coverImage']?.toString() ??
           json['thumbnail']?.toString() ??
           json['imageUrl']?.toString() ??
+          json['poster']?.toString() ??
+          json['image']?.toString() ??
           '',
       isPremium: _parseBool(
         json['isPremium'] ??

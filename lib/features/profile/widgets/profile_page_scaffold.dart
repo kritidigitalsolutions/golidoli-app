@@ -7,15 +7,37 @@ import 'package:golidoli_app/utils/text_style.dart';
 class ProfilePageScaffold extends StatelessWidget {
   final String title;
   final List<Widget> children;
+  final Future<void> Function()? onRefresh;
 
   const ProfilePageScaffold({
     super.key,
     required this.title,
     required this.children,
+    this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
+    Widget content = SingleChildScrollView(
+      physics: onRefresh != null
+          ? const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics())
+          : const BouncingScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+
+    if (onRefresh != null) {
+      content = RefreshIndicator(
+        onRefresh: onRefresh!,
+        color: AppColors.primaryColor,
+        backgroundColor: AppColors.surfaceColor,
+        child: content,
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
@@ -43,15 +65,7 @@ class ProfilePageScaffold extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: children,
-                ),
-              ),
-            ),
+            Expanded(child: content),
           ],
         ),
       ),

@@ -20,6 +20,7 @@ import '../../movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
   const WebSeriesDetailScreen({super.key, required this.id});
@@ -54,12 +55,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
 
         // Check for loading state
         if (seriesStatus == Status.loading) {
-          return const Scaffold(
-            backgroundColor: AppColors.backgroundColor,
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.accentColor),
-            ),
-          );
+          return const DetailScreenShimmer();
         }
 
         // Check for error state

@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -250,9 +251,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
 
       // Handle initial loading state
       if (status == Status.loading && _controller.allMovies.isEmpty) {
-        return const Center(
-          child: CircularProgressIndicator(color: AppColors.accentColor),
-        );
+        return const ShimmerGrid(itemCount: 12);
       }
 
       // Handle error state
@@ -290,9 +289,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
       // Handle empty state
       if (movies.isEmpty) {
         if (isSearchLoading) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.accentColor),
-          );
+          return const ShimmerGrid(itemCount: 9);
         }
 
         return Center(
@@ -360,12 +357,20 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
         );
       }
 
-      return CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+      return RefreshIndicator(
+        onRefresh: () async {
+          await _controller.fetchAllMovies();
+        },
+        color: AppColors.primaryColor,
+        backgroundColor: AppColors.surfaceColor,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
@@ -401,8 +406,9 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
               }),
             ),
         ],
-      );
-    });
+      ),
+    );
+  });
   }
 
   Widget _buildCard(MovieModel movie) {

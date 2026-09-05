@@ -9,6 +9,7 @@ import 'package:golidoli_app/features/home/models/category_model.dart';
 import 'package:golidoli_app/features/home/models/home_banner_model.dart';
 import 'package:golidoli_app/features/home/views/continue_watching_screen.dart';
 import 'package:golidoli_app/features/home/widgets/continue_watching_helper.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/continue_watching_model.dart';
@@ -99,27 +100,27 @@ class _HomeTabState extends State<HomeTab> {
     final hour = DateTime.now().hour;
     if (hour >= 4 && hour < 12) {
       return '☀️';
-    } else if (hour >= 12 && hour < 17) {
+    } else if (hour >= 12 && hour < 18) {
       return '🌤️';
-    } else if (hour >= 17 && hour < 22) {
+    } else if (hour >= 18 && hour < 22) {
       return '🌆';
     } else {
       return '🌙';
     }
   }
 
-  String _getGreetingTitle() {
-    final hour = DateTime.now().hour;
-    if (hour >= 4 && hour < 12) {
-      return "What's the plan today?";
-    } else if (hour >= 12 && hour < 17) {
-      return "Ready for a break?";
-    } else if (hour >= 17 && hour < 22) {
-      return "What's the plan tonight?";
-    } else {
-      return "Late night entertainment?";
-    }
-  }
+  // String _getGreetingTitle() {
+  //   final hour = DateTime.now().hour;
+  //   if (hour >= 4 && hour < 12) {
+  //     return "What's the plan today?";
+  //   } else if (hour >= 12 && hour < 17) {
+  //     return "Ready for a break?";
+  //   } else if (hour >= 17 && hour < 22) {
+  //     return "What's the plan tonight?";
+  //   } else {
+  //     return "Late night entertainment?";
+  //   }
+  // }
 
   // ─── Navigation helper ──────────────────────────────────────────────────
   void _navigateToDetail(String id, {String type = 'movie'}) {
@@ -140,30 +141,57 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
+  Future<void> _onRefresh() async {
+    await Future.wait([
+      _movieController.fetchAllMovies(),
+      _seriesController.fetchAllSeries(),
+      _microDramaController.fetchAllMicroDrama(),
+      _homeController.fetchHomeBanners(),
+      _homeController.fetchCategories(),
+      _cwController.fetchForHome(),
+      _watchlistController.fetchWatchlist(),
+      _fetchProfileController.fetchProfile(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: CustomScrollView(
-        slivers: [
-          // 1. Header (Greeting + Notification & Profile)
-          SliverToBoxAdapter(child: _buildHeader(_fetchProfileController)),
+      child: Column(
+        children: [
+          // 1. Fixed Header (Greeting + Notification & Profile)
+          _buildHeader(_fetchProfileController),
 
-          // 2. Search Bar
-          SliverToBoxAdapter(child: _buildSearchBar()),
+          // Scrollable Feed with Pull-To-Refresh
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: AppColors.primaryColor,
+              backgroundColor: AppColors.surfaceColor,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                slivers: [
+                  // 2. Fixed Search Bar (Always visible on scroll)
+                  SliverToBoxAdapter(child: _buildSearchBar()),
+                  // 3. Quick Access Cards (Audio Stories & Micro Dramas)
+                  SliverToBoxAdapter(child: _buildQuickCards()),
 
-          // 3. Quick Access Cards (Audio Stories & Micro Dramas)
-          SliverToBoxAdapter(child: _buildQuickCards()),
+                  // 4. Category Filter Chips (For you, Movies, Web series, Micro dramas)
+                  SliverToBoxAdapter(child: _buildTabRow()),
 
-          // 4. Category Filter Chips (For you, Movies, Web series, Micro dramas)
-          SliverToBoxAdapter(child: _buildTabRow()),
+                  // 5. Trending / Featured Hero Banner
+                  SliverToBoxAdapter(child: _buildHeroBanner()),
 
-          // 5. Trending / Featured Hero Banner
-          SliverToBoxAdapter(child: _buildHeroBanner()),
+                  // 6. Tab-Selected Content
+                  SliverToBoxAdapter(child: _buildContentForSelectedTab()),
 
-          // 6. Tab-Selected Content
-          SliverToBoxAdapter(child: _buildContentForSelectedTab()),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -181,7 +209,7 @@ class _HomeTabState extends State<HomeTab> {
             child: Obx(() {
               final user = ctr.user.value;
               final firstName = (user != null && user.name.trim().isNotEmpty)
-                  ? ', ${user.name.trim().split(' ').first}'
+                  ? ' ${user.name.trim().split(' ').first}'
                   : '';
 
               return Column(
@@ -190,20 +218,19 @@ class _HomeTabState extends State<HomeTab> {
                   Row(
                     children: [
                       Text(
-                        '${_getGreeting()}$firstName',
+                        _getGreeting(),
                         style: text13(color: AppColors.secondaryTextColor),
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        _getGreetingEmoji(),
-                        style: const TextStyle(fontSize: 13),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _getGreetingTitle(),
-                    style: text20(fontWeight: FontWeight.bold),
+                    '$firstName, ${_getGreetingEmoji()}',
+                    style: text15(
+                      color: AppColors.textColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               );
@@ -426,6 +453,10 @@ class _HomeTabState extends State<HomeTab> {
           ? _homeController.banners
           : [];
 
+      if (_homeController.isBannersLoading.value && banners.isEmpty) {
+        return const HomeBannerShimmer();
+      }
+
       if (banners.isEmpty) return const SizedBox.shrink();
 
       final int activeIndex = _currentBannerIndex >= banners.length
@@ -645,7 +676,7 @@ class _HomeTabState extends State<HomeTab> {
                 );
               },
               options: CarouselOptions(
-                height: 230,
+                height: 200,
                 viewportFraction: 0.93,
                 enlargeCenterPage: true,
                 autoPlay: true,
@@ -694,61 +725,102 @@ class _HomeTabState extends State<HomeTab> {
             child: GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.audioStories),
               child: Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 54,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF281822),
-                      Color(0xFF1E1E26),
-                    ],
+                    colors: [Color(0xFF2E1022), Color(0xFF191024)],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: AppColors.accentColor.withValues(alpha: 0.35),
-                    width: 1,
+                    color: const Color(0xFFFF2A7A).withValues(alpha: 0.45),
+                    width: 1.2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFF2A7A).withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFFFF0564),
-                            Color(0xFFFF4D88),
-                          ],
+                          colors: [Color(0xFFFF0564), Color(0xFFFF528E)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFFFF0564,
+                            ).withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: Icon(
                           Icons.headphones_rounded,
                           color: Colors.white,
-                          size: 17,
+                          size: 18,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'Audio Stories',
-                        style: text13(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Audio Stories',
+                            style: text12(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.graphic_eq_rounded,
+                                size: 10,
+                                color: Color(0xFFFF528E),
+                              ),
+                              const SizedBox(width: 3),
+                              const Flexible(
+                                child: Text(
+                                  'Listen audio',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFFF75A5),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    Icon(
+                    const Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 11,
-                      color: AppColors.accentColor.withValues(alpha: 0.8),
+                      size: 10,
+                      color: Color(0xFFFF528E),
                     ),
                   ],
                 ),
@@ -763,61 +835,102 @@ class _HomeTabState extends State<HomeTab> {
             child: GestureDetector(
               onTap: () => Get.toNamed(AppRoutes.microDrama),
               child: Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                height: 54,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF201633),
-                      Color(0xFF1E1E26),
-                    ],
+                    colors: [Color(0xFF22113D), Color(0xFF14132B)],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: const Color(0xFF7C4DFF).withValues(alpha: 0.35),
-                    width: 1,
+                    color: const Color(0xFF8C52FF).withValues(alpha: 0.45),
+                    width: 1.2,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF8C52FF).withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF7C4DFF),
-                            Color(0xFF9E77FF),
-                          ],
+                          colors: [Color(0xFF7C4DFF), Color(0xFFA57DFF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF7C4DFF,
+                            ).withValues(alpha: 0.35),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: const Center(
                         child: Icon(
-                          Icons.theaters_rounded,
+                          Icons.smartphone_rounded,
                           color: Colors.white,
-                          size: 17,
+                          size: 18,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: Text(
-                        'Micro Dramas',
-                        style: text13(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Micro Dramas',
+                            style: text12(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.flash_on_rounded,
+                                size: 10,
+                                color: Color(0xFFA57DFF),
+                              ),
+                              const SizedBox(width: 2),
+                              const Flexible(
+                                child: Text(
+                                  'Vertical shorts',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFFC0A6FF),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     const Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 11,
-                      color: Color(0xFFA27BFF),
+                      size: 10,
+                      color: Color(0xFFA57DFF),
                     ),
                   ],
                 ),
@@ -849,15 +962,14 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildForYouContent() {
     return Obx(() {
       final isMoviesLoading =
-          _movieController.allMoviesStatus.value == Status.loading;
+          _movieController.allMoviesStatus.value == Status.loading &&
+          _movieController.allMovies.isEmpty;
       final isSeriesLoading =
-          _seriesController.allSeriesStatus.value == Status.loading;
+          _seriesController.allSeriesStatus.value == Status.loading &&
+          (_seriesController.allSeries.value?.series.isEmpty ?? true);
 
       if (isMoviesLoading && isSeriesLoading) {
-        return const Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
-        );
+        return const HomeFeedShimmer(sectionCount: 3);
       }
 
       // Popular Movies
@@ -910,13 +1022,16 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildMoviesContent() {
     return Obx(() {
       final isMoviesLoading =
-          _movieController.allMoviesStatus.value == Status.loading;
-      final isCatsLoading = _homeController.isCategoriesLoading.value;
+          _movieController.allMoviesStatus.value == Status.loading &&
+          _movieController.allMovies.isEmpty;
+      final isCatsLoading =
+          _homeController.isCategoriesLoading.value &&
+          _homeController.categories.isEmpty;
 
       if (isMoviesLoading && isCatsLoading) {
-        return const Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
+        return const HomeFeedShimmer(
+          showContinueWatching: true,
+          sectionCount: 2,
         );
       }
 
@@ -964,13 +1079,16 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildSeriesContent() {
     return Obx(() {
       final isSeriesLoading =
-          _seriesController.allSeriesStatus.value == Status.loading;
-      final isCatsLoading = _homeController.isCategoriesLoading.value;
+          _seriesController.allSeriesStatus.value == Status.loading &&
+          (_seriesController.allSeries.value?.series.isEmpty ?? true);
+      final isCatsLoading =
+          _homeController.isCategoriesLoading.value &&
+          _homeController.categories.isEmpty;
 
       if (isSeriesLoading && isCatsLoading) {
-        return const Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
+        return const HomeFeedShimmer(
+          showContinueWatching: true,
+          sectionCount: 2,
         );
       }
 
@@ -1018,12 +1136,14 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildMicroDramasContent() {
     return Obx(() {
       final isDramaLoading =
-          _microDramaController.allMicroDramaStatus.value == Status.loading;
+          _microDramaController.allMicroDramaStatus.value == Status.loading &&
+          (_microDramaController.allMicroDrama.value?.microdramas.isEmpty ??
+              true);
 
       if (isDramaLoading) {
-        return const Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
+        return const HomeFeedShimmer(
+          showContinueWatching: true,
+          sectionCount: 1,
         );
       }
 
@@ -1130,15 +1250,11 @@ class _HomeTabState extends State<HomeTab> {
   Widget _buildContinueWatchingSection({String? filterType}) {
     return Obx(() {
       List<ContinueWatchingItem> list = _cwController.homeList.toList();
-      final isLoading = _cwController.homeFetchStatus.value == Status.loading;
+      final isLoading =
+          _cwController.homeFetchStatus.value == Status.loading && list.isEmpty;
 
       if (isLoading) {
-        return const SizedBox(
-          height: 150,
-          child: Center(
-            child: CircularProgressIndicator(color: AppColors.accentColor),
-          ),
-        );
+        return const ContinueWatchingShimmer();
       }
 
       if (filterType != null) {
@@ -1176,7 +1292,7 @@ class _HomeTabState extends State<HomeTab> {
                     )?.then((_) => _cwController.fetchForHome());
                   },
                   child: const Text(
-                    'View all',
+                    'View All >',
                     style: TextStyle(
                       color: AppColors.accentColor,
                       fontSize: 13,
@@ -1456,7 +1572,7 @@ class _HomeTabState extends State<HomeTab> {
                   GestureDetector(
                     onTap: onViewAll,
                     child: const Text(
-                      'View all',
+                      'View All >',
                       style: TextStyle(
                         color: AppColors.accentColor,
                         fontSize: 13,
@@ -1525,6 +1641,50 @@ class _HomeTabState extends State<HomeTab> {
                         ),
                       ),
                     ),
+                    if (type == 'microdrama' || type == 'micro_drama')
+                      Positioned(
+                        top: 6,
+                        left: 6,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7C4DFF), Color(0xFF9E77FF)],
+                            ),
+                            borderRadius: BorderRadius.circular(4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF7C4DFF,
+                                ).withValues(alpha: 0.4),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.smartphone_rounded,
+                                color: Colors.white,
+                                size: 8,
+                              ),
+                              SizedBox(width: 2),
+                              Text(
+                                'SHORTS',
+                                style: TextStyle(
+                                  fontSize: 7.5,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     if (isPremium)
                       Positioned(
                         top: 6,
@@ -1885,7 +2045,7 @@ class _HomeTabPreviousDesignState extends State<HomeTabPreviousDesign> {
                     )?.then((_) => _cwController.fetchForHome());
                   },
                   child: const Text(
-                    'View All',
+                    'View All >',
                     style: TextStyle(
                       color: AppColors.accentColor,
                       fontSize: 13,
@@ -2147,7 +2307,7 @@ class _HomeTabPreviousDesignState extends State<HomeTabPreviousDesign> {
                   GestureDetector(
                     onTap: onViewAll,
                     child: const Text(
-                      'View All',
+                      'View All >',
                       style: TextStyle(
                         color: AppColors.accentColor,
                         fontSize: 13,

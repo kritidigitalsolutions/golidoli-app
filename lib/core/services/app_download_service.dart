@@ -140,6 +140,10 @@ class AppDownloadService extends GetxService {
     }
   }
 
+  void reloadDownloads() {
+    _loadDownloadsFromBox();
+  }
+
   // ─────────────────────────────────────────────
   // State Checkers
   // ─────────────────────────────────────────────

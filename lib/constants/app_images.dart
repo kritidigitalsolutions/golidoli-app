@@ -18,4 +18,8 @@ class AppImages {
   static const String thriller = "assets/auth/thriller.png";
   static const String video = "assets/auth/video.png";
   static const String videoEditing = "assets/auth/video-editing.png";
+
+  // profile page
+
+  static const String whtsapp = "assets/home/whatsapp.png";
 }

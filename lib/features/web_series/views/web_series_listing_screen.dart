@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -253,9 +254,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
       if (status == Status.loading &&
           _controller.allSeries.value == null &&
           seriesList.isEmpty) {
-        return const Center(
-          child: CircularProgressIndicator(color: AppColors.accentColor),
-        );
+        return const ShimmerGrid(itemCount: 12);
       }
 
       // Handle error state
@@ -295,9 +294,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
       // Handle empty state
       if (seriesList.isEmpty) {
         if (isSearchLoading) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.accentColor),
-          );
+          return const ShimmerGrid(itemCount: 9);
         }
 
         return Center(
@@ -365,12 +362,20 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
         );
       }
 
-      return CustomScrollView(
-        controller: _scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+      return RefreshIndicator(
+        onRefresh: () async {
+          await _controller.fetchAllSeries();
+        },
+        color: AppColors.primaryColor,
+        backgroundColor: AppColors.surfaceColor,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
@@ -406,9 +411,10 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
               }),
             ),
         ],
-      );
-    });
-  }
+      ),
+    );
+  });
+}
 
   Widget _buildCard(Series item) {
     final img = formatMediaUrl(item.poster);

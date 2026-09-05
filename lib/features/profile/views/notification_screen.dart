@@ -4,6 +4,8 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/core/services/firebase_service.dart';
 import 'package:golidoli_app/features/profile/controllers/notifications_controller.dart';
 import 'package:golidoli_app/features/profile/widgets/profile_page_scaffold.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
+import 'package:golidoli_app/utils/date_utils.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -66,12 +68,7 @@ class NotificationScreen extends StatelessWidget {
         }),
         Obx(() {
           if (controller.isLoading.value && controller.notifications.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 60.0),
-                child: CircularProgressIndicator(color: AppColors.accentColor),
-              ),
-            );
+            return const ShimmerList(itemCount: 6);
           }
 
           if (controller.notifications.isEmpty) {
@@ -136,7 +133,7 @@ class _NotificationTile extends StatelessWidget {
     final String title = item['title']?.toString() ?? '';
     final String message = (item['message'] ?? item['subtitle'] ?? item['body'] ?? '').toString();
     final String category = (item['category'] ?? item['type'] ?? '').toString();
-    final String formattedTime = _formatTime(item['time']);
+    final String formattedTime = formatTimeAgo(item['time']);
 
     return Dismissible(
       key: ValueKey("${item['id']}_${item['title']}_$index"),
@@ -386,34 +383,6 @@ class _NotificationTile extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatTime(dynamic rawTime) {
-    if (rawTime == null) return '';
-    DateTime? dt;
-    if (rawTime is DateTime) {
-      dt = rawTime;
-    } else if (rawTime is String) {
-      dt = DateTime.tryParse(rawTime);
-    }
-    if (dt == null) return rawTime.toString();
-
-    final now = DateTime.now();
-    final diff = now.difference(dt.toLocal());
-
-    if (diff.inSeconds < 60) {
-      return 'Just now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else if (diff.inDays == 1) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays}d ago';
-    } else {
-      return '${dt.day}/${dt.month}/${dt.year}';
-    }
   }
 }
 

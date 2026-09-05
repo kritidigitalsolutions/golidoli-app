@@ -103,13 +103,21 @@ class AudioStoryModel {
     String parsedCategoryId = '';
 
     if (json['categories'] is List) {
-      parsedCategories = (json['categories'] as List)
-          .whereType<Map>()
-          .map((c) => AudioCategoryModel.fromJson(Map<String, dynamic>.from(c)))
-          .toList();
+      final rawList = json['categories'] as List;
+      for (var c in rawList) {
+        if (c is Map) {
+          parsedCategories.add(AudioCategoryModel.fromJson(Map<String, dynamic>.from(c)));
+        } else if (c != null && c.toString().isNotEmpty) {
+          parsedCategories.add(AudioCategoryModel(id: c.toString(), name: ''));
+        }
+      }
       if (parsedCategories.isNotEmpty) {
-        parsedGenre = parsedCategories.first.name;
-        parsedCategoryId = parsedCategories.first.id;
+        final named = parsedCategories.firstWhere(
+          (c) => c.name.isNotEmpty,
+          orElse: () => parsedCategories.first,
+        );
+        if (named.name.isNotEmpty) parsedGenre = named.name;
+        if (named.id.isNotEmpty) parsedCategoryId = named.id;
       }
     } else if (json['category'] is Map) {
       final cat = AudioCategoryModel.fromJson(
@@ -119,20 +127,33 @@ class AudioStoryModel {
       parsedGenre = cat.name.isNotEmpty ? cat.name : 'Audio Story';
       parsedCategoryId = cat.id;
     } else if (json['category'] is String) {
-      parsedGenre = json['category'].toString();
-      parsedCategoryId = json['categoryId']?.toString() ?? '';
-    } else if (json['genre'] != null) {
+      final catStr = json['category'].toString();
+      if (catStr.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(catStr)) {
+        parsedCategoryId = catStr;
+      } else {
+        parsedGenre = catStr;
+      }
+    }
+
+    if (json['genre'] is List) {
+      final list = (json['genre'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList();
+      if (list.isNotEmpty) parsedGenre = list.join(', ');
+    } else if (json['genre'] != null && json['genre'].toString().isNotEmpty) {
       parsedGenre = json['genre'].toString();
     }
 
-    if (json['categoryId'] != null && parsedCategoryId.isEmpty) {
+    if (json['categoryId'] != null && json['categoryId'].toString().isNotEmpty) {
       parsedCategoryId = json['categoryId'].toString();
     }
 
     final storyId = json['_id']?.toString() ?? json['id']?.toString() ?? '';
     final storyTitle = json['title']?.toString() ?? '';
     final rawCover =
-        json['coverImage']?.toString() ?? json['imageUrl']?.toString() ?? '';
+        json['coverImage']?.toString() ??
+        json['imageUrl']?.toString() ??
+        json['poster']?.toString() ??
+        json['thumbnail']?.toString() ??
+        '';
     final rawBanner = json['bannerImage']?.toString() ?? '';
 
     // 2. Parse Episodes

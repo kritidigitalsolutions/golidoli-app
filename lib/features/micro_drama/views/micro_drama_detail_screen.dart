@@ -15,6 +15,7 @@ import 'package:golidoli_app/utils/text_style.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -57,7 +58,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
       body: Obx(() {
         // Loading state
         if (_controller.detailDramaStatus.value == Status.loading) {
-          return const Center(child: CircularProgressIndicator());
+          return const MicroDramaDetailShimmer();
         }
 
         // Error state

@@ -5,6 +5,7 @@ import 'package:golidoli_app/features/audio_play/controllers/audio_detail_contro
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
 import 'package:golidoli_app/features/audio_play/services/audio_download_service.dart';
 import 'package:golidoli_app/features/audio_play/widgets/audio_mini_player.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class AudioDetailScreen extends StatelessWidget {
@@ -19,9 +20,7 @@ class AudioDetailScreen extends StatelessWidget {
       bottomNavigationBar: const AudioMiniPlayer(withSystemPadding: true),
       body: Obx(() {
         if (controller.isLoading.value && controller.story.value == null) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.primaryColor),
-          );
+          return const AudioDetailShimmer();
         }
 
         final story = controller.story.value;

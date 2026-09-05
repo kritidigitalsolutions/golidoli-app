@@ -17,6 +17,9 @@ class DownloadsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ProfilePageScaffold(
       title: 'Downloads',
+      onRefresh: () async {
+        controller.appDownload.reloadDownloads();
+      },
       children: [
         // Category Pills Filter
         Obx(() {

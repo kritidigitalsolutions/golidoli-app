@@ -3,6 +3,11 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/features/profile/repositories/notification_repository.dart';
 
 class NotificationSettingsController extends GetxController {
+  static NotificationSettingsController get to =>
+      Get.isRegistered<NotificationSettingsController>()
+          ? Get.find<NotificationSettingsController>()
+          : Get.put(NotificationSettingsController(), permanent: true);
+
   final NotificationRepository _repository = NotificationRepository();
 
   final RxBool newEpisodes = true.obs;
@@ -13,6 +18,8 @@ class NotificationSettingsController extends GetxController {
   final RxBool subscriptionAlerts = true.obs;
   final RxBool promotionalOffers = true.obs;
   final RxBool isLoading = false.obs;
+  final RxBool isSaving = false.obs;
+  final RxBool isLoaded = false.obs;
 
   @override
   void onInit() {
@@ -20,19 +27,50 @@ class NotificationSettingsController extends GetxController {
     fetchSettings();
   }
 
-  Future<void> fetchSettings() async {
+  Future<void> fetchSettings({bool silent = false}) async {
     try {
-      isLoading.value = true;
+      if (!silent) {
+        isLoading.value = true;
+      }
       final response = await _repository.getNotificationSettings();
-      if (response != null && response['success'] == true) {
-        final settings = response['notificationSettings'] ?? response['settings'] ?? response['data'] ?? {};
-        newEpisodes.value = settings['newEpisodes'] ?? true;
-        newMovies.value = settings['newMovies'] ?? true;
-        recommendations.value = settings['recommendations'] ?? true;
-        downloads.value = settings['downloads'] ?? true;
-        continueWatchingReminder.value = settings['continueWatching'] ?? settings['continueWatchingReminder'] ?? false;
-        subscriptionAlerts.value = settings['subscriptionAlerts'] ?? true;
-        promotionalOffers.value = settings['promotionalOffers'] ?? true;
+      if (response != null &&
+          (response['success'] == true ||
+              response['status'] == true ||
+              response['data'] != null ||
+              response['notificationSettings'] != null ||
+              response['settings'] != null)) {
+        final settings = response['notificationSettings'] ??
+            response['settings'] ??
+            response['data'] ??
+            response;
+
+        if (settings is Map) {
+          if (settings.containsKey('newEpisodes')) {
+            newEpisodes.value = settings['newEpisodes'] == true;
+          }
+          if (settings.containsKey('newMovies')) {
+            newMovies.value = settings['newMovies'] == true;
+          }
+          if (settings.containsKey('recommendations')) {
+            recommendations.value = settings['recommendations'] == true;
+          }
+          if (settings.containsKey('downloads')) {
+            downloads.value = settings['downloads'] == true;
+          }
+          if (settings.containsKey('continueWatching')) {
+            continueWatchingReminder.value = settings['continueWatching'] == true;
+          } else if (settings.containsKey('continueWatchingReminder')) {
+            continueWatchingReminder.value =
+                settings['continueWatchingReminder'] == true;
+          }
+          if (settings.containsKey('subscriptionAlerts')) {
+            subscriptionAlerts.value = settings['subscriptionAlerts'] == true;
+          }
+          if (settings.containsKey('promotionalOffers')) {
+            promotionalOffers.value = settings['promotionalOffers'] == true;
+          }
+        }
+        isLoaded.value = true;
       }
     } catch (e) {
       debugPrint("Error fetching notification settings: $e");
@@ -43,7 +81,7 @@ class NotificationSettingsController extends GetxController {
 
   Future<void> saveChanges() async {
     try {
-      isLoading.value = true;
+      isSaving.value = true;
       final response = await _repository.updateNotificationSettings({
         "newEpisodes": newEpisodes.value,
         "newMovies": newMovies.value,
@@ -59,7 +97,7 @@ class NotificationSettingsController extends GetxController {
           'Saved',
           'Notification settings updated successfully.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withOpacity(0.8),
+          backgroundColor: Colors.green.withValues(alpha: 0.8),
           colorText: Colors.white,
         );
       } else {
@@ -67,7 +105,7 @@ class NotificationSettingsController extends GetxController {
           'Error',
           'Failed to update notification settings.',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.withOpacity(0.8),
+          backgroundColor: Colors.red.withValues(alpha: 0.8),
           colorText: Colors.white,
         );
       }
@@ -77,11 +115,11 @@ class NotificationSettingsController extends GetxController {
         'Error',
         'An error occurred while saving: $e',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withValues(alpha: 0.8),
         colorText: Colors.white,
       );
     } finally {
-      isLoading.value = false;
+      isSaving.value = false;
     }
   }
 }

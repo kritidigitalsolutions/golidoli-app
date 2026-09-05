@@ -7,6 +7,7 @@ import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/watchlist_model.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -104,9 +105,7 @@ class WatchlistScreen extends StatelessWidget {
   Widget _buildContent(WatchlistController controller) {
     return Obx(() {
       if (controller.isLoading.value && controller.allItems.isEmpty) {
-        return const Center(
-          child: CircularProgressIndicator(color: AppColors.primaryColor),
-        );
+        return const ShimmerGrid(itemCount: 9);
       }
 
       final items = controller.currentList;
@@ -196,33 +195,25 @@ class WatchlistScreen extends StatelessWidget {
 
             // Top right delete button
             Positioned(
-              top: 4,
-              right: 4,
+              top: 6,
+              right: 6,
               child: GestureDetector(
-                onTap: () {
-                  if (item.id != null) {
-                    Get.defaultDialog(
-                      title: 'Remove',
-                      middleText:
-                          'Remove "${media?.title ?? 'Item'}" from watchlist?',
-                      textConfirm: 'Remove',
-                      textCancel: 'Cancel',
-                      confirmTextColor: Colors.white,
-                      buttonColor: Colors.red,
-                      onConfirm: () {
-                        Get.back();
-                        controller.removeFromWatchlist(item.id!);
-                      },
-                    );
-                  }
-                },
+                onTap: () => _showRemoveWatchlistBottomSheet(context, controller, item),
                 child: Container(
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.65),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      width: 0.8,
+                    ),
                   ),
-                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
                 ),
               ),
             ),
@@ -240,7 +231,7 @@ class WatchlistScreen extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      AppColors.backgroundColor.withOpacity(0.95),
+                      AppColors.backgroundColor.withValues(alpha: 0.95),
                     ],
                   ),
                 ),
@@ -326,9 +317,203 @@ class WatchlistScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-TextStyle text9({
-  FontWeight fontWeight = FontWeight.normal,
-  Color color = AppColors.textColor,
-}) => appTextStyle(fontSize: 9, fontWeight: fontWeight, color: color);
+  void _showRemoveWatchlistBottomSheet(
+    BuildContext context,
+    WatchlistController controller,
+    WatchlistItem item,
+  ) {
+    final media = item.item;
+    final title = media?.title ?? 'this item';
+    final rawUrl = (media?.poster != null && media!.poster!.isNotEmpty)
+        ? media.poster!
+        : (media?.banner != null && media!.banner!.isNotEmpty)
+            ? media.banner!
+            : '';
+    final imageUrl = formatMediaUrl(rawUrl);
+
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(
+            top: BorderSide(
+              color: AppColors.borderColor.withValues(alpha: 0.4),
+              width: 1,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Top drag notch
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.hintTextColor.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Poster Thumbnail preview + Info
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 58,
+                      height: 80,
+                      color: AppColors.cardColor,
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => const Icon(
+                                Icons.movie_outlined,
+                                color: AppColors.hintTextColor,
+                                size: 28,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.movie_outlined,
+                              color: AppColors.hintTextColor,
+                              size: 28,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Remove from Watchlist?',
+                          style: text16(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: text13(
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'You can add it back anytime from details.',
+                          style: text11(color: AppColors.secondaryTextColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Get.back(),
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: AppColors.backgroundColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.borderColor.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Cancel',
+                            style: text13(
+                              color: AppColors.secondaryTextColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Get.back();
+                        if (item.id != null) {
+                          controller.removeFromWatchlist(item.id!);
+                          Get.snackbar(
+                            'Removed',
+                            '"$title" was removed from your watchlist',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: AppColors.cardColor,
+                            colorText: AppColors.white,
+                            duration: const Duration(seconds: 2),
+                            margin: const EdgeInsets.all(16),
+                            borderRadius: 12,
+                            icon: const Icon(
+                              Icons.bookmark_remove_rounded,
+                              color: AppColors.accentColor,
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE53935),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE53935).withValues(alpha: 0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.delete_outline_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Remove',
+                              style: text13(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+    );
+  }
+}

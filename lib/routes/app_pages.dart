@@ -18,6 +18,7 @@ import 'package:golidoli_app/features/profile/views/notification_screen.dart';
 import 'package:golidoli_app/features/profile/views/notification_settings_screen.dart';
 import 'package:golidoli_app/features/profile/views/premiun_welcome_screen.dart';
 import 'package:golidoli_app/features/profile/views/privacy_policy_screen.dart';
+import 'package:golidoli_app/features/profile/views/rate_app_screen.dart';
 import 'package:golidoli_app/features/profile/views/refund_policy.dart';
 import 'package:golidoli_app/features/profile/views/subscription_screen.dart';
 import 'package:golidoli_app/features/profile/views/terms_conditions_screen.dart';
@@ -238,6 +239,12 @@ abstract class AppPages {
     GetPage(
       name: AppRoutes.refundPolicy,
       page: () => const RefundPolicy(),
+      transition: Transition.rightToLeft,
+      transitionDuration: const Duration(milliseconds: 350),
+    ),
+    GetPage(
+      name: AppRoutes.rateApp,
+      page: () => const RateAppScreen(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 350),
     ),

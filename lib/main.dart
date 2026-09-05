@@ -13,6 +13,7 @@ import 'package:golidoli_app/features/home/views/discover_tab.dart';
 import 'package:golidoli_app/features/home/views/home_tab.dart';
 import 'package:golidoli_app/features/home/views/reels_tab.dart';
 import 'package:golidoli_app/features/home/views/watchlist_tab.dart';
+import 'package:golidoli_app/features/profile/controllers/notification_settings_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/views/profile_screen.dart';
 import 'package:golidoli_app/routes/app_pages.dart';
@@ -44,7 +45,8 @@ void main() async {
     config: const AudioServiceConfig(
       androidNotificationChannelId: 'com.golidoli.audio.channel',
       androidNotificationChannelName: 'GoliDoli Audio',
-      androidStopForegroundOnPause: true,  // stop foreground when paused (battery friendly)
+      androidStopForegroundOnPause:
+          true, // stop foreground when paused (battery friendly)
       androidNotificationIcon: 'mipmap/ic_launcher',
       androidShowNotificationBadge: true,
       fastForwardInterval: Duration(seconds: 10),
@@ -60,7 +62,8 @@ void main() async {
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF08001F),
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: AppColors.backgroundColor,
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
@@ -78,13 +81,22 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        brightness: Brightness.dark,
         fontFamily: 'Poppins',
+        scaffoldBackgroundColor: AppColors.backgroundColor,
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppColors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
           surfaceTintColor: Colors.transparent,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: AppColors.backgroundColor,
+            systemNavigationBarIconBrightness: Brightness.light,
+          ),
         ),
       ),
       initialRoute: AppRoutes.splash,
@@ -117,6 +129,7 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
     controller = Get.put(HomeController());
     Get.put(SubscriptionStatusController(), permanent: true);
+    Get.put(NotificationSettingsController(), permanent: true);
     AudioPlayerController.to;
 
     // Handle initial index after first build

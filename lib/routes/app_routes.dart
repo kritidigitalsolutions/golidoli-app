@@ -45,4 +45,5 @@ class AppRoutes {
 
   static const faq = '/faq';
   static const refundPolicy = '/refund-policy';
+  static const rateApp = '/rate-app';
 }

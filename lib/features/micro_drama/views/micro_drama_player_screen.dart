@@ -11,7 +11,6 @@ import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_contro
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
-import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
@@ -446,7 +445,6 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   Widget build(BuildContext context) {
     final episode = widget.episode;
     final size = MediaQuery.of(context).size;
-    final thumbnailUrl = formatMediaUrl(episode.thumbnail);
 
     return SizedBox(
       width: size.width,
@@ -454,27 +452,13 @@ class _DramaReelItemState extends State<_DramaReelItem> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Video or thumbnail ──────────────────────────────────────────
+          // ── Video player or loader ─────────────────────────────────────
           Obx(() {
             if (isInitialized.value) {
               return Center(
                 child: AspectRatio(
                   aspectRatio: _vpc.value.aspectRatio,
                   child: VideoPlayer(_vpc),
-                ),
-              );
-            }
-            if (thumbnailUrl.isNotEmpty) {
-              return Image.network(
-                thumbnailUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  color: AppColors.cardColor,
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.accentColor,
-                    ),
-                  ),
                 ),
               );
             }
@@ -509,7 +493,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                           key: ValueKey(_vpc.value.isPlaying),
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.55),
+                            color: Colors.black.withValues(alpha: 0.55),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -670,7 +654,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                         : 0.0;
                     return LinearProgressIndicator(
                       value: progress.clamp(0.0, 1.0),
-                      backgroundColor: Colors.white.withOpacity(0.2),
+                      backgroundColor: Colors.white.withValues(alpha: 0.2),
                       valueColor: const AlwaysStoppedAnimation(
                         AppColors.accentColor,
                       ),
@@ -681,7 +665,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
               }
               return LinearProgressIndicator(
                 value: 0,
-                backgroundColor: Colors.white.withOpacity(0.2),
+                backgroundColor: Colors.white.withValues(alpha: 0.2),
                 valueColor: const AlwaysStoppedAnimation(AppColors.accentColor),
                 minHeight: 3,
               );
@@ -778,14 +762,12 @@ class _ActionButton extends StatelessWidget {
   final Color iconColor;
   final String label;
   final VoidCallback onTap;
-  final bool flipHorizontal;
 
   const _ActionButton({
     required this.icon,
     required this.iconColor,
     required this.label,
     required this.onTap,
-    this.flipHorizontal = false,
   });
 
   @override
@@ -794,10 +776,7 @@ class _ActionButton extends StatelessWidget {
       onTap: onTap,
       child: Column(
         children: [
-          Transform.flip(
-            flipX: flipHorizontal,
-            child: Icon(icon, color: iconColor, size: 28),
-          ),
+          Icon(icon, color: iconColor, size: 28),
           const SizedBox(height: 4),
           Text(label, style: text10(color: AppColors.white)),
         ],

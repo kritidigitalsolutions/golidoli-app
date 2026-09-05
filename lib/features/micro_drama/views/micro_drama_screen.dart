@@ -8,6 +8,7 @@ import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_contro
 import 'package:golidoli_app/features/micro_drama/models/continue_watching_model.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -92,36 +93,54 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
-        child: CustomScrollView(
-          controller: _scrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _buildTopBar()),
-            SliverToBoxAdapter(child: _buildCategoryTabs()),
-            // SliverToBoxAdapter(child: _buildHeroBannerSection()),
-            SliverToBoxAdapter(child: _buildContinueWatchingSection()),
-            SliverToBoxAdapter(child: _buildDramaGridSection()),
-            SliverToBoxAdapter(
-              child: Obx(() {
-                if (_controller.isLoadingMore.value) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
+        child: Column(
+          children: [
+            _buildTopBar(),
+            _buildCategoryTabs(),
+            const SizedBox(height: 6),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await Future.wait([
+                    _controller.fetchAllMicroDrama(),
+                    _cwController.fetchContinueWatching(),
+                  ]);
+                },
+                color: AppColors.primaryColor,
+                backgroundColor: AppColors.surfaceColor,
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
+                    SliverToBoxAdapter(child: _buildContinueWatchingSection()),
+                    SliverToBoxAdapter(child: _buildDramaGridSection()),
+                    SliverToBoxAdapter(
+                      child: Obx(() {
+                        if (_controller.isLoadingMore.value) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: AppColors.primaryColor,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }),
                     ),
-                  );
-                }
-                return const SizedBox.shrink();
-              }),
+                    const SliverToBoxAdapter(child: SizedBox(height: 30)),
+                  ],
+                ),
+              ),
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 30)),
           ],
         ),
       ),
@@ -532,11 +551,10 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   Widget _buildDramaGridSection() {
     return Obx(() {
       if (_controller.allMicroDramaStatus.value == Status.loading) {
-        return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: CircularProgressIndicator(color: AppColors.accentColor),
-          ),
+        return const MicroDramaGridShimmer(
+          itemCount: 6,
+          shrinkWrap: true,
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
         );
       }
 

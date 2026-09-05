@@ -79,26 +79,7 @@ class AudioRepository {
     }
   }
 
-  /// 4. SEARCH AUDIO STORIES
-  /// Endpoint: GET /api/audio-stories/search?q=haunted
-  Future<List<AudioStoryModel>> searchAudioStories(String query) async {
-    if (query.trim().isEmpty) return [];
-    try {
-      final response = await _apiService.getApi(AppUrl.searchAudioStories(query));
-      if (response != null && response['success'] == true) {
-        final List list = response['stories'] ?? [];
-        return list
-            .map((e) => AudioStoryModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-      }
-      return [];
-    } catch (e) {
-      debugPrint("AudioRepository.searchAudioStories Error: $e");
-      return [];
-    }
-  }
-
-  /// 5. GET SINGLE AUDIO STORY (Includes Episodes)
+  /// 4. GET SINGLE AUDIO STORY (Includes Episodes)
   /// Endpoint: GET /api/audio-stories/{story_id}
   Future<AudioStoryModel?> getAudioStoryDetail(String storyId) async {
     try {

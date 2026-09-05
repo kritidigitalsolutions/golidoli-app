@@ -1,38 +1,63 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/constants/app_images.dart' show AppImages;
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
+import 'package:golidoli_app/utils/date_utils.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final ProfileController controllers = Get.find();
-    final controller = Get.put(ProfileController());
+    final controller = Get.isRegistered<ProfileController>()
+        ? Get.find<ProfileController>()
+        : Get.put(ProfileController());
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
+      floatingActionButton: _buildWhatsAppFloatingButton(),
       body: SafeArea(
         child: Column(
           children: [
             _buildAppBar(),
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    _buildUserHeader(controllers),
-                    _buildSubscriptionCard(),
-                    const SizedBox(height: 10),
-                    _buildMenuList(controller),
-                  ],
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await Future.wait([
+                    controller.fetchProfile(),
+                    if (Get.isRegistered<SubscriptionStatusController>())
+                      Get.find<SubscriptionStatusController>().checkStatus(),
+                  ]);
+                },
+                color: AppColors.primaryColor,
+                backgroundColor: AppColors.surfaceColor,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildUserHeader(controller),
+                      _buildSubscriptionCard(),
+                      const SizedBox(height: 10),
+                      _buildMenuList(context, controller),
+                      const SizedBox(height: 16),
+                      _buildLogOutButton(controller),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
                 ),
               ),
             ),
-            _buildLogOutButton(controller),
           ],
         ),
       ),
@@ -52,8 +77,28 @@ class ProfileScreen extends StatelessWidget {
     return Obx(() {
       final user = controller.user.value;
 
-      if (controller.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
+      if (controller.isLoading.value && user == null) {
+        return const ShimmerEffect(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Row(
+              children: [
+                ShimmerBox(width: 60, height: 60, borderRadius: 30),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(width: 140, height: 18, borderRadius: 4),
+                      SizedBox(height: 8),
+                      ShimmerBox(width: 100, height: 12, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       }
 
       if (user == null) {
@@ -179,77 +224,76 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuList(ProfileController controller) {
-    final icons = {
-      'edit': Icons.edit_outlined,
-      'subscription': Icons.card_membership_outlined,
-      'language': Icons.language_outlined,
-      'download': Icons.download_outlined,
-      'content': Icons.tune_outlined,
-      'settings': Icons.settings_outlined,
-      'privacy': Icons.privacy_tip_outlined,
-      'terms': Icons.description_outlined,
-      'refund': Icons.money_off_outlined,
-      "FAQ's": Icons.question_answer_outlined,
-    };
-
-    final items = controller.menuItems;
-
+  Widget _buildMenuList(BuildContext context, ProfileController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        children: List.generate(items.length, (index) {
-          final item = items[index];
-          final icon = icons[item['icon']] ?? Icons.chevron_right;
-          final hasTrailing = item['trailing'] != null;
-          final isLast = index == items.length - 1;
-
-          return Column(
-            children: [
-              GestureDetector(
-                onTap: () => controller.onMenuTap(item['label']),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Row(
-                    children: [
-                      Icon(icon, color: AppColors.secondaryTextColor, size: 20),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Text(
-                          item['label'],
-                          style: text14(color: AppColors.textColor),
-                        ),
-                      ),
-                      if (hasTrailing) ...[
-                        Text(
-                          item['trailing'],
-                          style: text13(color: AppColors.secondaryTextColor),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: AppColors.secondaryTextColor,
-                          size: 13,
-                        ),
-                      ] else
-                        const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: AppColors.hintTextColor,
-                          size: 13,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-              if (!isLast)
-                Divider(
-                  height: 1,
-                  thickness: 0.6,
-                  color: AppColors.secondaryTextColor.withOpacity(0.15),
-                ),
-            ],
-          );
-        }),
+        children: [
+          _ProfileListTile(
+            icon: Icons.edit_outlined,
+            title: 'Edit Profile',
+            onTap: () => Get.toNamed(AppRoutes.editProfile),
+          ),
+          _ProfileListTile(
+            icon: Icons.card_membership_outlined,
+            title: 'Subscription',
+            onTap: () => Get.toNamed(AppRoutes.subscription),
+          ),
+          Obx(
+            () => _ProfileListTile(
+              icon: Icons.language_outlined,
+              title: 'Language',
+              trailingText: controller.selectedLanguage.value,
+              onTap: () => Get.toNamed(AppRoutes.language),
+            ),
+          ),
+          _ProfileListTile(
+            icon: Icons.download_outlined,
+            title: 'Downloads',
+            onTap: () => Get.toNamed(AppRoutes.downloads),
+          ),
+          _ProfileListTile(
+            icon: Icons.tune_outlined,
+            title: 'Content Preference',
+            onTap: () => Get.toNamed(AppRoutes.contentPreference),
+          ),
+          _ProfileListTile(
+            icon: Icons.settings_outlined,
+            title: 'Notifications Settings',
+            onTap: () => Get.toNamed(AppRoutes.notificationSettings),
+          ),
+          _ProfileListTile(
+            icon: Icons.star_rate_outlined,
+            title: 'Rate App',
+            onTap: () => Get.toNamed(AppRoutes.rateApp),
+          ),
+          _ProfileListTile(
+            icon: Icons.share_outlined,
+            title: 'Share App',
+            onTap: _shareApp,
+          ),
+          _ProfileListTile(
+            icon: Icons.privacy_tip_outlined,
+            title: 'Privacy Policy',
+            onTap: () => Get.toNamed(AppRoutes.privacyPolicy),
+          ),
+          _ProfileListTile(
+            icon: Icons.description_outlined,
+            title: 'Terms & Conditions',
+            onTap: () => Get.toNamed(AppRoutes.termsConditions),
+          ),
+          _ProfileListTile(
+            icon: Icons.question_answer_outlined,
+            title: "FAQ's",
+            onTap: () => Get.toNamed(AppRoutes.faq),
+          ),
+          _ProfileListTile(
+            icon: Icons.money_off_outlined,
+            title: 'Refund Policy',
+            showDivider: false,
+            onTap: () => Get.toNamed(AppRoutes.refundPolicy),
+          ),
+        ],
       ),
     );
   }
@@ -265,15 +309,14 @@ class ProfileScreen extends StatelessWidget {
     final subController = Get.find<SubscriptionStatusController>();
     return Obx(() {
       if (subController.isLoading.value) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          height: 80,
-          decoration: BoxDecoration(
-            color: AppColors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Center(
-            child: CircularProgressIndicator(color: AppColors.accentColor),
+        return const ShimmerEffect(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ShimmerBox(
+              width: double.infinity,
+              height: 80,
+              borderRadius: 12,
+            ),
           ),
         );
       }
@@ -291,16 +334,9 @@ class ProfileScreen extends StatelessWidget {
             color: AppColors.white.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: AppColors.accentColor.withOpacity(0.5),
+              color: AppColors.accentColor.withValues(alpha: 0.5),
               width: 1.5,
             ),
-            // boxShadow: [
-            //   BoxShadow(
-            //     color: AppColors.accentColor.withOpacity(0.15),
-            //     blurRadius: 10,
-            //     offset: const Offset(0, 4),
-            //   ),
-            // ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -331,7 +367,7 @@ class ProfileScreen extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryColor.withOpacity(0.2),
+                      color: AppColors.primaryColor.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: AppColors.primaryColor,
@@ -349,7 +385,7 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Divider(color: AppColors.white.withOpacity(0.1), height: 1),
+              Divider(color: AppColors.white.withValues(alpha: 0.1), height: 1),
               const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -380,7 +416,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _formatDate(sub.endDate),
+                        formatDate(sub.endDate),
                         style: text12(
                           fontWeight: FontWeight.w600,
                           color: AppColors.white,
@@ -403,7 +439,9 @@ class ProfileScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderColor.withOpacity(0.3)),
+          border: Border.all(
+            color: AppColors.borderColor.withValues(alpha: 0.3),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,19 +497,148 @@ class ProfileScreen extends StatelessWidget {
     });
   }
 
-  String _formatDate(String dateStr) {
+  Widget _buildWhatsAppFloatingButton() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF25D366).withValues(alpha: 0.45),
+            blurRadius: 16,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _openWhatsApp,
+          borderRadius: BorderRadius.circular(30),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF25D366), Color(0xFF1EBE5D)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(AppImages.whtsapp, height: 24, width: 24),
+                const SizedBox(width: 8),
+                Text(
+                  'Support',
+                  style: text13(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _shareApp() {
+    SharePlus.instance.share(
+      ShareParams(
+        text:
+            'Watch the best movies, web series, audio stories, and exclusive micro dramas on GoliDoli OTT!\n\nDownload now: https://play.google.com/store/apps/details?id=com.kritidigitalsolutions.golidoli',
+        subject: 'Experience unlimited entertainment on GoliDoli!',
+      ),
+    );
+  }
+
+  Future<void> _openWhatsApp() async {
+    final whatsappUrl = Uri.parse(
+      "https://wa.me/919999999999?text=${Uri.encodeComponent('Hello GoliDoli Support, I need assistance with the app.')}",
+    );
     try {
-      final dateTime = DateTime.parse(dateStr);
-      return "${dateTime.day.toString().padLeft(2, '0')}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.year}";
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar(
+          'WhatsApp Support',
+          'Could not open WhatsApp. Please ensure WhatsApp is installed.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.orange.withValues(alpha: 0.8),
+          colorText: Colors.white,
+        );
+      }
     } catch (e) {
-      return dateStr.split('T').first;
+      Get.snackbar(
+        'WhatsApp Support',
+        'Unable to open WhatsApp: ${e.toString()}',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.errorColor.withValues(alpha: 0.8),
+        colorText: Colors.white,
+      );
     }
   }
 }
 
-TextStyle text9({
-  FontWeight fontWeight = FontWeight.normal,
-  Color color = AppColors.textColor,
-}) {
-  return appTextStyle(fontSize: 9, fontWeight: fontWeight, color: color);
+class _ProfileListTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? trailingText;
+  final VoidCallback onTap;
+  final bool showDivider;
+
+  const _ProfileListTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.trailingText,
+    this.showDivider = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 4,
+            vertical: 0,
+          ),
+          leading: Icon(icon, color: AppColors.secondaryTextColor, size: 22),
+          title: Text(title, style: text14(color: AppColors.textColor)),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (trailingText != null) ...[
+                Text(
+                  trailingText!,
+                  style: text13(color: AppColors.secondaryTextColor),
+                ),
+                const SizedBox(width: 6),
+              ],
+              const Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: AppColors.hintTextColor,
+                size: 13,
+              ),
+            ],
+          ),
+          onTap: onTap,
+        ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            thickness: 0.6,
+            color: AppColors.secondaryTextColor.withValues(alpha: 0.15),
+          ),
+      ],
+    );
+  }
 }

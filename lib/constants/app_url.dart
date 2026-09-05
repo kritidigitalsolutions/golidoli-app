@@ -27,7 +27,7 @@ class AppUrl {
       "$baseUrl/api/categories/$id?page=$page&size=$size";
   static String microDramaEpisodeDetail({required String id}) =>
       "$baseUrl/api/microdramas-episodes/$id";
-  static String plan({required String name}) => "$baseUrl/api/plan/$name";
+  static const String plan = "$baseUrl/api/plan";
   // static String allContentApi = "$baseUrl/api/content";
   static String searchContent({required String query}) =>
       "$baseUrl/api/content/?search=$query";

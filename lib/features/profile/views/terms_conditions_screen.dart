@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:golidoli_app/features/profile/widgets/profile_page_scaffold.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
+import 'package:golidoli_app/utils/date_utils.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import '../../../constants/enums.dart';
 
@@ -29,13 +31,10 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
 
       // Loading State
       if (status == Status.loading) {
-        return ProfilePageScaffold(
+        return const ProfilePageScaffold(
           title: 'Terms & Conditions',
           children: [
-            const SizedBox(height: 100),
-            const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor),
-            ),
+            TextContentShimmer(paragraphCount: 3),
           ],
         );
       }
@@ -121,7 +120,7 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Last updated: ${_formatDate(document.updatedAt)}',
+                    'Last updated: ${formatDateMedium(document.updatedAt)}',
                     style: text11(color: AppColors.secondaryTextColor),
                   ),
                 ],
@@ -145,23 +144,5 @@ class _TermsConditionsScreenState extends State<TermsConditionsScreen> {
         ],
       );
     });
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

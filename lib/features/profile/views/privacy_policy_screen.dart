@@ -4,6 +4,8 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:golidoli_app/features/profile/widgets/profile_page_scaffold.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
+import 'package:golidoli_app/utils/date_utils.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class PrivacyPolicyScreen extends StatefulWidget {
@@ -29,13 +31,10 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
 
       // Loading State
       if (status == Status.loading) {
-        return ProfilePageScaffold(
+        return const ProfilePageScaffold(
           title: 'Privacy Policy',
           children: [
-            const SizedBox(height: 100),
-            const Center(
-              child: CircularProgressIndicator(color: AppColors.primaryColor),
-            ),
+            TextContentShimmer(paragraphCount: 3),
           ],
         );
       }
@@ -100,7 +99,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
           title: 'Privacy Policy',
           children: [
             Text(
-              'Last updated: ${_formatDate(document.updatedAt)}',
+              'Last updated: ${formatDateMedium(document.updatedAt)}',
               style: text12(color: AppColors.secondaryTextColor),
             ),
             const SizedBox(height: 14),
@@ -121,7 +120,7 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Last updated: ${_formatDate(document.updatedAt)}',
+                    'Last updated: ${formatDateMedium(document.updatedAt)}',
                     style: text11(color: AppColors.secondaryTextColor),
                   ),
                 ],
@@ -145,23 +144,5 @@ class _PrivacyPolicyScreenState extends State<PrivacyPolicyScreen> {
         ],
       );
     });
-  }
-
-  String _formatDate(DateTime date) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }

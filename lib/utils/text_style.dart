@@ -32,6 +32,13 @@ TextStyle text8({
   return appTextStyle(fontSize: 8, fontWeight: fontWeight, color: color);
 }
 
+TextStyle text9({
+  FontWeight fontWeight = FontWeight.normal,
+  Color color = AppColors.textColor,
+}) {
+  return appTextStyle(fontSize: 9, fontWeight: fontWeight, color: color);
+}
+
 TextStyle text10({
   FontWeight fontWeight = FontWeight.normal,
   Color color = AppColors.textColor,

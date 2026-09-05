@@ -5,6 +5,7 @@ import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../constants/enums.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 
 class FaqPage extends StatefulWidget {
   const FaqPage({super.key});
@@ -28,7 +29,7 @@ class _FaqPageState extends State<FaqPage> {
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         title: const Text(
-          'Help & Support',
+          'FAQ',
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -46,9 +47,7 @@ class _FaqPageState extends State<FaqPage> {
         final status = _controller.helpStatus.value;
 
         if (status == Status.loading) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.primaryColor),
-          );
+          return const TextContentShimmer(paragraphCount: 5);
         }
 
         if (status == Status.error) {
