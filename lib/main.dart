@@ -1,6 +1,9 @@
+import 'dart:ui';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/core/services/app_download_service.dart';
@@ -21,54 +24,76 @@ import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/bottom_nav_bar.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:golidoli_app/core/services/firebase_service.dart';
+import 'package:golidoli_app/web/routes/web_pages.dart';
+import 'package:golidoli_app/web/routes/web_routes.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    usePathUrlStrategy();
+  }
 
   // Initialize Hive storage
   await Hive.initFlutter();
   await Hive.openBox('appBox');
 
-  final notificationService = Get.put(NotificationService(), permanent: true);
-  await notificationService.init();
+  if (!kIsWeb) {
+    final notificationService = Get.put(NotificationService(), permanent: true);
+    await notificationService.init();
 
-  // Initialize universal offline media download manager
-  final appDownloadService = Get.put(AppDownloadService(), permanent: true);
-  await appDownloadService.init();
+    // Initialize universal offline media download manager
+    final appDownloadService = Get.put(AppDownloadService(), permanent: true);
+    await appDownloadService.init();
 
-  final audioDownloadService = Get.put(AudioDownloadService(), permanent: true);
-  await audioDownloadService.init();
+    final audioDownloadService = Get.put(AudioDownloadService(), permanent: true);
+    await audioDownloadService.init();
 
-  // Initialize audio_service — registers the background service & notification
-  final audioHandler = await AudioService.init(
-    builder: () => GolodoliAudioHandler(),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.golidoli.audio.channel',
-      androidNotificationChannelName: 'GoliDoli Audio',
-      androidStopForegroundOnPause:
-          true, // stop foreground when paused (battery friendly)
-      androidNotificationIcon: 'mipmap/ic_launcher',
-      androidShowNotificationBadge: true,
-      fastForwardInterval: Duration(seconds: 10),
-      rewindInterval: Duration(seconds: 10),
-    ),
-  );
+    // Initialize audio_service — registers the background service & notification
+    final audioHandler = await AudioService.init(
+      builder: () => GolodoliAudioHandler(),
+      config: const AudioServiceConfig(
+        androidNotificationChannelId: 'com.golidoli.audio.channel',
+        androidNotificationChannelName: 'GoliDoli Audio',
+        androidStopForegroundOnPause:
+            true, // stop foreground when paused (battery friendly)
+        androidNotificationIcon: 'mipmap/ic_launcher',
+        androidShowNotificationBadge: true,
+        fastForwardInterval: Duration(seconds: 10),
+        rewindInterval: Duration(seconds: 10),
+      ),
+    );
 
-  // Wire handler to AudioPlayerController singleton
-  AudioPlayerController.setHandler(audioHandler);
-  Get.put(AudioPlayerController(), permanent: true);
+    // Wire handler to AudioPlayerController singleton
+    AudioPlayerController.setHandler(audioHandler);
+    Get.put(AudioPlayerController(), permanent: true);
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      statusBarBrightness: Brightness.dark,
-      systemNavigationBarColor: AppColors.backgroundColor,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: AppColors.backgroundColor,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
+  }
 
   runApp(const MyApp());
+}
+
+class AppWebScrollBehavior extends MaterialScrollBehavior {
+  const AppWebScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
 }
 
 class MyApp extends StatelessWidget {
@@ -79,10 +104,17 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'GoliDoli',
       debugShowCheckedModeBanner: false,
+      scrollBehavior: const AppWebScrollBehavior(),
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        fontFamily: 'Poppins',
+        fontFamily: GoogleFonts.poppins().fontFamily,
+        textTheme: GoogleFonts.poppinsTextTheme(
+          ThemeData(brightness: Brightness.dark).textTheme,
+        ),
+        primaryTextTheme: GoogleFonts.poppinsTextTheme(
+          ThemeData(brightness: Brightness.dark).primaryTextTheme,
+        ),
         scaffoldBackgroundColor: AppColors.backgroundColor,
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
@@ -99,15 +131,21 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: AppRoutes.splash,
-      getPages: [
-        ...AppPages.pages,
-        GetPage(
-          name: AppRoutes.home,
-          page: () => const MyHomePage(),
-          transitionDuration: const Duration(milliseconds: 350),
-        ),
-      ],
+      initialRoute: kIsWeb ? WebRoutes.home : AppRoutes.splash,
+      getPages: kIsWeb
+          ? [
+              ...WebPages.pages,
+              ...AppPages.pages,
+            ]
+          : [
+              ...AppPages.pages,
+              ...WebPages.pages,
+              GetPage(
+                name: AppRoutes.home,
+                page: () => const MyHomePage(),
+                transitionDuration: const Duration(milliseconds: 350),
+              ),
+            ],
     );
   }
 }

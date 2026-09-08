@@ -11,8 +11,9 @@ class GoogleAuthService {
       '807853365926-ad785gcjvkcq1oiusk3sn9uisc586k4q.apps.googleusercontent.com';
 
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb ? webClientId : null,
+    serverClientId: kIsWeb ? null : webClientId,
     scopes: <String>['email', 'profile'],
-    serverClientId: webClientId,
   );
 
   GoogleSignInAccount? get currentUser => _googleSignIn.currentUser;

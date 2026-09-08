@@ -10,6 +10,7 @@ class AppColors {
   static const Color white = Color(0xFFFFFFFF);
   static const Color primaryColor = Color(0xFFFED301);
   static const Color accentColor = Color(0xFFFF0564);
+  static const Color primaryPink = Color(0xFFFF0564);
   static const Color black = Color(0xFF000000);
   static const Color transparent = Color(0x00000000);
   static const Color surfaceColor = Color(0xFF252525);

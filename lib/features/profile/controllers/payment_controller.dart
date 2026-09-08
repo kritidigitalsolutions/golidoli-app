@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 import 'package:golidoli_app/features/profile/repositories/payment_repo.dart';
+import 'package:golidoli_app/web/utils/web_payment_helper.dart';
 
 class PaymentController extends GetxController {
   final PaymentRepo _repo = PaymentRepo();
-  late final Razorpay _razorpay;
+  Razorpay? _razorpay;
 
   final RxBool isProcessing = false.obs;
   String? _currentOrderId;
@@ -18,15 +20,19 @@ class PaymentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
+    if (!kIsWeb) {
+      _razorpay = Razorpay();
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _onPaymentSuccess);
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _onPaymentError);
+      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _onExternalWallet);
+    }
   }
 
   @override
   void onClose() {
-    _razorpay.clear();
+    if (!kIsWeb) {
+      _razorpay?.clear();
+    }
     super.onClose();
   }
 
@@ -39,7 +45,55 @@ class PaymentController extends GetxController {
   }) async {
     isProcessing.value = true;
 
-    // Attempt backend order creation first if available
+    // Web Platform: use JavaScript Razorpay Checkout
+    if (kIsWeb) {
+      try {
+        final result = await WebPaymentHelper.purchasePlan(
+          plan: plan,
+          userName: userName,
+          userEmail: userEmail,
+          userContact: userContact,
+        );
+        isProcessing.value = false;
+
+        if (result.success) {
+          try {
+            Get.find<SubscriptionStatusController>().checkStatus();
+          } catch (e) {
+            debugPrint("Failed to refresh SubscriptionStatusController: $e");
+          }
+          Get.snackbar(
+            'Payment Successful',
+            'Subscription activated successfully!',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green.withValues(alpha: 0.8),
+            colorText: Colors.white,
+          );
+        } else {
+          if (result.errorMessage != null && result.errorMessage!.isNotEmpty) {
+            Get.snackbar(
+              'Payment Notice',
+              result.errorMessage!,
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.orange.withValues(alpha: 0.8),
+              colorText: Colors.white,
+            );
+          }
+        }
+      } catch (e) {
+        isProcessing.value = false;
+        Get.snackbar(
+          'Payment Error',
+          e.toString(),
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withValues(alpha: 0.8),
+          colorText: Colors.white,
+        );
+      }
+      return;
+    }
+
+    // Mobile Platform (Android / iOS)
     final order = await _repo.createOrder(planId: plan.id);
 
     String razorpayKey = (order != null && order.razorpayKey.isNotEmpty)
@@ -47,7 +101,7 @@ class PaymentController extends GetxController {
         : defaultRazorpayKey;
 
     int amountInPaise = (order != null && order.amount > 0)
-        ? (order.amount * 100).toInt()
+        ? order.amount
         : (plan.price * 100).toInt();
 
     _currentOrderId = order?.orderId;
@@ -72,7 +126,7 @@ class PaymentController extends GetxController {
     };
 
     try {
-      _razorpay.open(options);
+      _razorpay?.open(options);
     } catch (e) {
       isProcessing.value = false;
       debugPrint('Razorpay open error => $e');
@@ -80,7 +134,7 @@ class PaymentController extends GetxController {
         'Payment',
         'Unable to open payment screen: ${e.toString()}',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withOpacity(0.8),
+        backgroundColor: Colors.red.withValues(alpha: 0.8),
         colorText: Colors.white,
       );
     }
