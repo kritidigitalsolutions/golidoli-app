@@ -174,12 +174,13 @@ class _WebHeaderState extends State<WebHeader> {
           if (!isMobile) ...[
             const SizedBox(width: 36),
             _buildNavItem('Home', WebRoutes.home),
-            const SizedBox(width: 8),
-            _buildNavItem('Dramas', WebRoutes.dramas),
+
             const SizedBox(width: 8),
             _buildNavItem('Movies', WebRoutes.movies),
             const SizedBox(width: 8),
             _buildNavItem('Series', WebRoutes.series),
+            const SizedBox(width: 8),
+            _buildNavItem('Micro Dramas', WebRoutes.dramas),
           ],
 
           const Spacer(),

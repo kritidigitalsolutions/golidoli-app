@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/utils/text_style.dart';
+import 'package:golidoli_app/routes/app_routes.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../main.dart';
 import 'onboarding_screen.dart';
@@ -66,10 +67,10 @@ class _SplashScreenState extends State<SplashScreen>
 
       if (token == null || token.isEmpty) {
         // No token, go to onboarding
-        Get.offAll(() => OnboardingScreen());
+        Get.offAllNamed(AppRoutes.onboarding);
       } else {
         // Token exists, go to home page
-        Get.offAll(() => const MyHomePage());
+        Get.offAllNamed(AppRoutes.home);
       }
     });
   }

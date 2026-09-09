@@ -138,13 +138,12 @@ class MyApp extends StatelessWidget {
               ...AppPages.pages,
             ]
           : [
-              ...AppPages.pages,
-              ...WebPages.pages,
               GetPage(
                 name: AppRoutes.home,
                 page: () => const MyHomePage(),
                 transitionDuration: const Duration(milliseconds: 350),
               ),
+              ...AppPages.pages,
             ],
     );
   }
