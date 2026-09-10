@@ -27,14 +27,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: Obx(() {
         final story = controller.story.value;
         final currentEp = controller.currentEpisode;
 
-        if (story == null && controller.isLoadingAudio.value) {
+        if (story == null) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.primaryColor),
           );
@@ -46,7 +45,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
             SliverToBoxAdapter(child: _buildNowPlaying(controller, story, currentEp)),
             SliverToBoxAdapter(child: _buildProgressBar(controller)),
             SliverToBoxAdapter(child: _buildPlayerControls(controller)),
-            if (story != null && story.episodes.isNotEmpty)
+            if (story.episodes.isNotEmpty)
               SliverToBoxAdapter(child: _buildEpisodesList(controller, story)),
             SliverToBoxAdapter(child: _buildBackToHome()),
             const SliverToBoxAdapter(child: SizedBox(height: 40)),
@@ -141,52 +140,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
                     ],
                   ),
                   // Download Button
-                  Obx(() {
-                    if (currentEp == null) return const SizedBox(width: 36);
-                    final downloadService = AudioDownloadService.to;
-                    final isDownloaded = downloadService.isDownloaded(currentEp.id);
-                    final isDownloading = downloadService.isDownloading(currentEp.id);
-                    final progress = downloadService.getProgress(currentEp.id);
-
-                    if (isDownloading) {
-                      return Container(
-                        width: 34,
-                        height: 34,
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: AppColors.overlayColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: CircularProgressIndicator(
-                          value: progress > 0 ? progress : null,
-                          strokeWidth: 2.5,
-                          color: AppColors.primaryColor,
-                        ),
-                      );
-                    }
-
-                    return GestureDetector(
-                      onTap: () {
-                        if (isDownloaded) {
-                          downloadService.removeDownload(currentEp.id);
-                        } else if (story != null) {
-                          downloadService.downloadEpisode(currentEp, story);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.overlayColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
-                          color: isDownloaded ? AppColors.primaryColor : AppColors.white,
-                          size: 18,
-                        ),
-                      ),
-                    );
-                  }),
+                  _buildDownloadButton(currentEp, story),
                 ],
               ),
             ),
@@ -194,6 +148,59 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildDownloadButton(dynamic currentEp, dynamic story) {
+    if (currentEp == null) {
+      return const SizedBox(width: 36);
+    }
+
+    return Obx(() {
+      final downloadService = AudioDownloadService.to;
+      final epId = currentEp.id.toString();
+      final isDownloaded = downloadService.isDownloaded(epId);
+      final isDownloading = downloadService.isDownloading(epId);
+      final progress = downloadService.getProgress(epId);
+
+      if (isDownloading) {
+        return Container(
+          width: 34,
+          height: 34,
+          padding: const EdgeInsets.all(6),
+          decoration: const BoxDecoration(
+            color: AppColors.overlayColor,
+            shape: BoxShape.circle,
+          ),
+          child: CircularProgressIndicator(
+            value: progress > 0 ? progress : null,
+            strokeWidth: 2.5,
+            color: AppColors.primaryColor,
+          ),
+        );
+      }
+
+      return GestureDetector(
+        onTap: () {
+          if (isDownloaded) {
+            downloadService.removeDownload(epId);
+          } else if (story != null) {
+            downloadService.downloadEpisode(currentEp, story);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(
+            color: AppColors.overlayColor,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
+            color: isDownloaded ? AppColors.primaryColor : AppColors.white,
+            size: 18,
+          ),
+        ),
+      );
+    });
   }
 
   Widget _buildNowPlaying(

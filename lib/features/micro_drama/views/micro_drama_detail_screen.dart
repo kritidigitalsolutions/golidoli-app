@@ -420,7 +420,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                 final interactionCtrl = InteractionController.to;
                 final isLiked = interactionCtrl.isLiked(dramaId);
                 final likes = interactionCtrl.getLikes(dramaId, 0);
-                final isLoading = interactionCtrl.isLoading(dramaId);
+                final isLoading = interactionCtrl.isLikeLoading(dramaId);
 
                 return _buildQuickActionItem(
                   icon: isLiked
@@ -439,7 +439,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                 final interactionCtrl = InteractionController.to;
                 final isDisliked = interactionCtrl.isDisliked(dramaId);
                 final dislikes = interactionCtrl.getDislikes(dramaId, 0);
-                final isLoading = interactionCtrl.isLoading(dramaId);
+                final isLoading = interactionCtrl.isDislikeLoading(dramaId);
 
                 return _buildQuickActionItem(
                   icon: isDisliked

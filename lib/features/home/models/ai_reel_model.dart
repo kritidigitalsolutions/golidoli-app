@@ -10,6 +10,7 @@ class AiReelModel {
   final int views;
   final int likes;
   final int shares;
+  final bool isLiked;
   final bool isPublished;
   final int priority;
   final String publishedAt;
@@ -26,6 +27,7 @@ class AiReelModel {
     required this.views,
     required this.likes,
     this.shares = 0,
+    this.isLiked = false,
     this.isPublished = true,
     this.priority = 0,
     this.publishedAt = '',
@@ -48,6 +50,31 @@ class AiReelModel {
         parsedLikes = (json['likes'] as List).length;
       } else if (json['likes'] is String) {
         parsedLikes = int.tryParse(json['likes'] as String) ?? 0;
+      }
+    }
+
+    bool parsedIsLiked = false;
+    if (json['isLiked'] != null) {
+      if (json['isLiked'] is bool) {
+        parsedIsLiked = json['isLiked'];
+      } else if (json['isLiked'] is num) {
+        parsedIsLiked = json['isLiked'] == 1;
+      } else if (json['isLiked'] is String) {
+        parsedIsLiked = json['isLiked'].toString().toLowerCase() == 'true';
+      }
+    } else if (json['is_liked'] != null) {
+      if (json['is_liked'] is bool) {
+        parsedIsLiked = json['is_liked'];
+      } else if (json['is_liked'] is num) {
+        parsedIsLiked = json['is_liked'] == 1;
+      } else if (json['is_liked'] is String) {
+        parsedIsLiked = json['is_liked'].toString().toLowerCase() == 'true';
+      }
+    } else if (json['liked'] != null) {
+      if (json['liked'] is bool) {
+        parsedIsLiked = json['liked'];
+      } else if (json['liked'] is num) {
+        parsedIsLiked = json['liked'] == 1;
       }
     }
 
@@ -94,6 +121,7 @@ class AiReelModel {
       views: parsedViews,
       likes: parsedLikes,
       shares: parsedShares,
+      isLiked: parsedIsLiked,
       isPublished: json['isPublished'] == true,
       priority: parsedPriority,
       publishedAt: (json['publishedAt'] ?? '').toString(),
@@ -113,6 +141,7 @@ class AiReelModel {
       'views': views,
       'like': likes,
       'shares': shares,
+      'isLiked': isLiked,
       'isPublished': isPublished,
       'priority': priority,
       'publishedAt': publishedAt,

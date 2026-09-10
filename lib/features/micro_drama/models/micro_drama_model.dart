@@ -101,38 +101,57 @@ class Microdrama {
   });
 
   factory Microdrama.fromJson(Map<String, dynamic> json) {
+    List<dynamic> parseDynamicList(dynamic val, [dynamic alt]) {
+      final t = val ?? alt;
+      if (t == null) return [];
+      if (t is List) return List<dynamic>.from(t);
+      if (t is Map) return [t];
+      if (t is String && t.trim().isNotEmpty) return [t.trim()];
+      return [];
+    }
+
     return Microdrama(
-      id: json['_id'] ?? '',
+      id: json['_id'] ?? json['id'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      releaseYear: json['releaseYear'],
-      releaseDate: json['releaseDate'] ?? '',
-      duration: json['duration'] ?? '',
-      rating: json['rating'] ?? 0,
-      genre: List<dynamic>.from(json['genre'] ?? []),
-      language: json['language'] ?? '',
-      poster: json['poster'] ?? '',
-      banner: json['banner'] ?? '',
-      trailerUrl: json['trailerUrl'] ?? '',
+      releaseYear: (json['releaseYear'] is num)
+          ? (json['releaseYear'] as num).toInt()
+          : int.tryParse(json['releaseYear']?.toString() ?? ''),
+      releaseDate: json['releaseDate']?.toString() ?? '',
+      duration: json['duration']?.toString() ?? '',
+      rating: (json['rating'] is num)
+          ? (json['rating'] as num).toDouble()
+          : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      genre: parseDynamicList(json['genre'], json['genres']),
+      language: json['language']?.toString() ?? '',
+      poster: json['poster']?.toString() ?? '',
+      banner: json['banner']?.toString() ?? '',
+      trailerUrl: json['trailerUrl']?.toString() ?? '',
       isComingSoon: _parseBool(
         json['isComingSoon'] ?? json['is_coming_soon'] ?? json['comingSoon'],
       ),
-      totalEpisodes: json['totalEpisodes'] ?? 0,
-      totalViews: json['totalViews'] ?? 0,
+      totalEpisodes: (json['totalEpisodes'] is num)
+          ? (json['totalEpisodes'] as num).toInt()
+          : int.tryParse(json['totalEpisodes']?.toString() ?? '0') ?? 0,
+      totalViews: (json['totalViews'] is num)
+          ? (json['totalViews'] as num).toInt()
+          : int.tryParse(json['totalViews']?.toString() ?? '0') ?? 0,
       isPremium: _parseBool(
         json['isPremium'] ??
             json['is_premium'] ??
             json['premium'] ??
             json['isPremimu'],
       ),
-      priority: json['priority'] ?? 0,
-      status: json['status'] ?? '',
-      cast: List<dynamic>.from(json['cast'] ?? []),
-      category: List<dynamic>.from(json['category'] ?? []),
-      createdAt: json['createdAt'] ?? '',
-      updatedAt: json['updatedAt'] ?? '',
-      slug: json['slug'] ?? '',
-      v: json['__v'] ?? 0,
+      priority: (json['priority'] is num)
+          ? (json['priority'] as num).toInt()
+          : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
+      status: json['status']?.toString() ?? '',
+      cast: parseDynamicList(json['cast']),
+      category: parseDynamicList(json['category'], json['categories']),
+      createdAt: json['createdAt']?.toString() ?? '',
+      updatedAt: json['updatedAt']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      v: json['__v'] != null ? (int.tryParse(json['__v'].toString()) ?? 0) : 0,
       isPublished: _parseBool(
         json['isPublished'] ?? json['is_published'] ?? json['published'],
       ),

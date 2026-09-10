@@ -21,6 +21,7 @@ class MovieDatasource {
       final List<dynamic> moviesJson = jsonData['movies'] ?? [];
       return moviesJson
           .map((e) => MovieModel.fromJson(e as Map<String, dynamic>))
+          .where((m) => m.isVisible)
           .toList();
     } catch (e) {
       rethrow;
@@ -41,6 +42,7 @@ class MovieDatasource {
         if (moviesJson.isNotEmpty) {
           return moviesJson
               .map((e) => MovieModel.fromJson(e as Map<String, dynamic>))
+              .where((m) => m.isVisible)
               .toList();
         }
       }
@@ -60,6 +62,7 @@ class MovieDatasource {
               return type == null || type == 'movie' || type == 'movies';
             })
             .map((e) => MovieModel.fromJson(e as Map<String, dynamic>))
+            .where((m) => m.isVisible)
             .toList();
       }
     } catch (e) {

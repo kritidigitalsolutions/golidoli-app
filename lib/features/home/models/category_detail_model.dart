@@ -62,15 +62,26 @@ class Category {
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
+    final dynamic active = json['isActive'] ?? json['is_active'] ?? json['active'];
+    final bool isActiveParsed = active == null
+        ? true
+        : (active == true ||
+            active == 1 ||
+            active.toString().toLowerCase() == 'true');
+
     return Category(
-      id: json['_id'] ?? '',
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      priority: json['priority'] ?? 0,
-      isActive: json['isActive'] ?? false,
-      createdAt: json['createdAt'] ?? '',
-      updatedAt: json['updatedAt'] ?? '',
-      version: json['__v'] ?? 0,
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      slug: (json['slug'] ?? '').toString(),
+      priority: (json['priority'] is num)
+          ? (json['priority'] as num).toInt()
+          : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
+      isActive: isActiveParsed,
+      createdAt: (json['createdAt'] ?? '').toString(),
+      updatedAt: (json['updatedAt'] ?? '').toString(),
+      version: (json['__v'] is num)
+          ? (json['__v'] as num).toInt()
+          : int.tryParse(json['__v']?.toString() ?? '0') ?? 0,
     );
   }
 
@@ -162,23 +173,44 @@ class ContentModel {
   });
 
   factory ContentModel.fromJson(Map<String, dynamic> json) {
+    List<String> parseStringList(dynamic val) {
+      if (val == null) return [];
+      if (val is List) {
+        return val.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+      }
+      if (val is String && val.trim().isNotEmpty) {
+        return [val.trim()];
+      }
+      return [];
+    }
+
     return ContentModel(
-      id: json['_id'] ?? '',
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      genre: List<String>.from(json['genre'] ?? []),
-      releaseYear: json['releaseYear'],
-      duration: json['duration'] ?? '',
-      language: json['language'] ?? '',
-      poster: json['poster'] ?? '',
-      banner: json['banner'] ?? '',
-      isComingSoon: json['isComingSoon'] ?? false,
-      releaseDate: json['releaseDate'],
-      priority: json['priority'] ?? 0,
-      isPremium: json['isPremium'] ?? false,
-      rating: json['rating'] ?? 0,
-      cast: List<dynamic>.from(json['cast'] ?? []),
-      category: List<String>.from(json['category'] ?? []),
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      title: (json['title'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      genre: parseStringList(json['genre'] ?? json['genres']),
+      releaseYear: (json['releaseYear'] is num)
+          ? (json['releaseYear'] as num).toInt()
+          : int.tryParse(json['releaseYear']?.toString() ?? ''),
+      duration: (json['duration'] ?? '').toString(),
+      language: (json['language'] ?? '').toString(),
+      poster: (json['poster'] ?? '').toString(),
+      banner: (json['banner'] ?? '').toString(),
+      isComingSoon: json['isComingSoon'] == true ||
+          json['is_coming_soon'] == true ||
+          json['comingSoon'] == true,
+      releaseDate: json['releaseDate']?.toString(),
+      priority: (json['priority'] is num)
+          ? (json['priority'] as num).toInt()
+          : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
+      isPremium: json['isPremium'] == true ||
+          json['is_premium'] == true ||
+          json['premium'] == true,
+      rating: (json['rating'] is num)
+          ? (json['rating'] as num).toDouble()
+          : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
+      cast: List<dynamic>.from(json['cast'] is List ? json['cast'] : []),
+      category: parseStringList(json['category'] ?? json['categories']),
       likes: (json['likes'] is num)
           ? (json['likes'] as num).toInt()
           : (json['likes'] is List
@@ -189,11 +221,13 @@ class ContentModel {
           : (json['dislikes'] is List
               ? (json['dislikes'] as List).length
               : int.tryParse(json['dislikes']?.toString() ?? '0') ?? 0),
-      createdAt: json['createdAt'] ?? '',
-      updatedAt: json['updatedAt'] ?? '',
-      slug: json['slug'] ?? '',
-      isPublished: json['isPublished'] ?? false,
-      type: json['type'] ?? '',
+      createdAt: (json['createdAt'] ?? '').toString(),
+      updatedAt: (json['updatedAt'] ?? '').toString(),
+      slug: (json['slug'] ?? '').toString(),
+      isPublished: json['isPublished'] == true ||
+          json['is_published'] == true ||
+          json['published'] == true,
+      type: (json['type'] ?? '').toString(),
     );
   }
 

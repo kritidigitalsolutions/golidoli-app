@@ -101,6 +101,32 @@ void main() {
       expect(response.meta.hasUnwatched, true);
     });
 
+    test('AiReelModel parses isLiked boolean and numeric representations', () {
+      final json1 = {
+        "_id": "reel1",
+        "title": "Reel 1",
+        "isLiked": true,
+        "likes": 10,
+      };
+      expect(AiReelModel.fromJson(json1).isLiked, true);
+
+      final json2 = {
+        "_id": "reel2",
+        "title": "Reel 2",
+        "is_liked": 1,
+        "likes": 5,
+      };
+      expect(AiReelModel.fromJson(json2).isLiked, true);
+
+      final json3 = {
+        "_id": "reel3",
+        "title": "Reel 3",
+        "liked": false,
+        "likes": 0,
+      };
+      expect(AiReelModel.fromJson(json3).isLiked, false);
+    });
+
     test('AppUrl and Models for AI Reel Like and Share', () {
       const reelId = '60f7a1234567890';
 

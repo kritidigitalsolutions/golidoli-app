@@ -31,6 +31,7 @@ class AiReelsController extends GetxController {
   // Local likes & shares tracking
   final RxMap<String, int> likesCountMap = <String, int>{}.obs;
   final RxMap<String, bool> isLikedMap = <String, bool>{}.obs;
+  final RxMap<String, bool> isLikeLoadingMap = <String, bool>{}.obs;
   final RxMap<String, int> sharesCountMap = <String, int>{}.obs;
 
   void toggleMute() {
@@ -68,10 +69,12 @@ class AiReelsController extends GetxController {
 
       reels.assignAll(response.data);
 
-      // Initialize like & share maps
+      // Initialize like & share maps without losing user state
       for (final r in response.data) {
         likesCountMap[r.id] = r.likes;
-        isLikedMap[r.id] = false;
+        if (!isLikedMap.containsKey(r.id)) {
+          isLikedMap[r.id] = r.isLiked;
+        }
         sharesCountMap[r.id] = r.shares;
       }
 
@@ -127,7 +130,9 @@ class AiReelsController extends GetxController {
 
         for (final r in newItems) {
           likesCountMap[r.id] = r.likes;
-          isLikedMap[r.id] = false;
+          if (!isLikedMap.containsKey(r.id)) {
+            isLikedMap[r.id] = r.isLiked;
+          }
           sharesCountMap[r.id] = r.shares;
         }
 
@@ -185,33 +190,57 @@ class AiReelsController extends GetxController {
   /// Toggle like for reel via API: POST /api/interaction/toggle/like/aiReel/:id
   Future<void> toggleReelLike(String reelId) async {
     if (reelId.isEmpty) return;
+    if (isLikeLoadingMap[reelId] == true) return;
+
+    isLikeLoadingMap[reelId] = true;
 
     final wasLiked = isLikedMap[reelId] ?? false;
-    final currentCount = likesCountMap[reelId] ?? 0;
+    final prevCount = likesCountMap[reelId] ?? 0;
 
     // Optimistic UI update
     if (wasLiked) {
       isLikedMap[reelId] = false;
-      likesCountMap[reelId] = (currentCount - 1).clamp(0, 99999999);
+      likesCountMap[reelId] = (prevCount - 1).clamp(0, 99999999);
     } else {
       isLikedMap[reelId] = true;
-      likesCountMap[reelId] = currentCount + 1;
+      likesCountMap[reelId] = prevCount + 1;
     }
 
-    // Call API in background
     try {
       final response = await _datasource.toggleLike(reelId);
       if (response != null && response.success) {
         final msg = response.message.toLowerCase();
-        if (msg.contains("added")) {
+        if (msg.contains("added") ||
+            msg.contains("liked") ||
+            (msg.contains("like") && !msg.contains("removed"))) {
           isLikedMap[reelId] = true;
-        } else if (msg.contains("removed")) {
+        } else if (msg.contains("removed") || msg.contains("unliked")) {
           isLikedMap[reelId] = false;
         }
-        likesCountMap[reelId] = response.totalLikes;
+        if (response.totalLikes >= 0) {
+          likesCountMap[reelId] = response.totalLikes;
+        }
+      } else {
+        // Rollback on non-success
+        isLikedMap[reelId] = wasLiked;
+        likesCountMap[reelId] = prevCount;
       }
     } catch (e) {
       debugPrint("⚠️ toggleReelLike error: $e");
+      // Rollback on error
+      isLikedMap[reelId] = wasLiked;
+      likesCountMap[reelId] = prevCount;
+    } finally {
+      isLikeLoadingMap[reelId] = false;
+    }
+  }
+
+  /// Helper for double-tap on screen (only likes if not already liked)
+  Future<void> likeReelIfNotLiked(String reelId) async {
+    if (reelId.isEmpty) return;
+    final isAlreadyLiked = isLikedMap[reelId] ?? false;
+    if (!isAlreadyLiked) {
+      await toggleReelLike(reelId);
     }
   }
 

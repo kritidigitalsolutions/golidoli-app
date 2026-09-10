@@ -19,6 +19,7 @@ import 'package:golidoli_app/web/layouts/web_main_layout.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/screens/auth/web_login_dialog.dart';
 import 'package:golidoli_app/web/utils/web_responsive.dart';
+import 'package:golidoli_app/web/widgets/web_rate_dialog.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -1705,119 +1706,7 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
   // }
 
   void _openRateModal() {
-    int selectedRating = 5;
-    final feedbackCtrl = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 440),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Rate GoliDoli',
-                      style: text16(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppColors.secondaryTextColor,
-                      ),
-                      onPressed: () => Navigator.of(ctx).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    final star = index + 1;
-                    return IconButton(
-                      icon: Icon(
-                        star <= selectedRating
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
-                        color: const Color(0xFFFFB800),
-                        size: 36,
-                      ),
-                      onPressed: () =>
-                          setModalState(() => selectedRating = star),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: feedbackCtrl,
-                  maxLines: 3,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: 'Share your feedback or suggestions...',
-                    hintStyle: const TextStyle(
-                      color: AppColors.secondaryTextColor,
-                      fontSize: 13,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surfaceColor,
-                    contentPadding: const EdgeInsets.all(12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(
-                        color: AppColors.borderColor.withOpacity(0.5),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      Get.snackbar(
-                        'Thank You!',
-                        'Thank you for your valuable feedback!',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: AppColors.primaryPink.withOpacity(
-                          0.85,
-                        ),
-                        colorText: Colors.white,
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryPink,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Submit Feedback',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    WebRateDialog.show(context);
   }
 
   void _openLegalModal(String docId, String title) {

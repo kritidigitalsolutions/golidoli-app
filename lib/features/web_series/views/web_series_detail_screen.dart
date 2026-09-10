@@ -463,7 +463,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                 final interactionCtrl = InteractionController.to;
                 final likes = interactionCtrl.getLikes(series.id, series.likes);
                 final isLiked = interactionCtrl.isLiked(series.id);
-                final isLoading = interactionCtrl.isLoading(series.id);
+                final isLoading = interactionCtrl.isLikeLoading(series.id);
 
                 return _buildQuickActionItem(
                   icon: isLiked
@@ -485,7 +485,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                   series.dislikes,
                 );
                 final isDisliked = interactionCtrl.isDisliked(series.id);
-                final isLoading = interactionCtrl.isLoading(series.id);
+                final isLoading = interactionCtrl.isDislikeLoading(series.id);
 
                 return _buildQuickActionItem(
                   icon: isDisliked

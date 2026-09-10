@@ -96,7 +96,7 @@ class WebSearchController extends GetxController {
       // 2. Search movies as supplement
       try {
         final movieResults = await _movieDatasource.searchMovies(q);
-        for (var m in movieResults) {
+        for (var m in movieResults.where((m) => m.isVisible)) {
           if (!items.any((i) => i.id == m.id)) {
             items.add(SearchResultItem(
               id: m.id,
@@ -116,7 +116,7 @@ class WebSearchController extends GetxController {
       // 3. Search series as supplement
       try {
         final seriesResults = await _seriesDatasource.searchSeries(q);
-        for (var s in seriesResults) {
+        for (var s in seriesResults.where((s) => s.isVisible)) {
           if (!items.any((i) => i.id == s.id)) {
             items.add(SearchResultItem(
               id: s.id,

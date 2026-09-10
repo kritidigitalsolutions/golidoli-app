@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/widgets/continue_watching_helper.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
@@ -25,37 +26,115 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
   late final ContinueWatchingController _cwController;
   final ScrollController _scrollController = ScrollController();
 
-  final List<String> categories = [
-    'All',
-    'Drama',
-    'Action',
-    'Romance',
-    'Thriller',
-    'Horror',
-    'Comedy',
-  ];
+  List<String> get categories {
+    final list = <String>['All'];
+    if (Get.isRegistered<HomeController>()) {
+      final homeController = Get.find<HomeController>();
+      for (final cat in homeController.categories) {
+        if (!list.contains(cat.name)) list.add(cat.name);
+      }
+    }
+    final all = _controller.allMicroDrama.value?.microdramas ?? [];
+    for (final d in all) {
+      for (final g in d.genre) {
+        final str = g.toString().trim();
+        if (str.isNotEmpty && !list.contains(str)) {
+          list.add(str);
+        }
+      }
+    }
+    return list;
+  }
+
+  String get currentCategoryName {
+    final cats = categories;
+    if (selectedCategoryIndex.value >= 0 &&
+        selectedCategoryIndex.value < cats.length) {
+      return cats[selectedCategoryIndex.value];
+    }
+    return 'All';
+  }
+
+  void _selectCategoryByName(String name, {String? slug}) {
+    if (name.isEmpty && (slug == null || slug.isEmpty)) return;
+    final cats = categories;
+    String clean(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final targetName = clean(name);
+    final targetSlug = slug != null ? clean(slug) : '';
+
+    final index = cats.indexWhere((c) {
+      final cLower = c.toLowerCase();
+      final cClean = clean(c);
+      return (name.isNotEmpty &&
+              (cLower == name.toLowerCase() ||
+                  (targetName.isNotEmpty && cClean == targetName))) ||
+          (slug != null &&
+              slug.isNotEmpty &&
+              (cLower == slug.toLowerCase() ||
+                  (targetSlug.isNotEmpty && cClean == targetSlug)));
+    });
+    if (index != -1) {
+      selectedCategoryIndex.value = index;
+    }
+  }
+
+  bool _matchesDramaCategoryName(Microdrama drama, String catName) {
+    String clean(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final target = clean(catName);
+
+    for (final c in drama.category) {
+      if (c == null) continue;
+      if (c is String) {
+        if (c.toLowerCase() == catName.toLowerCase() ||
+            (target.isNotEmpty && clean(c) == target)) {
+          return true;
+        }
+      } else if (c is Map) {
+        final name = (c['name'] ?? '').toString();
+        final slug = (c['slug'] ?? '').toString();
+        if (name.toLowerCase() == catName.toLowerCase() ||
+            slug.toLowerCase() == catName.toLowerCase() ||
+            (target.isNotEmpty && clean(name) == target) ||
+            (target.isNotEmpty && clean(slug) == target)) {
+          return true;
+        }
+      }
+    }
+    for (final g in drama.genre) {
+      final gStr = g.toString();
+      if (gStr.toLowerCase() == catName.toLowerCase() ||
+          (target.isNotEmpty && clean(gStr) == target)) {
+        return true;
+      }
+    }
+    if (drama.slug.isNotEmpty &&
+        (drama.slug.toLowerCase() == catName.toLowerCase() ||
+            (target.isNotEmpty && clean(drama.slug) == target))) {
+      return true;
+    }
+    return false;
+  }
 
   List<Microdrama> _filteredDramas(List<Microdrama> allDramas) {
-    if (selectedCategoryIndex.value == 0) return allDramas;
-    final genre = categories[selectedCategoryIndex.value];
-    return allDramas
-        .where(
-          (d) => d.genre.any(
-            (g) => g.toString().toLowerCase() == genre.toLowerCase(),
-          ),
-        )
-        .toList();
+    final catName = currentCategoryName;
+    final matched = allDramas.where((d) {
+      if (catName == 'All') return true;
+      return _matchesDramaCategoryName(d, catName);
+    }).toList();
+
+    matched.sort((a, b) {
+      if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+      return b.rating.compareTo(a.rating);
+    });
+
+    return matched;
   }
 
   void _onCategorySelected(int index) {
     selectedCategoryIndex.value = index;
   }
-
-  // void _onDramaTap(Microdrama drama) {
-  //   Get.to(
-  //     () => MicroDramaDetailScreen(id: drama.id),
-  //   )?.then((_) => _cwController.fetchContinueWatching());
-  // }
 
   @override
   void initState() {
@@ -66,6 +145,22 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
     _cwController = Get.isRegistered<ContinueWatchingController>()
         ? Get.find<ContinueWatchingController>()
         : Get.put(ContinueWatchingController());
+
+    final args = Get.arguments;
+    if (args is Map) {
+      final initialCategory = args['category']?.toString() ??
+          args['categoryName']?.toString() ??
+          args['title']?.toString();
+      final initialSlug =
+          args['categorySlug']?.toString() ?? args['slug']?.toString();
+      if (initialCategory != null && initialCategory.isNotEmpty) {
+        _selectCategoryByName(initialCategory, slug: initialSlug);
+      } else if (initialSlug != null && initialSlug.isNotEmpty) {
+        _selectCategoryByName(initialSlug, slug: initialSlug);
+      }
+    } else if (args is String && args.isNotEmpty) {
+      _selectCategoryByName(args);
+    }
 
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -172,7 +267,13 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text('Micro Dramas', style: text18(fontWeight: FontWeight.bold)),
+          Obx(() {
+            final name = currentCategoryName;
+            return Text(
+              name == 'All' ? 'Micro Dramas' : name,
+              style: text18(fontWeight: FontWeight.bold),
+            );
+          }),
         ],
       ),
     );
@@ -180,16 +281,19 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
 
   // ── Category chips ─────────────────────────────────────────────────────────
   Widget _buildCategoryTabs() {
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          return Obx(() {
-            final isSelected = selectedCategoryIndex.value == i;
+    return Obx(() {
+      final cats = categories;
+      final selectedIndex = selectedCategoryIndex.value;
+
+      return SizedBox(
+        height: 38,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: cats.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
+          itemBuilder: (_, i) {
+            final isSelected = selectedIndex == i;
 
             return GestureDetector(
               onTap: () => _onCategorySelected(i),
@@ -212,7 +316,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    categories[i],
+                    cats[i],
                     style: text12(
                       color: isSelected
                           ? AppColors.black
@@ -225,10 +329,10 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
                 ),
               ),
             );
-          });
-        },
-      ),
-    );
+          },
+        ),
+      );
+    });
   }
 
   // // ── Hero banner section ────────────────────────────────────────────────────

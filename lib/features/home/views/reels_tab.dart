@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -381,6 +382,23 @@ class _ReelItemState extends State<_ReelItem> {
   VideoPlayerController? _vpc;
   bool _initialized = false;
   bool _completedTriggered = false;
+  bool _showHeartAnimation = false;
+  Timer? _heartTimer;
+
+  void _onDoubleTap() {
+    AiReelsController.to.likeReelIfNotLiked(widget.reel.id);
+    _heartTimer?.cancel();
+    setState(() {
+      _showHeartAnimation = true;
+    });
+    _heartTimer = Timer(const Duration(milliseconds: 750), () {
+      if (mounted) {
+        setState(() {
+          _showHeartAnimation = false;
+        });
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -459,6 +477,7 @@ class _ReelItemState extends State<_ReelItem> {
 
   @override
   void dispose() {
+    _heartTimer?.cancel();
     _vpc?.removeListener(_videoListener);
     // Note: Do not dispose _vpc directly here if managed in parent cache
     super.dispose();
@@ -523,7 +542,7 @@ class _ReelItemState extends State<_ReelItem> {
             ),
           ),
 
-          // 3. Tap to toggle Play / Pause
+          // 3. Tap to toggle Play / Pause & Double-tap to Like
           GestureDetector(
             onTap: () {
               if (_initialized && _vpc != null) {
@@ -536,11 +555,42 @@ class _ReelItemState extends State<_ReelItem> {
                 });
               }
             },
+            onDoubleTap: _onDoubleTap,
             behavior: HitTestBehavior.translucent,
             child: const SizedBox.expand(),
           ),
 
-          // 4. Center Play / Stop (Pause) Indicator
+          // 4. Double-tap pop heart animation overlay
+          if (_showHeartAnimation)
+            IgnorePointer(
+              child: Center(
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.2, end: 1.25),
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.elasticOut,
+                  builder: (context, scale, child) {
+                    return Transform.scale(
+                      scale: scale,
+                      child: child,
+                    );
+                  },
+                  child: const Icon(
+                    Icons.favorite_rounded,
+                    size: 110,
+                    color: AppColors.accentColor,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 24,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // 5. Center Play / Stop (Pause) Indicator
           if (_initialized && _vpc != null)
             ValueListenableBuilder<VideoPlayerValue>(
               valueListenable: _vpc!,
@@ -601,19 +651,24 @@ class _ReelItemState extends State<_ReelItem> {
                   return _IconAction(
                     label: _fmt(likesCount),
                     onTap: () => reelsController.toggleReelLike(reel.id),
-                    child: Icon(
-                      isLiked
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: isLiked ? AppColors.accentColor : Colors.white,
-                      size: 30,
-                      shadows: const [
-                        Shadow(
-                          color: Colors.black54,
-                          blurRadius: 6,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
+                    child: AnimatedScale(
+                      scale: isLiked ? 1.15 : 1.0,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.elasticOut,
+                      child: Icon(
+                        isLiked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        color: isLiked ? AppColors.accentColor : Colors.white,
+                        size: 30,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black54,
+                            blurRadius: 6,
+                            offset: Offset(0, 1),
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }),

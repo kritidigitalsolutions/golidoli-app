@@ -480,7 +480,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                 final interactionCtrl = InteractionController.to;
                 final likes = interactionCtrl.getLikes(movie.id, movie.likes);
                 final isLiked = interactionCtrl.isLiked(movie.id);
-                final isLoading = interactionCtrl.isLoading(movie.id);
+                final isLoading = interactionCtrl.isLikeLoading(movie.id);
 
                 return _buildQuickActionItem(
                   icon: isLiked
@@ -502,7 +502,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   movie.dislikes,
                 );
                 final isDisliked = interactionCtrl.isDisliked(movie.id);
-                final isLoading = interactionCtrl.isLoading(movie.id);
+                final isLoading = interactionCtrl.isDislikeLoading(movie.id);
 
                 return _buildQuickActionItem(
                   icon: isDisliked

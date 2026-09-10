@@ -132,4 +132,7 @@ class AppUrl {
       "$baseUrl/api/interaction/toggle/like/aiReel/$id";
   static String aiReelShare(String reelId) =>
       "$baseUrl/api/ai-reels/$reelId/share";
+
+  // Rating & Review API
+  static const String rateApp = "$baseUrl/api/rating/rate";
 }

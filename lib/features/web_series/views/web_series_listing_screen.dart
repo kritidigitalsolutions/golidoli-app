@@ -26,6 +26,21 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
   void initState() {
     super.initState();
     _controller = Get.find<SeriesController>();
+    final args = Get.arguments;
+    if (args is Map) {
+      final initialCategory = args['category']?.toString() ??
+          args['categoryName']?.toString() ??
+          args['title']?.toString();
+      final initialSlug =
+          args['categorySlug']?.toString() ?? args['slug']?.toString();
+      if (initialCategory != null && initialCategory.isNotEmpty) {
+        _controller.selectCategoryByName(initialCategory, slug: initialSlug);
+      } else if (initialSlug != null && initialSlug.isNotEmpty) {
+        _controller.selectCategoryByName(initialSlug, slug: initialSlug);
+      }
+    } else if (args is String && args.isNotEmpty) {
+      _controller.selectCategoryByName(args);
+    }
     _scrollController.addListener(_onScroll);
     _searchController.addListener(() {
       _controller.searchSeries(_searchController.text);
@@ -156,8 +171,12 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Web Series',
-                      style: text18(fontWeight: FontWeight.bold)),
+                  Text(
+                    _controller.currentCategoryName == 'All'
+                        ? 'Web Series'
+                        : _controller.currentCategoryName,
+                    style: text18(fontWeight: FontWeight.bold),
+                  ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () {

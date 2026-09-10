@@ -26,6 +26,21 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
   void initState() {
     super.initState();
     _controller = Get.find<MovieController>();
+    final args = Get.arguments;
+    if (args is Map) {
+      final initialCategory = args['category']?.toString() ??
+          args['categoryName']?.toString() ??
+          args['title']?.toString();
+      final initialSlug =
+          args['categorySlug']?.toString() ?? args['slug']?.toString();
+      if (initialCategory != null && initialCategory.isNotEmpty) {
+        _controller.selectCategoryByName(initialCategory, slug: initialSlug);
+      } else if (initialSlug != null && initialSlug.isNotEmpty) {
+        _controller.selectCategoryByName(initialSlug, slug: initialSlug);
+      }
+    } else if (args is String && args.isNotEmpty) {
+      _controller.selectCategoryByName(args);
+    }
     _scrollController.addListener(_onScroll);
     _searchController.addListener(() {
       _controller.searchMovies(_searchController.text);
@@ -156,7 +171,12 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Movie', style: text18(fontWeight: FontWeight.bold)),
+                  Text(
+                    _controller.currentCategoryName == 'All'
+                        ? 'Movies'
+                        : _controller.currentCategoryName,
+                    style: text18(fontWeight: FontWeight.bold),
+                  ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () {

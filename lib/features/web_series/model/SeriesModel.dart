@@ -21,6 +21,7 @@ class SeriesResponse {
       series:
           (json['series'] as List<dynamic>?)
               ?.map((e) => Series.fromJson(e))
+              .where((s) => s.isVisible)
               .toList() ??
           [],
     );
@@ -62,6 +63,8 @@ class Series {
   final List<dynamic> category;
   final int likes;
   final int dislikes;
+  final bool is18plus;
+  final bool isHide;
   final int totalSeasons;
   final int totalEpisodes;
   final String createdAt;
@@ -91,6 +94,8 @@ class Series {
     required this.category,
     this.likes = 0,
     this.dislikes = 0,
+    this.is18plus = false,
+    this.isHide = false,
     required this.totalSeasons,
     required this.totalEpisodes,
     required this.createdAt,
@@ -100,12 +105,53 @@ class Series {
     required this.seasons,
   });
 
+  /// Logic:
+  /// When `is18plus` is true, whether to show this content depends on `isHide`:
+  /// - `is18plus == true` && `isHide == true` => Hidden (returns false)
+  /// - `is18plus == true` && `isHide == false` => Visible (returns true)
+  /// - `is18plus == false` => Visible if not hidden (returns !isHide)
+  bool get isVisible {
+    if (is18plus) {
+      return !isHide;
+    }
+    return !isHide;
+  }
+
+  /// Alias for `isVisible`
+  bool get shouldShow => isVisible;
+
+  /// Alias for `isVisible`
+  bool get showContent => isVisible;
+
   factory Series.fromJson(Map<String, dynamic> json) {
+    List<dynamic> parseDynamicList(dynamic val, [dynamic alt]) {
+      final t = val ?? alt;
+      if (t == null) return [];
+      if (t is List) return List<dynamic>.from(t);
+      if (t is Map) return [t];
+      if (t is String && t.trim().isNotEmpty) return [t.trim()];
+      return [];
+    }
+
+    List<String> parseStringList(dynamic val, [dynamic alt]) {
+      final t = val ?? alt;
+      if (t == null) return [];
+      if (t is List) {
+        return t.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList();
+      }
+      if (t is String && t.trim().isNotEmpty) {
+        return t.contains(',')
+            ? t.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+            : [t.trim()];
+      }
+      return [];
+    }
+
     return Series(
-      id: json['_id'] ?? '',
+      id: json['_id'] ?? json['id'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      genre: List<String>.from(json['genre'] ?? []),
+      genre: parseStringList(json['genre'], json['genres']),
       releaseYear: json['releaseYear'] ?? 0,
       duration: json['duration'] ?? '',
       language: json['language'] ?? '',
@@ -122,15 +168,17 @@ class Series {
             json['premium'] ??
             json['isPremimu'],
       ),
-      priority: json['priority'] ?? 0,
+      priority: (json['priority'] is num)
+          ? (json['priority'] as num).toInt()
+          : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
       rating: (json['rating'] is num)
           ? (json['rating'] as num).toDouble()
           : double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
       isPopular: _parseBool(
         json['isPopular'] ?? json['is_popular'] ?? json['popularSeries'],
       ),
-      cast: List<dynamic>.from(json['cast'] ?? []),
-      category: List<dynamic>.from(json['category'] ?? []),
+      cast: parseDynamicList(json['cast']),
+      category: parseDynamicList(json['category'], json['categories']),
       likes: (json['likes'] is num)
           ? (json['likes'] as num).toInt()
           : (json['likes'] is List
@@ -141,6 +189,10 @@ class Series {
           : (json['dislikes'] is List
               ? (json['dislikes'] as List).length
               : int.tryParse(json['dislikes']?.toString() ?? '0') ?? 0),
+      is18plus: _parseBool(
+        json['is18plus'] ?? json['is_18plus'] ?? json['18plus'],
+      ),
+      isHide: _parseBool(json['isHide'] ?? json['is_hide'] ?? json['hide']),
       totalSeasons: json['totalSeasons'] ?? 0,
       totalEpisodes: json['totalEpisodes'] ?? 0,
       createdAt: json['createdAt'] ?? '',
@@ -173,6 +225,8 @@ class Series {
       'category': category,
       'likes': likes,
       'dislikes': dislikes,
+      'is18plus': is18plus,
+      'isHide': isHide,
       'totalSeasons': totalSeasons,
       'totalEpisodes': totalEpisodes,
       'createdAt': createdAt,
@@ -204,6 +258,8 @@ class Series {
     List<dynamic>? category,
     int? likes,
     int? dislikes,
+    bool? is18plus,
+    bool? isHide,
     int? totalSeasons,
     int? totalEpisodes,
     String? createdAt,
@@ -233,6 +289,8 @@ class Series {
       category: category ?? this.category,
       likes: likes ?? this.likes,
       dislikes: dislikes ?? this.dislikes,
+      is18plus: is18plus ?? this.is18plus,
+      isHide: isHide ?? this.isHide,
       totalSeasons: totalSeasons ?? this.totalSeasons,
       totalEpisodes: totalEpisodes ?? this.totalEpisodes,
       createdAt: createdAt ?? this.createdAt,

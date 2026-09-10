@@ -61,6 +61,7 @@ class SeriesDatasource {
                   type == 'web_series';
             })
             .map((e) => Series.fromJson(e as Map<String, dynamic>))
+            .where((s) => s.isVisible)
             .toList();
       }
     } catch (_) {}

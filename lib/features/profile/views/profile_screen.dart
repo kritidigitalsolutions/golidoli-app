@@ -252,11 +252,11 @@ class ProfileScreen extends StatelessWidget {
             title: 'Downloads',
             onTap: () => Get.toNamed(AppRoutes.downloads),
           ),
-          _ProfileListTile(
-            icon: Icons.tune_outlined,
-            title: 'Content Preference',
-            onTap: () => Get.toNamed(AppRoutes.contentPreference),
-          ),
+          // _ProfileListTile(
+          //   icon: Icons.tune_outlined,
+          //   title: 'Content Preference',
+          //   onTap: () => Get.toNamed(AppRoutes.contentPreference),
+          // ),
           _ProfileListTile(
             icon: Icons.settings_outlined,
             title: 'Notifications Settings',

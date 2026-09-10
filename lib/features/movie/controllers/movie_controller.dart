@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/repositories/movie_datasource.dart';
 import 'package:golidoli_app/shared/models/like_dislike_response.dart';
@@ -24,21 +25,62 @@ class MovieController extends GetxController {
   final RxInt selectedCategoryIndex = 0.obs;
   final RxBool isSearchOpen = false.obs;
 
-  final List<String> categories = const [
-    'All',
-    'Action',
-    'Comedy',
-    'Drama',
-    'Horror',
-    'Sci-Fi',
-    'Romance',
-    'Thriller',
-  ];
+  List<String> get categories {
+    final list = <String>['All'];
+    if (Get.isRegistered<HomeController>()) {
+      final homeController = Get.find<HomeController>();
+      for (final cat in homeController.categories) {
+        if (!list.contains(cat.name)) list.add(cat.name);
+      }
+    }
+    for (final m in allMovies.where((m) => m.isVisible)) {
+      for (final g in m.genre) {
+        final str = g.trim();
+        if (str.isNotEmpty && !list.contains(str)) {
+          list.add(str);
+        }
+      }
+    }
+    return list;
+  }
 
   final MovieDatasource _api = MovieDatasource();
 
   void selectCategory(int index) {
     selectedCategoryIndex.value = index;
+  }
+
+  void selectCategoryByName(String name, {String? slug}) {
+    if (name.isEmpty && (slug == null || slug.isEmpty)) return;
+    final cats = categories;
+    String clean(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final targetName = clean(name);
+    final targetSlug = slug != null ? clean(slug) : '';
+
+    final index = cats.indexWhere((c) {
+      final cLower = c.toLowerCase();
+      final cClean = clean(c);
+      return (name.isNotEmpty &&
+              (cLower == name.toLowerCase() ||
+                  (targetName.isNotEmpty && cClean == targetName))) ||
+          (slug != null &&
+              slug.isNotEmpty &&
+              (cLower == slug.toLowerCase() ||
+                  (targetSlug.isNotEmpty && cClean == targetSlug)));
+    });
+    if (index != -1) {
+      selectedCategoryIndex.value = index;
+    }
+  }
+
+  String get currentCategoryName {
+    final cats = categories;
+    if (selectedCategoryIndex.value >= 0 &&
+        selectedCategoryIndex.value < cats.length) {
+      return cats[selectedCategoryIndex.value];
+    }
+    return 'All';
   }
 
   void openSearch() {
@@ -82,6 +124,7 @@ class MovieController extends GetxController {
     // Fallback to local match in loaded movies
     final qLower = q.toLowerCase();
     final localMatches = allMovies.where((m) {
+      if (!m.isVisible) return false;
       final titleMatch = m.title.toLowerCase().contains(qLower);
       final genreMatch = m.genre.any((g) => g.toLowerCase().contains(qLower));
       final descMatch = m.description.toLowerCase().contains(qLower);
@@ -103,7 +146,7 @@ class MovieController extends GetxController {
 
   List<MovieModel> get filteredMovies {
     final query = currentSearchQuery.value.trim().toLowerCase();
-    final selectedCategory = categories[selectedCategoryIndex.value];
+    final selectedCategory = currentCategoryName;
 
     // Combine server search results with local list (deduplicated)
     final Set<String> seenIds = {};
@@ -111,20 +154,19 @@ class MovieController extends GetxController {
 
     if (query.isNotEmpty) {
       for (final m in searchedMovies) {
-        if (seenIds.add(m.id)) combinedList.add(m);
+        if (m.isVisible && seenIds.add(m.id)) combinedList.add(m);
       }
       for (final m in allMovies) {
-        if (seenIds.add(m.id)) combinedList.add(m);
+        if (m.isVisible && seenIds.add(m.id)) combinedList.add(m);
       }
     } else {
-      combinedList.addAll(allMovies);
+      combinedList.addAll(allMovies.where((m) => m.isVisible));
     }
 
-    return combinedList.where((movie) {
+    final matched = combinedList.where((movie) {
+      if (!movie.isVisible) return false;
       final matchesCategory = selectedCategory == 'All' ||
-          movie.genre.any(
-            (g) => g.toLowerCase() == selectedCategory.toLowerCase(),
-          );
+          _matchesMovieCategoryName(movie, selectedCategory);
 
       if (!matchesCategory) return false;
 
@@ -146,6 +188,50 @@ class MovieController extends GetxController {
           castMatch ||
           yearMatch;
     }).toList();
+
+    matched.sort((a, b) {
+      if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+      return b.rating.compareTo(a.rating);
+    });
+
+    return matched;
+  }
+
+  bool _matchesMovieCategoryName(MovieModel movie, String catName) {
+    String clean(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+    final target = clean(catName);
+
+    for (final c in movie.category) {
+      if (c == null) continue;
+      if (c is String) {
+        if (c.toLowerCase() == catName.toLowerCase() ||
+            (target.isNotEmpty && clean(c) == target)) {
+          return true;
+        }
+      } else if (c is Map) {
+        final name = (c['name'] ?? '').toString();
+        final slug = (c['slug'] ?? '').toString();
+        if (name.toLowerCase() == catName.toLowerCase() ||
+            slug.toLowerCase() == catName.toLowerCase() ||
+            (target.isNotEmpty && clean(name) == target) ||
+            (target.isNotEmpty && clean(slug) == target)) {
+          return true;
+        }
+      }
+    }
+    for (final g in movie.genre) {
+      if (g.toLowerCase() == catName.toLowerCase() ||
+          (target.isNotEmpty && clean(g) == target)) {
+        return true;
+      }
+    }
+    if (movie.slug.isNotEmpty &&
+        (movie.slug.toLowerCase() == catName.toLowerCase() ||
+            (target.isNotEmpty && clean(movie.slug) == target))) {
+      return true;
+    }
+    return false;
   }
 
   Future<void> fetchAllMovies() async {

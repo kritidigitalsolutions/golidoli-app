@@ -67,9 +67,14 @@ class WebHomeController extends GetxController {
   Future<void> fetchDramas() async {
     try {
       isDramasLoading.value = true;
-      final response = await _dramaDatasource.allMicroDrama(limit: 15);
+      final response = await _dramaDatasource.allMicroDrama(limit: 30);
       if (response != null && response.microdramas.isNotEmpty) {
-        dramas.assignAll(response.microdramas);
+        final list = List<Microdrama>.from(response.microdramas)
+          ..sort((a, b) {
+            if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+            return b.rating.compareTo(a.rating);
+          });
+        dramas.assignAll(list);
       }
     } catch (e) {
       debugPrint("Web Home: fetchDramas error: $e");
@@ -81,9 +86,14 @@ class WebHomeController extends GetxController {
   Future<void> fetchMovies() async {
     try {
       isMoviesLoading.value = true;
-      final response = await _movieDatasource.allMovie(limit: 15);
+      final response = await _movieDatasource.allMovie(limit: 30);
       if (response.isNotEmpty) {
-        movies.assignAll(response);
+        final list = response.where((m) => m.isVisible).toList()
+          ..sort((a, b) {
+            if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+            return b.rating.compareTo(a.rating);
+          });
+        movies.assignAll(list);
       }
     } catch (e) {
       debugPrint("Web Home: fetchMovies error: $e");
@@ -95,9 +105,14 @@ class WebHomeController extends GetxController {
   Future<void> fetchSeries() async {
     try {
       isSeriesLoading.value = true;
-      final response = await _seriesDatasource.allSeries(limit: 15);
+      final response = await _seriesDatasource.allSeries(limit: 30);
       if (response != null && response.series.isNotEmpty) {
-        series.assignAll(response.series);
+        final list = response.series.where((s) => s.isVisible).toList()
+          ..sort((a, b) {
+            if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+            return b.rating.compareTo(a.rating);
+          });
+        series.assignAll(list);
       }
     } catch (e) {
       debugPrint("Web Home: fetchSeries error: $e");
@@ -111,16 +126,19 @@ class WebHomeController extends GetxController {
       isCategoriesLoading.value = true;
       final response = await _homeDatasource.allCategories();
       if (response != null && response.categories.isNotEmpty) {
-        final activeCats = response.categories
+        var activeCats = response.categories
             .where((cat) => cat.isActive)
-            .toList()
-          ..sort((a, b) => a.priority.compareTo(b.priority));
-        categories.assignAll(activeCats.take(6));
-
-        // Fetch first few items for each category
-        for (final cat in categories) {
-          _fetchCategoryContent(cat.id);
+            .toList();
+        if (activeCats.isEmpty) {
+          activeCats = List<CategoryModel>.from(response.categories);
         }
+        activeCats.sort((a, b) => a.priority.compareTo(b.priority));
+        categories.assignAll(activeCats);
+
+        // Fetch contents for each category in parallel
+        await Future.wait(
+          categories.map((cat) => _fetchCategoryContent(cat.id)),
+        );
       }
     } catch (e) {
       debugPrint("Web Home: fetchCategories error: $e");
@@ -133,8 +151,8 @@ class WebHomeController extends GetxController {
     try {
       final response = await _homeDatasource.categoryDetail(
         id: categoryId,
-        page: 1,
-        size: 10,
+        page: 0,
+        size: 20,
       );
       if (response != null && response.content.isNotEmpty) {
         categoryContents[categoryId] = response.content;

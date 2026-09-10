@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/core/services/firebase_service.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
+import 'package:golidoli_app/features/home/models/category_detail_model.dart';
 import 'package:golidoli_app/features/home/models/category_model.dart';
 import 'package:golidoli_app/features/home/models/home_banner_model.dart';
 import 'package:golidoli_app/features/home/views/continue_watching_screen.dart';
@@ -13,6 +14,7 @@ import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/continue_watching_model.dart';
+import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
@@ -1000,7 +1002,10 @@ class _HomeTabState extends State<HomeTab> {
             _buildMediaSection(
               title: 'Popular Movies',
               items: popularMovies.map((m) => _toMap(m, 'movie')).toList(),
-              onViewAll: () => Get.toNamed(AppRoutes.movieListing),
+              onViewAll: () => Get.toNamed(
+                AppRoutes.movieListing,
+                arguments: {'title': 'Popular Movies', 'category': 'All'},
+              ),
             ),
 
           // Top Web Series
@@ -1008,7 +1013,10 @@ class _HomeTabState extends State<HomeTab> {
             _buildMediaSection(
               title: 'Top Web Series',
               items: topSeries.map((s) => _toMap(s, 'series')).toList(),
-              onViewAll: () => Get.toNamed(AppRoutes.webSeries),
+              onViewAll: () => Get.toNamed(
+                AppRoutes.webSeries,
+                arguments: {'title': 'Top Web Series', 'category': 'All'},
+              ),
             ),
 
           // Trending Micro Dramas
@@ -1036,31 +1044,101 @@ class _HomeTabState extends State<HomeTab> {
       }
 
       final allMovies = _movieController.allMovies;
-      final topCategories = _homeController.categories;
+      // Sort categories by priority ascending (priority 1, 2, 3...)
+      final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..sort((a, b) => a.priority.compareTo(b.priority));
 
       final List<Widget> categorySections = [];
-      for (final cat in topCategories) {
+      for (final cat in sortedCategories) {
+        // 1. From categoryContents API
+        final apiContent = _homeController.categoryContents[cat.id] ?? [];
+        final apiMovies = apiContent
+            .where((c) => _isMovieContent(c, allMovies))
+            .toList();
+
+        // 2. From allMovies (local match)
         final matchedMovies = allMovies
             .where((m) => _matchesMovieCategory(m, cat))
             .toList();
 
-        if (matchedMovies.isNotEmpty) {
+        final List<Map<String, dynamic>> items = [];
+        final Set<String> seenIds = {};
+
+        for (final c in apiMovies) {
+          if (c.id.isNotEmpty && !seenIds.contains(c.id)) {
+            seenIds.add(c.id);
+            items.add({
+              'id': c.id,
+              'title': c.title,
+              'image': c.poster.isNotEmpty ? c.poster : c.banner,
+              'type': 'movie',
+              'isPremium': c.isPremium,
+              'priority': c.priority,
+              'rating': c.rating.toDouble(),
+            });
+          }
+        }
+
+        for (final m in matchedMovies) {
+          if (m.id.isNotEmpty && !seenIds.contains(m.id)) {
+            seenIds.add(m.id);
+            items.add({
+              'id': m.id,
+              'title': m.title,
+              'image': m.poster.isNotEmpty ? m.poster : m.banner,
+              'type': 'movie',
+              'isPremium': m.isPremium,
+              'priority': m.priority,
+              'rating': m.rating,
+            });
+          }
+        }
+
+        if (items.isNotEmpty) {
+          // Sort movies by priority, then rating
+          items.sort((a, b) {
+            final pA = a['priority'] as int? ?? 0;
+            final pB = b['priority'] as int? ?? 0;
+            if (pA != pB) return pA.compareTo(pB);
+            final rA = (a['rating'] as num?)?.toDouble() ?? 0.0;
+            final rB = (b['rating'] as num?)?.toDouble() ?? 0.0;
+            return rB.compareTo(rA);
+          });
+
           categorySections.add(
             _buildMediaSection(
               title: cat.name,
-              items: matchedMovies.map((m) => _toMap(m, 'movie')).toList(),
-              onViewAll: () => Get.toNamed(AppRoutes.movieListing),
+              items: items,
+              onViewAll: () => Get.toNamed(
+                AppRoutes.movieListing,
+                arguments: {
+                  'category': cat.name,
+                  'categoryId': cat.id,
+                  'categorySlug': cat.slug,
+                },
+              ),
             ),
           );
         }
       }
 
       if (categorySections.isEmpty && allMovies.isNotEmpty) {
+        final sortedAllMovies = List<MovieModel>.from(allMovies)
+          ..sort((a, b) {
+            if (a.priority != b.priority) {
+              return a.priority.compareTo(b.priority);
+            }
+            return b.rating.compareTo(a.rating);
+          });
+
         categorySections.add(
           _buildMediaSection(
             title: 'All Movies',
-            items: allMovies.map((m) => _toMap(m, 'movie')).toList(),
-            onViewAll: () => Get.toNamed(AppRoutes.movieListing),
+            items: sortedAllMovies.map((m) => _toMap(m, 'movie')).toList(),
+            onViewAll: () => Get.toNamed(
+              AppRoutes.movieListing,
+              arguments: {'category': 'All'},
+            ),
           ),
         );
       }
@@ -1093,31 +1171,101 @@ class _HomeTabState extends State<HomeTab> {
       }
 
       final allSeries = _seriesController.allSeries.value?.series ?? [];
-      final topCategories = _homeController.categories;
+      // Sort categories by priority ascending (priority 1, 2, 3...)
+      final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..sort((a, b) => a.priority.compareTo(b.priority));
 
       final List<Widget> categorySections = [];
-      for (final cat in topCategories) {
+      for (final cat in sortedCategories) {
+        // 1. From categoryContents API
+        final apiContent = _homeController.categoryContents[cat.id] ?? [];
+        final apiSeries = apiContent
+            .where((c) => _isSeriesContent(c, allSeries))
+            .toList();
+
+        // 2. From allSeries (local match)
         final matchedSeries = allSeries
             .where((s) => _matchesSeriesCategory(s, cat))
             .toList();
 
-        if (matchedSeries.isNotEmpty) {
+        final List<Map<String, dynamic>> items = [];
+        final Set<String> seenIds = {};
+
+        for (final c in apiSeries) {
+          if (c.id.isNotEmpty && !seenIds.contains(c.id)) {
+            seenIds.add(c.id);
+            items.add({
+              'id': c.id,
+              'title': c.title,
+              'image': c.poster.isNotEmpty ? c.poster : c.banner,
+              'type': 'series',
+              'isPremium': c.isPremium,
+              'priority': c.priority,
+              'rating': c.rating.toDouble(),
+            });
+          }
+        }
+
+        for (final s in matchedSeries) {
+          if (s.id.isNotEmpty && !seenIds.contains(s.id)) {
+            seenIds.add(s.id);
+            items.add({
+              'id': s.id,
+              'title': s.title,
+              'image': s.poster.isNotEmpty ? s.poster : s.banner,
+              'type': 'series',
+              'isPremium': s.isPremium,
+              'priority': s.priority,
+              'rating': s.rating,
+            });
+          }
+        }
+
+        if (items.isNotEmpty) {
+          // Sort series by priority, then rating
+          items.sort((a, b) {
+            final pA = a['priority'] as int? ?? 0;
+            final pB = b['priority'] as int? ?? 0;
+            if (pA != pB) return pA.compareTo(pB);
+            final rA = (a['rating'] as num?)?.toDouble() ?? 0.0;
+            final rB = (b['rating'] as num?)?.toDouble() ?? 0.0;
+            return rB.compareTo(rA);
+          });
+
           categorySections.add(
             _buildMediaSection(
               title: cat.name,
-              items: matchedSeries.map((s) => _toMap(s, 'series')).toList(),
-              onViewAll: () => Get.toNamed(AppRoutes.webSeries),
+              items: items,
+              onViewAll: () => Get.toNamed(
+                AppRoutes.webSeries,
+                arguments: {
+                  'category': cat.name,
+                  'categoryId': cat.id,
+                  'categorySlug': cat.slug,
+                },
+              ),
             ),
           );
         }
       }
 
       if (categorySections.isEmpty && allSeries.isNotEmpty) {
+        final sortedAllSeries = List<Series>.from(allSeries)
+          ..sort((a, b) {
+            if (a.priority != b.priority) {
+              return a.priority.compareTo(b.priority);
+            }
+            return b.rating.compareTo(a.rating);
+          });
+
         categorySections.add(
           _buildMediaSection(
             title: 'All Web Series',
-            items: allSeries.map((s) => _toMap(s, 'series')).toList(),
-            onViewAll: () => Get.toNamed(AppRoutes.webSeries),
+            items: sortedAllSeries.map((s) => _toMap(s, 'series')).toList(),
+            onViewAll: () => Get.toNamed(
+              AppRoutes.webSeries,
+              arguments: {'category': 'All'},
+            ),
           ),
         );
       }
@@ -1139,8 +1287,11 @@ class _HomeTabState extends State<HomeTab> {
           _microDramaController.allMicroDramaStatus.value == Status.loading &&
           (_microDramaController.allMicroDrama.value?.microdramas.isEmpty ??
               true);
+      final isCatsLoading =
+          _homeController.isCategoriesLoading.value &&
+          _homeController.categories.isEmpty;
 
-      if (isDramaLoading) {
+      if (isDramaLoading && isCatsLoading) {
         return const HomeFeedShimmer(
           showContinueWatching: true,
           sectionCount: 1,
@@ -1149,30 +1300,155 @@ class _HomeTabState extends State<HomeTab> {
 
       final dramas =
           _microDramaController.allMicroDrama.value?.microdramas ?? [];
+      // Sort categories by priority ascending (priority 1, 2, 3...)
+      final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..sort((a, b) => a.priority.compareTo(b.priority));
+
+      final List<Widget> categorySections = [];
+      for (final cat in sortedCategories) {
+        // 1. From categoryContents API
+        final apiContent = _homeController.categoryContents[cat.id] ?? [];
+        final apiDramas = apiContent
+            .where((c) => _isDramaContent(c, dramas))
+            .toList();
+
+        // 2. From allMicroDrama (local match)
+        final matchedDramas = dramas
+            .where((d) => _matchesDramaCategory(d, cat))
+            .toList();
+
+        final List<Map<String, dynamic>> items = [];
+        final Set<String> seenIds = {};
+
+        for (final c in apiDramas) {
+          if (c.id.isNotEmpty && !seenIds.contains(c.id)) {
+            seenIds.add(c.id);
+            items.add({
+              'id': c.id,
+              'title': c.title,
+              'image': c.poster.isNotEmpty ? c.poster : c.banner,
+              'type': 'microdrama',
+              'isPremium': c.isPremium,
+              'priority': c.priority,
+              'rating': c.rating.toDouble(),
+            });
+          }
+        }
+
+        for (final d in matchedDramas) {
+          if (d.id.isNotEmpty && !seenIds.contains(d.id)) {
+            seenIds.add(d.id);
+            items.add({
+              'id': d.id,
+              'title': d.title,
+              'image': d.poster.isNotEmpty ? d.poster : d.banner,
+              'type': 'microdrama',
+              'isPremium': d.isPremium,
+              'priority': d.priority,
+              'rating': d.rating.toDouble(),
+            });
+          }
+        }
+
+        if (items.isNotEmpty) {
+          // Sort dramas by priority, then rating
+          items.sort((a, b) {
+            final pA = a['priority'] as int? ?? 0;
+            final pB = b['priority'] as int? ?? 0;
+            if (pA != pB) return pA.compareTo(pB);
+            final rA = (a['rating'] as num?)?.toDouble() ?? 0.0;
+            final rB = (b['rating'] as num?)?.toDouble() ?? 0.0;
+            return rB.compareTo(rA);
+          });
+
+          categorySections.add(
+            _buildMediaSection(
+              title: cat.name,
+              items: items,
+              onViewAll: () => Get.toNamed(
+                AppRoutes.microDrama,
+                arguments: {
+                  'category': cat.name,
+                  'categoryId': cat.id,
+                  'categorySlug': cat.slug,
+                },
+              ),
+            ),
+          );
+        }
+      }
+
+      if (categorySections.isEmpty && dramas.isNotEmpty) {
+        final sortedDramas = List<Microdrama>.from(dramas)
+          ..sort((a, b) {
+            if (a.priority != b.priority) {
+              return a.priority.compareTo(b.priority);
+            }
+            return b.rating.compareTo(a.rating);
+          });
+
+        categorySections.add(
+          _buildMediaSection(
+            title: 'All Micro Dramas',
+            items: sortedDramas
+                .map(
+                  (d) => {
+                    'id': d.id,
+                    'title': d.title,
+                    'image': d.poster.isNotEmpty ? d.poster : d.banner,
+                    'type': 'microdrama',
+                    'isPremium': d.isPremium,
+                  },
+                )
+                .toList(),
+            onViewAll: () => Get.toNamed(
+              AppRoutes.microDrama,
+              arguments: {'category': 'All'},
+            ),
+          ),
+        );
+      }
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildContinueWatchingSection(filterType: 'microdrama'),
-          if (dramas.isNotEmpty)
-            _buildMediaSection(
-              title: 'All Micro Dramas',
-              items: dramas
-                  .map(
-                    (d) => {
-                      'id': d.id,
-                      'title': d.title,
-                      'image': d.poster.isNotEmpty ? d.poster : d.banner,
-                      'type': 'microdrama',
-                      'isPremium': d.isPremium,
-                    },
-                  )
-                  .toList(),
-              onViewAll: () => Get.toNamed(AppRoutes.microDrama),
-            ),
+          ...categorySections,
         ],
       );
     });
+  }
+
+  // ─── Content Type Helpers ────────────────────────────────────────────────
+  bool _isMovieContent(ContentModel c, List<MovieModel> allMovies) {
+    final t = c.type.toLowerCase().trim();
+    if (t == 'movie') return true;
+    if (t.contains('series') || t.contains('drama') || t.contains('short')) {
+      return false;
+    }
+    return allMovies.any((m) => m.id == c.id) || t.isEmpty;
+  }
+
+  bool _isSeriesContent(ContentModel c, List<Series> allSeries) {
+    final t = c.type.toLowerCase().trim();
+    if (t.contains('series') || t == 'webseries' || t == 'web_series') {
+      return true;
+    }
+    if (t == 'movie' || t.contains('drama') || t.contains('short')) {
+      return false;
+    }
+    return allSeries.any((s) => s.id == c.id);
+  }
+
+  bool _isDramaContent(ContentModel c, List<Microdrama> dramas) {
+    final t = c.type.toLowerCase().trim();
+    if (t.contains('drama') || t.contains('micro') || t.contains('short')) {
+      return true;
+    }
+    if (t == 'movie' || t.contains('series')) {
+      return false;
+    }
+    return dramas.any((d) => d.id == c.id);
   }
 
   // ─── Micro Drama Section in For You Feed ────────────────────────────────
@@ -1196,52 +1472,92 @@ class _HomeTabState extends State<HomeTab> {
               },
             )
             .toList(),
-        onViewAll: () => Get.toNamed(AppRoutes.microDrama),
+        onViewAll: () => Get.toNamed(
+          AppRoutes.microDrama,
+          arguments: {'title': 'Trending Micro Dramas', 'category': 'All'},
+        ),
       );
     });
   }
 
   // ─── Category Match Helpers ─────────────────────────────────────────────
-  bool _matchesMovieCategory(MovieModel movie, CategoryModel category) {
-    for (final c in movie.category) {
-      if (c == category.id || c == category.slug || c == category.name) {
+  bool _slugOrNameMatches(dynamic itemValue, CategoryModel cat) {
+    if (itemValue == null) return false;
+
+    final catSlug = cat.slug.trim().toLowerCase();
+    final catName = cat.name.trim().toLowerCase();
+    final catId = cat.id.trim();
+
+    String clean(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    final cleanSlug = clean(catSlug);
+    final cleanName = clean(catName);
+
+    if (itemValue is String) {
+      final v = itemValue.trim();
+      if (v.isEmpty) return false;
+      final vLower = v.toLowerCase();
+      final vClean = clean(v);
+
+      if (v == catId ||
+          vLower == catSlug ||
+          vLower == catName ||
+          (cleanSlug.isNotEmpty && vClean == cleanSlug) ||
+          (cleanName.isNotEmpty && vClean == cleanName)) {
         return true;
       }
-      if (c is Map) {
-        if (c['_id'] == category.id ||
-            c['name'] == category.name ||
-            c['slug'] == category.slug) {
-          return true;
-        }
+    } else if (itemValue is Map) {
+      final id = (itemValue['_id'] ?? itemValue['id'] ?? '').toString().trim();
+      final slug = (itemValue['slug'] ?? '').toString().trim();
+      final name = (itemValue['name'] ?? '').toString().trim();
+
+      if (id.isNotEmpty && id == catId) return true;
+      if (slug.isNotEmpty && _slugOrNameMatches(slug, cat)) return true;
+      if (name.isNotEmpty && _slugOrNameMatches(name, cat)) return true;
+    } else if (itemValue is List) {
+      for (final sub in itemValue) {
+        if (_slugOrNameMatches(sub, cat)) return true;
       }
     }
+    return false;
+  }
+
+  bool _matchesMovieCategory(MovieModel movie, CategoryModel category) {
+    for (final c in movie.category) {
+      if (_slugOrNameMatches(c, category)) return true;
+    }
     for (final g in movie.genre) {
-      if (g.toLowerCase() == category.name.toLowerCase() ||
-          g.toLowerCase() == category.slug.toLowerCase()) {
-        return true;
-      }
+      if (_slugOrNameMatches(g, category)) return true;
+    }
+    if (movie.slug.isNotEmpty && _slugOrNameMatches(movie.slug, category)) {
+      return true;
     }
     return false;
   }
 
   bool _matchesSeriesCategory(Series series, CategoryModel category) {
     for (final c in series.category) {
-      if (c == category.id || c == category.slug || c == category.name) {
-        return true;
-      }
-      if (c is Map) {
-        if (c['_id'] == category.id ||
-            c['name'] == category.name ||
-            c['slug'] == category.slug) {
-          return true;
-        }
-      }
+      if (_slugOrNameMatches(c, category)) return true;
     }
     for (final g in series.genre) {
-      if (g.toLowerCase() == category.name.toLowerCase() ||
-          g.toLowerCase() == category.slug.toLowerCase()) {
-        return true;
-      }
+      if (_slugOrNameMatches(g, category)) return true;
+    }
+    if (series.slug.isNotEmpty && _slugOrNameMatches(series.slug, category)) {
+      return true;
+    }
+    return false;
+  }
+
+  bool _matchesDramaCategory(Microdrama drama, CategoryModel category) {
+    for (final c in drama.category) {
+      if (_slugOrNameMatches(c, category)) return true;
+    }
+    for (final g in drama.genre) {
+      if (_slugOrNameMatches(g, category)) return true;
+    }
+    if (drama.slug.isNotEmpty && _slugOrNameMatches(drama.slug, category)) {
+      return true;
     }
     return false;
   }
@@ -1325,9 +1641,7 @@ class _HomeTabState extends State<HomeTab> {
     final imageUrl = formatMediaUrl(item.displayPoster);
     final title = item.displayTitle;
     final epNum = item.displayEpisodeNumber;
-    final epLabel = epNum != null
-        ? 'EP $epNum'
-        : (item.contentType == 'movie' ? null : null);
+    final epLabel = epNum != null ? 'EP $epNum' : null;
     final progress = item.progressRatio;
     final percentage = item.progressPercentage;
     final type = item.contentType;
@@ -1966,46 +2280,70 @@ class _HomeTabPreviousDesignState extends State<HomeTabPreviousDesign> {
     });
   }
 
-  bool _matchesMovieCategory(MovieModel movie, CategoryModel category) {
-    for (final c in movie.category) {
-      if (c == category.id || c == category.slug || c == category.name) {
+  bool _slugOrNameMatchesBackup(dynamic itemValue, CategoryModel cat) {
+    if (itemValue == null) return false;
+
+    final catSlug = cat.slug.trim().toLowerCase();
+    final catName = cat.name.trim().toLowerCase();
+    final catId = cat.id.trim();
+
+    String clean(String s) =>
+        s.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+    final cleanSlug = clean(catSlug);
+    final cleanName = clean(catName);
+
+    if (itemValue is String) {
+      final v = itemValue.trim();
+      if (v.isEmpty) return false;
+      final vLower = v.toLowerCase();
+      final vClean = clean(v);
+
+      if (v == catId ||
+          vLower == catSlug ||
+          vLower == catName ||
+          (cleanSlug.isNotEmpty && vClean == cleanSlug) ||
+          (cleanName.isNotEmpty && vClean == cleanName)) {
         return true;
       }
-      if (c is Map) {
-        if (c['_id'] == category.id ||
-            c['name'] == category.name ||
-            c['slug'] == category.slug) {
-          return true;
-        }
+    } else if (itemValue is Map) {
+      final id = (itemValue['_id'] ?? itemValue['id'] ?? '').toString().trim();
+      final slug = (itemValue['slug'] ?? '').toString().trim();
+      final name = (itemValue['name'] ?? '').toString().trim();
+
+      if (id.isNotEmpty && id == catId) return true;
+      if (slug.isNotEmpty && _slugOrNameMatchesBackup(slug, cat)) return true;
+      if (name.isNotEmpty && _slugOrNameMatchesBackup(name, cat)) return true;
+    } else if (itemValue is List) {
+      for (final sub in itemValue) {
+        if (_slugOrNameMatchesBackup(sub, cat)) return true;
       }
     }
+    return false;
+  }
+
+  bool _matchesMovieCategory(MovieModel movie, CategoryModel category) {
+    for (final c in movie.category) {
+      if (_slugOrNameMatchesBackup(c, category)) return true;
+    }
     for (final g in movie.genre) {
-      if (g.toLowerCase() == category.name.toLowerCase() ||
-          g.toLowerCase() == category.slug.toLowerCase()) {
-        return true;
-      }
+      if (_slugOrNameMatchesBackup(g, category)) return true;
+    }
+    if (movie.slug.isNotEmpty && _slugOrNameMatchesBackup(movie.slug, category)) {
+      return true;
     }
     return false;
   }
 
   bool _matchesSeriesCategory(Series series, CategoryModel category) {
     for (final c in series.category) {
-      if (c == category.id || c == category.slug || c == category.name) {
-        return true;
-      }
-      if (c is Map) {
-        if (c['_id'] == category.id ||
-            c['name'] == category.name ||
-            c['slug'] == category.slug) {
-          return true;
-        }
-      }
+      if (_slugOrNameMatchesBackup(c, category)) return true;
     }
     for (final g in series.genre) {
-      if (g.toLowerCase() == category.name.toLowerCase() ||
-          g.toLowerCase() == category.slug.toLowerCase()) {
-        return true;
-      }
+      if (_slugOrNameMatchesBackup(g, category)) return true;
+    }
+    if (series.slug.isNotEmpty && _slugOrNameMatchesBackup(series.slug, category)) {
+      return true;
     }
     return false;
   }

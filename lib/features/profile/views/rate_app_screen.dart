@@ -5,6 +5,8 @@ import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:golidoli_app/features/profile/repositories/rating_repository.dart';
+
 class RateAppScreen extends StatefulWidget {
   const RateAppScreen({super.key});
 
@@ -14,19 +16,21 @@ class RateAppScreen extends StatefulWidget {
 
 class _RateAppScreenState extends State<RateAppScreen> {
   int _rating = 5;
+  bool _isSubmitting = false;
   final TextEditingController _feedbackController = TextEditingController();
-  final Set<String> _selectedTags = {'🎬 Movies & Series', '⚡ Fast Video Streaming'};
+  // final Set<String> _selectedTags = {'🎬 Movies & Series', '⚡ Fast Video Streaming'};
+  final RatingRepository _ratingRepo = RatingRepository();
 
-  final List<String> _feedbackTags = [
-    '🎬 Movies & Series',
-    '🎭 Micro Dramas',
-    '🔊 Audio Stories',
-    '⚡ Fast Video Streaming',
-    '📱 Sleek UI & Experience',
-    '💎 Great Value Plans',
-    '📥 Offline Downloads',
-    '🎧 Regional Content',
-  ];
+  // final List<String> _feedbackTags = [
+  //   '🎬 Movies & Series',
+  //   '🎭 Micro Dramas',
+  //   '🔊 Audio Stories',
+  //   '⚡ Fast Video Streaming',
+  //   '📱 Sleek UI & Experience',
+  //   '💎 Great Value Plans',
+  //   '📥 Offline Downloads',
+  //   '🎧 Regional Content',
+  // ];
 
   @override
   void dispose() {
@@ -52,16 +56,38 @@ class _RateAppScreenState extends State<RateAppScreen> {
   }
 
   Future<void> _submitReview() async {
-    if (_rating >= 4) {
-      // Prompt/Redirect to Google Play Store
-      final storeUrl = Uri.parse(
-        "https://play.google.com/store/apps/details?id=com.kritidigitalsolutions.golidoli",
-      );
-      try {
-        if (await canLaunchUrl(storeUrl)) {
-          await launchUrl(storeUrl, mode: LaunchMode.externalApplication);
-        }
-      } catch (_) {}
+    if (_isSubmitting) return;
+
+    final customFeedback = _feedbackController.text.trim();
+    final List<String> reviewParts = [];
+    // if (_selectedTags.isNotEmpty) {
+    //   reviewParts.add('Likes: ${_selectedTags.join(', ')}');
+    // }
+    if (customFeedback.isNotEmpty) {
+      reviewParts.add(customFeedback);
+    }
+    final fullReview = reviewParts.isNotEmpty
+        ? reviewParts.join('\n')
+        : 'Rating: $_rating/5';
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      await _ratingRepo.submitRating(rating: _rating, review: fullReview);
+
+      if (!mounted) return;
+
+      if (_rating >= 4) {
+        final storeUrl = Uri.parse(
+          "https://play.google.com/store/apps/details?id=com.kritidigitalsolutions.golidoli",
+        );
+        try {
+          if (await canLaunchUrl(storeUrl)) {
+            await launchUrl(storeUrl, mode: LaunchMode.externalApplication);
+          }
+        } catch (_) {}
+      }
+
       Get.back();
       Get.snackbar(
         'Thank You!',
@@ -70,15 +96,17 @@ class _RateAppScreenState extends State<RateAppScreen> {
         backgroundColor: AppColors.primaryColor,
         colorText: AppColors.black,
       );
-    } else {
-      Get.back();
+    } catch (e) {
+      if (!mounted) return;
       Get.snackbar(
-        'Feedback Received',
-        'Thank you for your valuable feedback. We will work hard to improve your experience!',
+        'Submission Failed',
+        'Could not submit your review. Please try again.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.primaryColor,
-        colorText: AppColors.black,
+        backgroundColor: AppColors.errorColor,
+        colorText: Colors.white,
       );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -92,7 +120,10 @@ class _RateAppScreenState extends State<RateAppScreen> {
             _buildAppBar(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -100,8 +131,8 @@ class _RateAppScreenState extends State<RateAppScreen> {
                     _buildHeroHeader(),
                     const SizedBox(height: 24),
                     _buildStarRatingCard(),
-                    const SizedBox(height: 20),
-                    _buildFeedbackTagsSection(),
+                    //const SizedBox(height: 20),
+                    // _buildFeedbackTagsSection(),
                     const SizedBox(height: 20),
                     _buildCommentBox(),
                     const SizedBox(height: 24),
@@ -127,10 +158,7 @@ class _RateAppScreenState extends State<RateAppScreen> {
             color: AppColors.white,
           ),
           const SizedBox(width: 12),
-          Text(
-            'Rate App',
-            style: text18(fontWeight: FontWeight.w700),
-          ),
+          Text('Rate App', style: text18(fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -191,9 +219,7 @@ class _RateAppScreenState extends State<RateAppScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.borderColor.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.4)),
       ),
       child: Column(
         children: [
@@ -212,8 +238,12 @@ class _RateAppScreenState extends State<RateAppScreen> {
                     scale: isFilled ? 1.15 : 1.0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
-                      isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: isFilled ? AppColors.ratingColor : AppColors.hintTextColor,
+                      isFilled
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
+                      color: isFilled
+                          ? AppColors.ratingColor
+                          : AppColors.hintTextColor,
                       size: 42,
                     ),
                   ),
@@ -241,60 +271,60 @@ class _RateAppScreenState extends State<RateAppScreen> {
     );
   }
 
-  Widget _buildFeedbackTagsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'What did you like the most?',
-          style: text14(fontWeight: FontWeight.bold, color: AppColors.white),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _feedbackTags.map((tag) {
-            final isSelected = _selectedTags.contains(tag);
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (isSelected) {
-                    _selectedTags.remove(tag);
-                  } else {
-                    _selectedTags.add(tag);
-                  }
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primaryColor.withValues(alpha: 0.2)
-                      : AppColors.surfaceColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isSelected
-                        ? AppColors.primaryColor
-                        : AppColors.borderColor.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Text(
-                  tag,
-                  style: text12(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected
-                        ? AppColors.primaryColor
-                        : AppColors.secondaryTextColor,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
+  // Widget _buildFeedbackTagsSection() {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Text(
+  //         'What did you like the most?',
+  //         style: text14(fontWeight: FontWeight.bold, color: AppColors.white),
+  //       ),
+  //       const SizedBox(height: 10),
+  //       Wrap(
+  //         spacing: 8,
+  //         runSpacing: 8,
+  //         children: _feedbackTags.map((tag) {
+  //           final isSelected = _selectedTags.contains(tag);
+  //           return GestureDetector(
+  //             onTap: () {
+  //               setState(() {
+  //                 if (isSelected) {
+  //                   _selectedTags.remove(tag);
+  //                 } else {
+  //                   _selectedTags.add(tag);
+  //                 }
+  //               });
+  //             },
+  //             child: AnimatedContainer(
+  //               duration: const Duration(milliseconds: 180),
+  //               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+  //               decoration: BoxDecoration(
+  //                 color: isSelected
+  //                     ? AppColors.primaryColor.withValues(alpha: 0.2)
+  //                     : AppColors.surfaceColor,
+  //                 borderRadius: BorderRadius.circular(20),
+  //                 border: Border.all(
+  //                   color: isSelected
+  //                       ? AppColors.primaryColor
+  //                       : AppColors.borderColor.withValues(alpha: 0.35),
+  //                 ),
+  //               ),
+  //               child: Text(
+  //                 tag,
+  //                 style: text12(
+  //                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+  //                   color: isSelected
+  //                       ? AppColors.primaryColor
+  //                       : AppColors.secondaryTextColor,
+  //                 ),
+  //               ),
+  //             ),
+  //           );
+  //         }).toList(),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildCommentBox() {
     return Column(
@@ -319,7 +349,8 @@ class _RateAppScreenState extends State<RateAppScreen> {
             style: text13(color: AppColors.textColor),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.all(14),
-              hintText: 'Tell us how we can make GoliDoli even better for you...',
+              hintText:
+                  'Tell us how we can make GoliDoli even better for you...',
               hintStyle: text12(color: AppColors.hintTextColor),
               border: InputBorder.none,
             ),
@@ -336,39 +367,54 @@ class _RateAppScreenState extends State<RateAppScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         border: Border(
-          top: BorderSide(
-            color: AppColors.borderColor.withValues(alpha: 0.4),
-          ),
+          top: BorderSide(color: AppColors.borderColor.withValues(alpha: 0.4)),
         ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: _submitReview,
+            onTap: _isSubmitting ? null : _submitReview,
             child: Container(
               height: 48,
               decoration: BoxDecoration(
-                color: AppColors.primaryColor,
+                color: _isSubmitting
+                    ? AppColors.primaryColor.withValues(alpha: 0.6)
+                    : AppColors.primaryColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    isHighRating ? Icons.open_in_new_rounded : Icons.send_rounded,
-                    color: AppColors.black,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    isHighRating ? 'Submit & Rate on Play Store' : 'Submit Feedback',
-                    style: text14(
-                      color: AppColors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              child: Center(
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: AppColors.black,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            isHighRating
+                                ? Icons.open_in_new_rounded
+                                : Icons.send_rounded,
+                            color: AppColors.black,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            isHighRating
+                                ? 'Submit & Rate on Play Store'
+                                : 'Submit Feedback',
+                            style: text14(
+                              color: AppColors.black,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),

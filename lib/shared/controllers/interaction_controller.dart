@@ -17,6 +17,8 @@ class InteractionController extends GetxController {
   final RxMap<String, int> dislikesCount = <String, int>{}.obs;
   final RxMap<String, bool> isLikedMap = <String, bool>{}.obs;
   final RxMap<String, bool> isDislikedMap = <String, bool>{}.obs;
+  final RxMap<String, bool> isLikeLoadingMap = <String, bool>{}.obs;
+  final RxMap<String, bool> isDislikeLoadingMap = <String, bool>{}.obs;
   final RxMap<String, bool> loadingMap = <String, bool>{}.obs;
 
   void initContent({
@@ -43,13 +45,42 @@ class InteractionController extends GetxController {
 
   bool isDisliked(String contentId) => isDislikedMap[contentId] ?? false;
 
-  bool isLoading(String contentId) => loadingMap[contentId] ?? false;
+  bool isLikeLoading(String contentId) => isLikeLoadingMap[contentId] ?? false;
 
-  Future<LikeDislikeResponse?> toggleLike(String contentId, {bool showToast = false}) async {
+  bool isDislikeLoading(String contentId) =>
+      isDislikeLoadingMap[contentId] ?? false;
+
+  bool isLoading(String contentId) =>
+      isLikeLoading(contentId) || isDislikeLoading(contentId);
+
+  Future<LikeDislikeResponse?> toggleLike(
+    String contentId, {
+    bool showToast = false,
+  }) async {
     if (contentId.isEmpty) return null;
-    if (isLoading(contentId)) return null;
+    if (isLikeLoading(contentId)) return null;
 
+    final wasLiked = isLiked(contentId);
+    final wasDisliked = isDisliked(contentId);
+    final prevLikes = getLikes(contentId);
+    final prevDislikes = getDislikes(contentId);
+
+    // Optimistic UI update
+    if (wasLiked) {
+      isLikedMap[contentId] = false;
+      likesCount[contentId] = (prevLikes - 1).clamp(0, 9999999);
+    } else {
+      isLikedMap[contentId] = true;
+      likesCount[contentId] = prevLikes + 1;
+      if (wasDisliked) {
+        isDislikedMap[contentId] = false;
+        dislikesCount[contentId] = (prevDislikes - 1).clamp(0, 9999999);
+      }
+    }
+
+    isLikeLoadingMap[contentId] = true;
     loadingMap[contentId] = true;
+
     try {
       final response = await _datasource.toggleLike(contentId);
       if (response != null && response.success) {
@@ -57,10 +88,14 @@ class InteractionController extends GetxController {
         dislikesCount[contentId] = response.totalDislikes;
 
         final msg = response.message.toLowerCase();
-        if (msg.contains("added") || msg.contains("changed to like")) {
+        if (msg.contains("added") ||
+            msg.contains("liked") ||
+            (msg.contains("like") &&
+                !msg.contains("removed") &&
+                !msg.contains("dislike"))) {
           isLikedMap[contentId] = true;
           isDislikedMap[contentId] = false;
-        } else if (msg.contains("removed")) {
+        } else if (msg.contains("removed") || msg.contains("unliked")) {
           isLikedMap[contentId] = false;
         }
 
@@ -74,10 +109,22 @@ class InteractionController extends GetxController {
             duration: const Duration(seconds: 2),
           );
         }
+      } else {
+        // Rollback on non-success
+        isLikedMap[contentId] = wasLiked;
+        isDislikedMap[contentId] = wasDisliked;
+        likesCount[contentId] = prevLikes;
+        dislikesCount[contentId] = prevDislikes;
       }
       return response;
     } catch (e) {
       debugPrint("InteractionController.toggleLike Error: $e");
+      // Rollback on error
+      isLikedMap[contentId] = wasLiked;
+      isDislikedMap[contentId] = wasDisliked;
+      likesCount[contentId] = prevLikes;
+      dislikesCount[contentId] = prevDislikes;
+
       Get.snackbar(
         'Error',
         'Could not update like. Please try again.',
@@ -87,15 +134,39 @@ class InteractionController extends GetxController {
       );
       return null;
     } finally {
-      loadingMap[contentId] = false;
+      isLikeLoadingMap[contentId] = false;
+      loadingMap[contentId] = isDislikeLoading(contentId);
     }
   }
 
-  Future<LikeDislikeResponse?> toggleDislike(String contentId, {bool showToast = false}) async {
+  Future<LikeDislikeResponse?> toggleDislike(
+    String contentId, {
+    bool showToast = false,
+  }) async {
     if (contentId.isEmpty) return null;
-    if (isLoading(contentId)) return null;
+    if (isDislikeLoading(contentId)) return null;
 
+    final wasLiked = isLiked(contentId);
+    final wasDisliked = isDisliked(contentId);
+    final prevLikes = getLikes(contentId);
+    final prevDislikes = getDislikes(contentId);
+
+    // Optimistic UI update
+    if (wasDisliked) {
+      isDislikedMap[contentId] = false;
+      dislikesCount[contentId] = (prevDislikes - 1).clamp(0, 9999999);
+    } else {
+      isDislikedMap[contentId] = true;
+      dislikesCount[contentId] = prevDislikes + 1;
+      if (wasLiked) {
+        isLikedMap[contentId] = false;
+        likesCount[contentId] = (prevLikes - 1).clamp(0, 9999999);
+      }
+    }
+
+    isDislikeLoadingMap[contentId] = true;
     loadingMap[contentId] = true;
+
     try {
       final response = await _datasource.toggleDislike(contentId);
       if (response != null && response.success) {
@@ -103,10 +174,12 @@ class InteractionController extends GetxController {
         dislikesCount[contentId] = response.totalDislikes;
 
         final msg = response.message.toLowerCase();
-        if (msg.contains("added") || msg.contains("changed to dislike")) {
+        if (msg.contains("added") ||
+            msg.contains("disliked") ||
+            (msg.contains("dislike") && !msg.contains("removed"))) {
           isDislikedMap[contentId] = true;
           isLikedMap[contentId] = false;
-        } else if (msg.contains("removed")) {
+        } else if (msg.contains("removed") || msg.contains("undisliked")) {
           isDislikedMap[contentId] = false;
         }
 
@@ -120,10 +193,22 @@ class InteractionController extends GetxController {
             duration: const Duration(seconds: 2),
           );
         }
+      } else {
+        // Rollback on non-success
+        isLikedMap[contentId] = wasLiked;
+        isDislikedMap[contentId] = wasDisliked;
+        likesCount[contentId] = prevLikes;
+        dislikesCount[contentId] = prevDislikes;
       }
       return response;
     } catch (e) {
       debugPrint("InteractionController.toggleDislike Error: $e");
+      // Rollback on error
+      isLikedMap[contentId] = wasLiked;
+      isDislikedMap[contentId] = wasDisliked;
+      likesCount[contentId] = prevLikes;
+      dislikesCount[contentId] = prevDislikes;
+
       Get.snackbar(
         'Error',
         'Could not update dislike. Please try again.',
@@ -133,7 +218,8 @@ class InteractionController extends GetxController {
       );
       return null;
     } finally {
-      loadingMap[contentId] = false;
+      isDislikeLoadingMap[contentId] = false;
+      loadingMap[contentId] = isLikeLoading(contentId);
     }
   }
 }

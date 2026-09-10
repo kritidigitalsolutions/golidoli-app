@@ -8,9 +8,10 @@ class CategoriesResponse {
   });
 
   factory CategoriesResponse.fromJson(Map<String, dynamic> json) {
+    final rawList = json['categories'] ?? json['data'];
     return CategoriesResponse(
       success: json['success'] ?? false,
-      categories: (json['categories'] as List<dynamic>? ?? [])
+      categories: (rawList as List<dynamic>? ?? [])
           .map((e) => CategoryModel.fromJson(e))
           .toList(),
     );
@@ -56,15 +57,26 @@ class CategoryModel {
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
+    final dynamic active = json['isActive'] ?? json['is_active'] ?? json['active'];
+    final bool isActiveParsed = active == null
+        ? true
+        : (active == true ||
+            active == 1 ||
+            active.toString().toLowerCase() == 'true');
+
     return CategoryModel(
-      id: json['_id'] ?? '',
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      priority: json['priority'] ?? 0,
-      isActive: json['isActive'] ?? false,
-      createdAt: json['createdAt'] ?? '',
-      updatedAt: json['updatedAt'] ?? '',
-      version: json['__v'] ?? 0,
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      slug: (json['slug'] ?? '').toString(),
+      priority: (json['priority'] is num)
+          ? (json['priority'] as num).toInt()
+          : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
+      isActive: isActiveParsed,
+      createdAt: (json['createdAt'] ?? '').toString(),
+      updatedAt: (json['updatedAt'] ?? '').toString(),
+      version: (json['__v'] is num)
+          ? (json['__v'] as num).toInt()
+          : int.tryParse(json['__v']?.toString() ?? '0') ?? 0,
     );
   }
 
