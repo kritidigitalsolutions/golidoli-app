@@ -29,11 +29,12 @@ class AiReelsController extends GetxController {
   final Set<String> _viewedReelIds = <String>{};
   final Set<String> _completedReelIds = <String>{};
 
-  // Local likes & shares tracking
+  // Local likes, shares & comments tracking
   final RxMap<String, int> likesCountMap = <String, int>{}.obs;
   final RxMap<String, bool> isLikedMap = <String, bool>{}.obs;
   final RxMap<String, bool> isLikeLoadingMap = <String, bool>{}.obs;
   final RxMap<String, int> sharesCountMap = <String, int>{}.obs;
+  final RxMap<String, int> commentsCountMap = <String, int>{}.obs;
 
   void toggleMute() {
     isMuted.value = !isMuted.value;
@@ -89,7 +90,7 @@ class AiReelsController extends GetxController {
 
       reels.assignAll(response.data);
 
-      // Initialize like & share maps without losing user state
+      // Initialize like, share & comment maps without losing user state
       for (final r in response.data) {
         likesCountMap[r.id] = r.likes;
         if (savedLikes.contains(r.id)) {
@@ -101,6 +102,10 @@ class AiReelsController extends GetxController {
           isLikedMap[r.id] = false;
         }
         sharesCountMap[r.id] = r.shares;
+        if (!commentsCountMap.containsKey(r.id)) {
+          commentsCountMap[r.id] =
+              r.totalComments > 0 ? r.totalComments : r.commentsCount;
+        }
       }
 
       // Automatically record view for the first reel if available
@@ -166,6 +171,10 @@ class AiReelsController extends GetxController {
             isLikedMap[r.id] = false;
           }
           sharesCountMap[r.id] = r.shares;
+          if (!commentsCountMap.containsKey(r.id)) {
+            commentsCountMap[r.id] =
+                r.totalComments > 0 ? r.totalComments : r.commentsCount;
+          }
         }
 
         reels.addAll(newItems);
@@ -320,6 +329,27 @@ class AiReelsController extends GetxController {
 
   int getShares(String reelId, int fallback) {
     return sharesCountMap[reelId] ?? fallback;
+  }
+
+  int getComments(String reelId, int fallback) {
+    return commentsCountMap[reelId] ?? fallback;
+  }
+
+  void updateCommentsCount(String reelId, int count) {
+    if (reelId.isEmpty) return;
+    commentsCountMap[reelId] = count.clamp(0, 99999999);
+  }
+
+  void incrementCommentsCount(String reelId) {
+    if (reelId.isEmpty) return;
+    final current = commentsCountMap[reelId] ?? 0;
+    commentsCountMap[reelId] = current + 1;
+  }
+
+  void decrementCommentsCount(String reelId) {
+    if (reelId.isEmpty) return;
+    final current = commentsCountMap[reelId] ?? 0;
+    commentsCountMap[reelId] = (current - 1).clamp(0, 99999999);
   }
 
   /// Whether the user is currently viewing the AI Reels tab (index 2)

@@ -6,6 +6,7 @@ import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
 import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
+import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/notification_settings_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -162,6 +163,7 @@ class ProfileController extends GetxController {
     super.onInit();
     fetchProfile();
     NotificationSettingsController.to.fetchSettings(silent: true);
+    HelpController.to;
   }
 
   Future<void> fetchProfile() async {

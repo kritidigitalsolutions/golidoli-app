@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart' show AppImages;
+import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
@@ -560,9 +561,38 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Future<void> _openWhatsApp() async {
-    final whatsappUrl = Uri.parse(
-      "https://wa.me/919999999999?text=${Uri.encodeComponent('Hello GoliDoli Support, I need assistance with the app.')}",
+    final helpCtrl = HelpController.to;
+
+    String rawNumber = helpCtrl.supportNumber;
+    if (rawNumber.isEmpty) {
+      await helpCtrl.fetchAllHelp();
+      rawNumber = helpCtrl.supportNumber;
+    }
+
+    final cleanDigits = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    String finalPhone = cleanDigits;
+    if (cleanDigits.length == 10) {
+      finalPhone = '91$cleanDigits';
+    } else if (cleanDigits.length == 11 && cleanDigits.startsWith('0')) {
+      finalPhone = '91${cleanDigits.substring(1)}';
+    }
+
+    if (finalPhone.isEmpty) {
+      Get.snackbar(
+        'WhatsApp Support',
+        'Support number is currently not available. Please check the FAQ section.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.withValues(alpha: 0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final message = Uri.encodeComponent(
+      'Hello GoliDoli Support, I need assistance with the app.',
     );
+    final whatsappUrl = Uri.parse('https://wa.me/$finalPhone?text=$message');
+
     try {
       if (await canLaunchUrl(whatsappUrl)) {
         await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);

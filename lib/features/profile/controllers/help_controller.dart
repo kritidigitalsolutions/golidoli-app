@@ -5,6 +5,10 @@ import 'package:golidoli_app/features/profile/models/response/help_response.dart
 import 'package:golidoli_app/features/profile/repositories/profile_datasource.dart';
 
 class HelpController extends GetxController {
+  static HelpController get to => Get.isRegistered<HelpController>()
+      ? Get.find<HelpController>()
+      : Get.put(HelpController());
+
   // ── State ─────────────────────────────────────────────────────────────────
   final helpStatus = Status.init.obs;
   final Rx<HelpResponse?> helps = Rx(null);
@@ -16,6 +20,57 @@ class HelpController extends GetxController {
   final Rx<Document?> singleDocument = Rx(null);
 
   final ProfileDatasource _api = ProfileDatasource();
+
+  @override
+  void onInit() {
+    super.onInit();
+    if (helps.value == null) {
+      fetchAllHelp();
+    }
+  }
+
+  /// Extracts the support phone number from fetched help data
+  String get supportNumber {
+    final list = helps.value?.helpData ?? [];
+    // 1. Check contact-support category first
+    for (final item in list) {
+      if (item.category == 'contact-support' &&
+          item.supportNumber.trim().isNotEmpty) {
+        return item.supportNumber.trim();
+      }
+    }
+    // 2. Fallback to any item with non-empty supportNumber
+    for (final item in list) {
+      if (item.supportNumber.trim().isNotEmpty) {
+        return item.supportNumber.trim();
+      }
+    }
+    return '';
+  }
+
+  /// Extracts the support email from fetched help data
+  String get supportEmail {
+    final list = helps.value?.helpData ?? [];
+    for (final item in list) {
+      if (item.category == 'contact-support' &&
+          item.supportEmail.trim().isNotEmpty) {
+        return item.supportEmail.trim();
+      }
+    }
+    for (final item in list) {
+      if (item.supportEmail.trim().isNotEmpty) {
+        return item.supportEmail.trim();
+      }
+    }
+    return '';
+  }
+
+  /// Returns support number after ensuring it is fetched
+  Future<String> fetchSupportNumber() async {
+    if (supportNumber.isNotEmpty) return supportNumber;
+    await fetchAllHelp();
+    return supportNumber;
+  }
 
   // ── Actions ───────────────────────────────────────────────────────────────
   Future<void> fetchAllHelp() async {

@@ -7,6 +7,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/models/ai_reel_model.dart';
+import 'package:golidoli_app/features/home/views/widgets/ai_reel_comments_sheet.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:share_plus/share_plus.dart';
@@ -675,32 +676,36 @@ class _ReelItemState extends State<_ReelItem> {
                 const SizedBox(height: 20),
 
                 // Comment Button
-                _IconAction(
-                  label: _fmt((reel.views * 0.15).toInt()),
-                  onTap: () {
-                    Get.snackbar(
-                      'Comments',
-                      'Comments coming soon',
-                      snackPosition: SnackPosition.BOTTOM,
-                      backgroundColor: Colors.black87,
-                      colorText: Colors.white,
-                      duration: const Duration(seconds: 1),
-                    );
-                  },
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: const BoxDecoration(
-                      color: Colors.black87,
-                      shape: BoxShape.circle,
-                    ),
+                Obx(() {
+                  final fallbackComments =
+                      reel.totalComments > 0 ? reel.totalComments : reel.commentsCount;
+                  final commentsCount = reelsController.getComments(
+                    reel.id,
+                    fallbackComments,
+                  );
+
+                  return _IconAction(
+                    label: _fmt(commentsCount),
+                    onTap: () {
+                      AiReelCommentsSheet.show(
+                        context,
+                        contentId: reel.id,
+                      );
+                    },
                     child: const Icon(
-                      Icons.more_horiz_rounded,
+                      Icons.chat_bubble_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 28,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black54,
+                          blurRadius: 6,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
                     ),
-                  ),
-                ),
+                  );
+                }),
                 const SizedBox(height: 20),
 
                 // Share Button

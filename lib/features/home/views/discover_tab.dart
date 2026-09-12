@@ -602,7 +602,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Watch Now',
+                            'Listen Now',
                             style: text11(
                               color: AppColors.black,
                               fontWeight: FontWeight.bold,

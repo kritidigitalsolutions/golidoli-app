@@ -10,9 +10,12 @@ class AiReelModel {
   final int views;
   final int likes;
   final int shares;
+  final int commentsCount;
   final bool isLiked;
   final bool isPublished;
   final int priority;
+  final int totalComment;
+  final int totalComments;
   final String publishedAt;
   final String createdAt;
   final String updatedAt;
@@ -27,6 +30,9 @@ class AiReelModel {
     required this.views,
     required this.likes,
     this.shares = 0,
+    this.commentsCount = 0,
+    this.totalComments = 0,
+    this.totalComment = 0,
     this.isLiked = false,
     this.isPublished = true,
     this.priority = 0,
@@ -37,7 +43,8 @@ class AiReelModel {
 
   factory AiReelModel.fromJson(Map<String, dynamic> json) {
     int parsedLikes = 0;
-    final dynamic likesRaw = json['like'] ??
+    final dynamic likesRaw =
+        json['like'] ??
         json['likes'] ??
         json['totalLikes'] ??
         json['likeCount'];
@@ -52,7 +59,8 @@ class AiReelModel {
     }
 
     bool parsedIsLiked = false;
-    final dynamic isLikedRaw = json['isLiked'] ??
+    final dynamic isLikedRaw =
+        json['isLiked'] ??
         json['is_liked'] ??
         json['liked'] ??
         json['isLike'] ??
@@ -101,6 +109,25 @@ class AiReelModel {
       }
     }
 
+    int parsedComments = 0;
+    final dynamic commentsRaw =
+        json['totalComments'] ??
+        json['totalComment'] ??
+        json['commentsCount'] ??
+        json['total_comments'] ??
+        json['comments'] ??
+        json['commentCount'] ??
+        json['comment'];
+    if (commentsRaw != null) {
+      if (commentsRaw is num) {
+        parsedComments = commentsRaw.toInt();
+      } else if (commentsRaw is List) {
+        parsedComments = commentsRaw.length;
+      } else if (commentsRaw is String) {
+        parsedComments = int.tryParse(commentsRaw) ?? 0;
+      }
+    }
+
     int parsedPriority = 0;
     if (json['priority'] != null) {
       if (json['priority'] is num) {
@@ -120,6 +147,9 @@ class AiReelModel {
       views: parsedViews,
       likes: parsedLikes,
       shares: parsedShares,
+      commentsCount: parsedComments,
+      totalComments: parsedComments,
+      totalComment: parsedComments,
       isLiked: parsedIsLiked,
       isPublished: json['isPublished'] == true,
       priority: parsedPriority,
@@ -140,6 +170,9 @@ class AiReelModel {
       'views': views,
       'like': likes,
       'shares': shares,
+      'commentsCount': commentsCount,
+      'totalComments': totalComments,
+      'totalComment': totalComment,
       'isLiked': isLiked,
       'isPublished': isPublished,
       'priority': priority,
@@ -147,6 +180,49 @@ class AiReelModel {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
     };
+  }
+
+  AiReelModel copyWith({
+    String? id,
+    String? title,
+    String? description,
+    String? thumbnail,
+    String? videoUrl,
+    String? duration,
+    int? views,
+    int? likes,
+    int? shares,
+    int? commentsCount,
+    int? totalComments,
+    int? totalComment,
+    bool? isLiked,
+    bool? isPublished,
+    int? priority,
+    String? publishedAt,
+    String? createdAt,
+    String? updatedAt,
+  }) {
+    final comments = totalComments ?? totalComment ?? commentsCount;
+    return AiReelModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      thumbnail: thumbnail ?? this.thumbnail,
+      videoUrl: videoUrl ?? this.videoUrl,
+      duration: duration ?? this.duration,
+      views: views ?? this.views,
+      likes: likes ?? this.likes,
+      shares: shares ?? this.shares,
+      commentsCount: comments ?? this.commentsCount,
+      totalComments: comments ?? this.totalComments,
+      totalComment: comments ?? this.totalComment,
+      isLiked: isLiked ?? this.isLiked,
+      isPublished: isPublished ?? this.isPublished,
+      priority: priority ?? this.priority,
+      publishedAt: publishedAt ?? this.publishedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
   }
 
   /// Full streamable / playable video URL
@@ -287,7 +363,8 @@ class AiReelShareResponse {
     int parsedShares = 0;
     String parsedId = '';
     if (data != null) {
-      parsedId = (data['aiReelId'] ?? data['_id'] ?? data['id'] ?? '').toString();
+      parsedId = (data['aiReelId'] ?? data['_id'] ?? data['id'] ?? '')
+          .toString();
       if (data['shares'] != null) {
         if (data['shares'] is num) {
           parsedShares = (data['shares'] as num).toInt();

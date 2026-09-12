@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/core/data/network/network_api_service.dart';
+import 'package:golidoli_app/features/home/models/ai_reel_comment_model.dart';
 import 'package:golidoli_app/features/home/models/ai_reel_model.dart';
 import 'package:golidoli_app/shared/models/like_dislike_response.dart';
 
@@ -83,5 +84,57 @@ class AiReelsDatasource {
       debugPrint("⚠️ Failed to record share for AI reel: $e");
       return null;
     }
+  }
+
+  /// Fetch comments for a reel/content: GET /api/v1/app/comments/:contentId
+  Future<AiReelCommentsResponse> fetchComments(
+    String contentId, {
+    int page = 1,
+    int limit = 20,
+    String? episodeId,
+  }) async {
+    final url = AppUrl.commentsByContent(
+      contentId,
+      page: page,
+      limit: limit,
+      episodeId: episodeId,
+    );
+    debugPrint("💬 Fetching Comments from: $url");
+    final dynamic response = await _apiService.getApi(url);
+    if (response is Map<String, dynamic>) {
+      return AiReelCommentsResponse.fromJson(response);
+    }
+    throw Exception("Invalid comments response format");
+  }
+
+  /// Post a new comment: POST /api/v1/app/comments
+  Future<PostCommentResponse> postComment({
+    required String contentId,
+    String? episodeId,
+    required String text,
+  }) async {
+    final url = AppUrl.postComment;
+    final payload = <String, dynamic>{
+      "contentId": contentId,
+      if (episodeId != null && episodeId.isNotEmpty) "episodeId": episodeId,
+      "text": text,
+    };
+    debugPrint("💬 Posting Comment to $url with payload: $payload");
+    final dynamic response = await _apiService.postApi(url, payload);
+    if (response is Map<String, dynamic>) {
+      return PostCommentResponse.fromJson(response);
+    }
+    throw Exception("Invalid post comment response format");
+  }
+
+  /// Delete a comment: DELETE /api/v1/app/comments/:commentId
+  Future<DeleteCommentResponse> deleteComment(String commentId) async {
+    final url = AppUrl.deleteComment(commentId);
+    debugPrint("🗑️ Deleting Comment from: $url");
+    final dynamic response = await _apiService.deleteApi(url, {});
+    if (response is Map<String, dynamic>) {
+      return DeleteCommentResponse.fromJson(response);
+    }
+    throw Exception("Invalid delete comment response format");
   }
 }

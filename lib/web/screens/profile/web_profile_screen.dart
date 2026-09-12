@@ -1129,9 +1129,38 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
   }
 
   Future<void> _openWhatsApp() async {
-    final whatsappUrl = Uri.parse(
-      "https://wa.me/919999999999?text=${Uri.encodeComponent('Hello GoliDoli Support, I need assistance with the website.')}",
+    final helpCtrl = HelpController.to;
+
+    String rawNumber = helpCtrl.supportNumber;
+    if (rawNumber.isEmpty) {
+      await helpCtrl.fetchAllHelp();
+      rawNumber = helpCtrl.supportNumber;
+    }
+
+    final cleanDigits = rawNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    String finalPhone = cleanDigits;
+    if (cleanDigits.length == 10) {
+      finalPhone = '91$cleanDigits';
+    } else if (cleanDigits.length == 11 && cleanDigits.startsWith('0')) {
+      finalPhone = '91${cleanDigits.substring(1)}';
+    }
+
+    if (finalPhone.isEmpty) {
+      Get.snackbar(
+        'WhatsApp Support',
+        'Support number is currently not available. Please check the FAQ section.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    final message = Uri.encodeComponent(
+      'Hello GoliDoli Support, I need assistance with the website.',
     );
+    final whatsappUrl = Uri.parse('https://wa.me/$finalPhone?text=$message');
+
     try {
       if (await canLaunchUrl(whatsappUrl)) {
         await launchUrl(whatsappUrl, mode: LaunchMode.platformDefault);

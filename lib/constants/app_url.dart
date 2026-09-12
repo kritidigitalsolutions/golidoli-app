@@ -1,5 +1,5 @@
 class AppUrl {
-  // static const String baseUrl = 'http://192.168.1.9:5000';
+  //static const String baseUrl = 'http://192.168.1.28:5000';
   static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
@@ -132,6 +132,27 @@ class AppUrl {
       "$baseUrl/api/interaction/toggle/like/aiReel/$id";
   static String aiReelShare(String reelId) =>
       "$baseUrl/api/ai-reels/$reelId/share";
+
+  // AI Reels & App Comments APIs
+  static String commentsByContent(
+    String contentId, {
+    int? page,
+    int? limit,
+    String? episodeId,
+  }) {
+    final params = <String>[];
+    if (page != null) params.add("page=$page");
+    if (limit != null) params.add("limit=$limit");
+    if (episodeId != null && episodeId.isNotEmpty) {
+      params.add("episodeId=${Uri.encodeComponent(episodeId)}");
+    }
+    final queryString = params.isNotEmpty ? "?${params.join("&")}" : "";
+    return "$baseUrl/api/v1/app/comments/$contentId$queryString";
+  }
+
+  static const String postComment = "$baseUrl/api/v1/app/comments";
+  static String deleteComment(String commentId) =>
+      "$baseUrl/api/v1/app/comments/$commentId";
 
   // Rating & Review API
   static const String rateApp = "$baseUrl/api/rating/rate";
