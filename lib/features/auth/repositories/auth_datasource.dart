@@ -58,11 +58,13 @@ class AuthDatasource {
           await StorageService.saveToken(token);
           _apiService.setToken(token);
         }
+        await StorageService.saveLoginMethod('phone');
 
         UserModel? userModel;
         Map<String, dynamic>? userData;
         if (response["user"] is Map) {
           userData = Map<String, dynamic>.from(response["user"]);
+          userData["authProvider"] = "phone";
           userModel = UserModel.fromJson(userData);
           await StorageService.saveUser(userModel);
         }
@@ -109,11 +111,13 @@ class AuthDatasource {
           await StorageService.saveToken(token);
           _apiService.setToken(token);
         }
+        await StorageService.saveLoginMethod('google');
 
         UserModel? userModel;
         Map<String, dynamic>? userData;
         if (response["user"] is Map) {
           userData = Map<String, dynamic>.from(response["user"]);
+          userData["authProvider"] = "google";
           userModel = UserModel.fromJson(userData);
           await StorageService.saveUser(userModel);
         }
@@ -221,12 +225,14 @@ class AuthDatasource {
       );
 
       if (response != null && response.containsKey("user")) {
-        return UserModel.fromJson(response["user"]);
+        final updatedUser = UserModel.fromJson(response["user"]);
+        await StorageService.saveUser(updatedUser);
+        return updatedUser;
       }
       return null;
     } catch (e) {
       debugPrint("❌ Update Profile Error: $e");
-      return null;
+      rethrow;
     }
   }
 }

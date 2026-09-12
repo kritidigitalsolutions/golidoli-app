@@ -156,4 +156,7 @@ class AppUrl {
 
   // Rating & Review API
   static const String rateApp = "$baseUrl/api/rating/rate";
+
+  // Company Info API
+  static const String companyInfo = "$baseUrl/api/companyInfo";
 }

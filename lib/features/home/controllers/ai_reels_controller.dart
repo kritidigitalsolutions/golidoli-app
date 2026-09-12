@@ -59,6 +59,24 @@ class AiReelsController extends GetxController {
     }
   }
 
+  /// Reset all state when switching accounts / logging out
+  void resetState() {
+    reels.clear();
+    _viewedReelIds.clear();
+    _completedReelIds.clear();
+    sessionId.value = '';
+    currentIndex.value = 0;
+    hasMore.value = true;
+    allWatched.value = false;
+    hasUnwatched.value = true;
+    isReplayMode.value = false;
+    likesCountMap.clear();
+    isLikedMap.clear();
+    isLikeLoadingMap.clear();
+    sharesCountMap.clear();
+    commentsCountMap.clear();
+  }
+
   /// Initial load when user opens AI Reels
   Future<void> fetchInitialFeed({bool isReplay = false}) async {
     try {
@@ -88,6 +106,20 @@ class AiReelsController extends GetxController {
       allWatched.value = response.meta.allWatched;
       hasUnwatched.value = response.meta.hasUnwatched;
 
+      // If fresh feed is empty or all reels are watched, seamlessly load replay feed so user gets full reels list
+      if (!isReplay &&
+          response.data.isEmpty &&
+          (response.meta.allWatched ||
+              !response.meta.hasUnwatched ||
+              response.meta.replayAvailable ||
+              response.meta.watchedPublished > 0)) {
+        debugPrint(
+          "🎬 All fresh reels watched or empty, automatically loading replay feed...",
+        );
+        await fetchInitialFeed(isReplay: true);
+        return;
+      }
+
       reels.assignAll(response.data);
 
       // Initialize like, share & comment maps without losing user state
@@ -113,6 +145,18 @@ class AiReelsController extends GetxController {
         recordView(reels.first.id);
       }
 
+      // If initial response has few items (< 4) and more fresh items exist, prefetch immediately
+      if (reels.length < 4 && hasMore.value) {
+        fetchNextBatch();
+      } else if (!isReplay &&
+          reels.length < 4 &&
+          (response.meta.replayAvailable ||
+              response.meta.allWatched ||
+              response.meta.watchedPublished > 0)) {
+        // Fresh list is short because user already watched other reels — seamlessly load replay reels so list is full
+        _seamlesslyLoadReplayReels();
+      }
+
       if (response.data.isEmpty && allWatched.value) {
         if (isReelsTabActive) {
           showAllWatchedPrompt();
@@ -125,9 +169,64 @@ class AiReelsController extends GetxController {
     }
   }
 
+  /// Seamlessly fetch replay reels and append unique items to current feed
+  Future<void> _seamlesslyLoadReplayReels() async {
+    if (isFetchingNextBatch.value) return;
+    try {
+      isFetchingNextBatch.value = true;
+      debugPrint("🔄 Seamlessly prefetching replay reels to populate feed...");
+      final savedLikes = await StorageService.getLikedAiReels();
+      final replayResponse = await _datasource.fetchAiReels(
+        limit: 10,
+        replay: true,
+      );
+
+      if (replayResponse.data.isNotEmpty) {
+        final existingIds = reels.map((r) => r.id).toSet();
+        final replayNew = replayResponse.data
+            .where((r) => !existingIds.contains(r.id))
+            .toList();
+
+        if (replayNew.isNotEmpty) {
+          for (final r in replayNew) {
+            likesCountMap[r.id] = r.likes;
+            if (savedLikes.contains(r.id)) {
+              isLikedMap[r.id] = true;
+            } else if (r.isLiked) {
+              isLikedMap[r.id] = true;
+              StorageService.setAiReelLiked(r.id, true);
+            } else if (!isLikedMap.containsKey(r.id)) {
+              isLikedMap[r.id] = false;
+            }
+            sharesCountMap[r.id] = r.shares;
+            if (!commentsCountMap.containsKey(r.id)) {
+              commentsCountMap[r.id] =
+                  r.totalComments > 0 ? r.totalComments : r.commentsCount;
+            }
+          }
+          reels.addAll(replayNew);
+          hasMore.value = replayResponse.pagination.hasMore;
+          debugPrint("✅ Appended ${replayNew.length} replay reels (total: ${reels.length})");
+        }
+      }
+    } catch (e) {
+      debugPrint("⚠️ Failed to seamlessly load replay reels: $e");
+    } finally {
+      isFetchingNextBatch.value = false;
+    }
+  }
+
   /// Background prefetch for next batch with the SAME sessionId
   Future<void> fetchNextBatch() async {
-    if (isFetchingNextBatch.value || !hasMore.value || allWatched.value) {
+    if (isFetchingNextBatch.value) {
+      return;
+    }
+
+    if (!hasMore.value || allWatched.value) {
+      // If fresh is finished, check if we should seamlessly load replay reels
+      if (!isReplayMode.value && reels.length < 5) {
+        await _seamlesslyLoadReplayReels();
+      }
       return;
     }
 
@@ -183,6 +282,16 @@ class AiReelsController extends GetxController {
         if (response.meta.allWatched) {
           allWatched.value = true;
         }
+
+        // If fresh list reached end and user only has a few reels, seamlessly fetch replay reels
+        if (!isReplayMode.value &&
+            (response.meta.replayAvailable ||
+                response.meta.allWatched ||
+                response.meta.watchedPublished > 0)) {
+          isFetchingNextBatch.value = false;
+          await _seamlesslyLoadReplayReels();
+          return;
+        }
       }
     } catch (e) {
       debugPrint("❌ Error prefetching next batch: $e");
@@ -201,10 +310,14 @@ class AiReelsController extends GetxController {
     }
 
     // Prefetch next batch 2-3 reels before the end
-    if (index >= reels.length - 3 &&
-        hasMore.value &&
-        !isFetchingNextBatch.value) {
-      fetchNextBatch();
+    if (index >= reels.length - 3) {
+      if (hasMore.value && !isFetchingNextBatch.value) {
+        fetchNextBatch();
+      } else if (!hasMore.value &&
+          !isReplayMode.value &&
+          !isFetchingNextBatch.value) {
+        _seamlesslyLoadReplayReels();
+      }
     }
   }
 

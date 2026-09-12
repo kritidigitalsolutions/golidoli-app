@@ -7,6 +7,7 @@ class UserModel {
   final String profileImage;
   final bool profileComplete;
   final String role;
+  final String authProvider;
 
   const UserModel({
     required this.id,
@@ -17,7 +18,19 @@ class UserModel {
     required this.profileImage,
     required this.profileComplete,
     required this.role,
+    this.authProvider = '',
   });
+
+  /// True if user logged in / registered via Phone OTP
+  bool get isPhoneAuth {
+    final ap = authProvider.trim().toLowerCase();
+    if (ap == 'phone' || ap == 'mobile' || ap == 'otp') return true;
+    if (ap == 'google' || ap == 'email') return false;
+    return phone.isNotEmpty && email.isEmpty;
+  }
+
+  /// Mobile number can only be updated if user logged in via Google/Email
+  bool get canEditPhone => !isPhoneAuth;
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
@@ -33,6 +46,11 @@ class UserModel {
           "",
       profileComplete: json["profileComplete"] == true,
       role: json["role"]?.toString() ?? "USER",
+      authProvider: json["authProvider"]?.toString() ??
+          json["provider"]?.toString() ??
+          json["authType"]?.toString() ??
+          json["loginType"]?.toString() ??
+          "",
     );
   }
 
@@ -46,6 +64,7 @@ class UserModel {
       "profileImage": profileImage,
       "profileComplete": profileComplete,
       "role": role,
+      "authProvider": authProvider,
     };
   }
 
@@ -58,6 +77,7 @@ class UserModel {
     String? profileImage,
     bool? profileComplete,
     String? role,
+    String? authProvider,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -68,6 +88,7 @@ class UserModel {
       profileImage: profileImage ?? this.profileImage,
       profileComplete: profileComplete ?? this.profileComplete,
       role: role ?? this.role,
+      authProvider: authProvider ?? this.authProvider,
     );
   }
 }

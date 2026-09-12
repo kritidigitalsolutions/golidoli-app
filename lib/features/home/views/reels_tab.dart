@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
@@ -24,6 +26,8 @@ class _ReelsTabState extends State<ReelsTab> {
   final AiReelsController _reelsController = Get.put(AiReelsController());
   late PageController _pageController;
   Worker? _tabWorker;
+  bool _isWheeling = false;
+  Timer? _wheelDebounce;
 
   // Video controller cache: Map<index, VideoPlayerController>
   final Map<int, VideoPlayerController> _controllers = {};
@@ -31,7 +35,9 @@ class _ReelsTabState extends State<ReelsTab> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController();
+    _pageController = PageController(
+      initialPage: _reelsController.currentIndex.value,
+    );
 
     final homeController = Get.isRegistered<HomeController>()
         ? Get.find<HomeController>()
@@ -48,6 +54,65 @@ class _ReelsTabState extends State<ReelsTab> {
         _checkAndShowAllWatchedPrompt();
       }
     });
+  }
+
+  void _goToNextReel() {
+    if (!_pageController.hasClients) return;
+    final total = _reelsController.reels.length;
+    final current =
+        _pageController.page?.round() ?? _reelsController.currentIndex.value;
+    if (current < total - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _goToPrevReel() {
+    if (!_pageController.hasClients) return;
+    final current =
+        _pageController.page?.round() ?? _reelsController.currentIndex.value;
+    if (current > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    if (event is PointerScrollEvent) {
+      if (_isWheeling) return;
+      if (event.scrollDelta.dy > 15) {
+        _isWheeling = true;
+        _goToNextReel();
+        _wheelDebounce?.cancel();
+        _wheelDebounce = Timer(const Duration(milliseconds: 350), () {
+          _isWheeling = false;
+        });
+      } else if (event.scrollDelta.dy < -15) {
+        _isWheeling = true;
+        _goToPrevReel();
+        _wheelDebounce?.cancel();
+        _wheelDebounce = Timer(const Duration(milliseconds: 350), () {
+          _isWheeling = false;
+        });
+      }
+    }
+  }
+
+  void _handleKeyEvent(KeyEvent event) {
+    if (event is KeyDownEvent) {
+      if (event.logicalKey == LogicalKeyboardKey.arrowDown ||
+          event.logicalKey == LogicalKeyboardKey.pageDown ||
+          event.logicalKey == LogicalKeyboardKey.space) {
+        _goToNextReel();
+      } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
+          event.logicalKey == LogicalKeyboardKey.pageUp) {
+        _goToPrevReel();
+      }
+    }
   }
 
   void _checkAndShowAllWatchedPrompt() {
@@ -131,17 +196,9 @@ class _ReelsTabState extends State<ReelsTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Check if the home tab is currently active on Reels (index 2)
-    final homeController = Get.isRegistered<HomeController>()
-        ? Get.find<HomeController>()
-        : null;
-
     return Obx(() {
-      final bool isTabVisible =
-          homeController == null || homeController.selectedIndex.value == 2;
       final bool isLoading = _reelsController.isLoading.value;
       final reels = _reelsController.reels;
-      final currentIndex = _reelsController.currentIndex.value;
 
       if (isLoading && reels.isEmpty) {
         return const Scaffold(
@@ -221,75 +278,86 @@ class _ReelsTabState extends State<ReelsTab> {
         );
       }
 
-      return Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            scrollDirection: Axis.vertical,
-            itemCount: reels.length,
-            onPageChanged: (i) {
-              _reelsController.onPageChanged(i);
-              _manageControllers(i, reels);
-            },
-            itemBuilder: (_, index) {
-              final reel = reels[index];
-              final isActive = isTabVisible && currentIndex == index;
-
-              return _ReelItem(
-                key: ValueKey(reel.id),
-                reel: reel,
-                index: index,
-                isActive: isActive,
-                onControllerCreated: (vpc) {
-                  _controllers[index] = vpc;
+      return Listener(
+        onPointerSignal: _handlePointerSignal,
+        child: Focus(
+          autofocus: true,
+          onKeyEvent: (node, event) {
+            _handleKeyEvent(event);
+            return KeyEventResult.ignored;
+          },
+          child: Stack(
+            children: [
+              PageView.builder(
+                controller: _pageController,
+                scrollDirection: Axis.vertical,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: ClampingScrollPhysics(),
+                ),
+                itemCount: reels.length,
+                onPageChanged: (i) {
+                  _reelsController.onPageChanged(i);
+                  _manageControllers(i, reels);
                 },
-                cachedController: _controllers[index],
-                onCompleted: () => _reelsController.recordComplete(reel.id),
-              );
-            },
-          ),
+                itemBuilder: (_, index) {
+                  final reel = reels[index];
 
-          // ── Top pills: Trending (floating glassmorphic bar) ──
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(width: 15),
-                    _FeedTogglePill(
-                      label: 'Trending',
-                      isSelected: true,
-                      onTap: () {},
+                  return _ReelItem(
+                    key: ValueKey(reel.id),
+                    reel: reel,
+                    index: index,
+                    onControllerCreated: (vpc) {
+                      _controllers[index] = vpc;
+                    },
+                    cachedController: _controllers[index],
+                    onCompleted: () => _reelsController.recordComplete(reel.id),
+                  );
+                },
+              ),
+
+              // ── Top pills: Trending (floating glassmorphic bar) ──
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(width: 15),
+                        _FeedTogglePill(
+                          label: 'Trending',
+                          isSelected: true,
+                          onTap: () {},
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Prefetching Indicator (small subtle bar at top if fetching in background)
-          if (_reelsController.isFetchingNextBatch.value)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                child: LinearProgressIndicator(
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppColors.accentColor.withValues(alpha: 0.6),
                   ),
-                  minHeight: 2,
                 ),
               ),
-            ),
-        ],
+
+              // Prefetching Indicator (small subtle bar at top if fetching in background)
+              if (_reelsController.isFetchingNextBatch.value)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: SafeArea(
+                    child: LinearProgressIndicator(
+                      backgroundColor: Colors.transparent,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.accentColor.withValues(alpha: 0.6),
+                      ),
+                      minHeight: 2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       );
     });
   }
@@ -360,7 +428,6 @@ class _FeedTogglePill extends StatelessWidget {
 class _ReelItem extends StatefulWidget {
   final AiReelModel reel;
   final int index;
-  final bool isActive;
   final VideoPlayerController? cachedController;
   final ValueChanged<VideoPlayerController> onControllerCreated;
   final VoidCallback onCompleted;
@@ -369,7 +436,6 @@ class _ReelItem extends StatefulWidget {
     super.key,
     required this.reel,
     required this.index,
-    required this.isActive,
     required this.onControllerCreated,
     required this.onCompleted,
     this.cachedController,
@@ -385,6 +451,30 @@ class _ReelItemState extends State<_ReelItem> {
   bool _completedTriggered = false;
   bool _showHeartAnimation = false;
   Timer? _heartTimer;
+  Worker? _activeWorker;
+  Worker? _tabWorker;
+  Worker? _muteWorker;
+
+  bool get _isActive {
+    final homeController = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>()
+        : null;
+    final isTabVisible =
+        homeController == null || homeController.selectedIndex.value == 2;
+    return isTabVisible &&
+        AiReelsController.to.currentIndex.value == widget.index;
+  }
+
+  void _syncPlayState() {
+    if (_initialized && _vpc != null) {
+      if (_isActive) {
+        _vpc!.setVolume(AiReelsController.to.isMuted.value ? 0.0 : 1.0);
+        _vpc!.play();
+      } else {
+        _vpc!.pause();
+      }
+    }
+  }
 
   void _onDoubleTap() {
     AiReelsController.to.likeReelIfNotLiked(widget.reel.id);
@@ -404,6 +494,27 @@ class _ReelItemState extends State<_ReelItem> {
   @override
   void initState() {
     super.initState();
+    _activeWorker = ever(AiReelsController.to.currentIndex, (idx) {
+      if (!mounted) return;
+      _syncPlayState();
+    });
+
+    final homeController = Get.isRegistered<HomeController>()
+        ? Get.find<HomeController>()
+        : null;
+    if (homeController != null) {
+      _tabWorker = ever(homeController.selectedIndex, (idx) {
+        if (!mounted) return;
+        _syncPlayState();
+      });
+    }
+
+    _muteWorker = ever(AiReelsController.to.isMuted, (muted) {
+      if (_initialized && _vpc != null) {
+        _vpc!.setVolume(muted ? 0.0 : 1.0);
+      }
+    });
+
     _setupController();
   }
 
@@ -415,7 +526,7 @@ class _ReelItemState extends State<_ReelItem> {
       _initialized = true;
       _vpc?.setVolume(reelsController.isMuted.value ? 0.0 : 1.0);
       _attachListener();
-      if (widget.isActive) {
+      if (_isActive) {
         _vpc?.play();
       }
     } else {
@@ -431,7 +542,7 @@ class _ReelItemState extends State<_ReelItem> {
                 _vpc!.setLooping(true);
                 _vpc!.setVolume(reelsController.isMuted.value ? 0.0 : 1.0);
                 _attachListener();
-                if (widget.isActive) {
+                if (_isActive) {
                   _vpc!.play();
                 }
               }
@@ -468,17 +579,16 @@ class _ReelItemState extends State<_ReelItem> {
     super.didUpdateWidget(oldWidget);
     if (_initialized && _vpc != null) {
       _vpc!.setVolume(AiReelsController.to.isMuted.value ? 0.0 : 1.0);
-      if (widget.isActive) {
-        _vpc!.play();
-      } else {
-        _vpc!.pause();
-      }
+      _syncPlayState();
     }
   }
 
   @override
   void dispose() {
     _heartTimer?.cancel();
+    _activeWorker?.dispose();
+    _tabWorker?.dispose();
+    _muteWorker?.dispose();
     _vpc?.removeListener(_videoListener);
     // Note: Do not dispose _vpc directly here if managed in parent cache
     super.dispose();

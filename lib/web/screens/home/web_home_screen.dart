@@ -37,92 +37,24 @@ class WebHomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. Dramas Section
-                  WebContentSection(
-                    title: 'Trending Dramas',
-                    subtitle: 'Binge addictive short vertical dramas',
-                    onViewAll: () => Get.toNamed(WebRoutes.dramas),
-                    isLoading: controller.isDramasLoading.value,
-                    items: controller.dramas.map((drama) {
-                      return WebContentCard(
-                        id: drama.id,
-                        title: drama.title,
-                        posterUrl: drama.poster.isNotEmpty ? drama.poster : drama.banner,
-                        category: drama.genre.isNotEmpty ? drama.genre.first.toString() : 'Drama',
-                        type: 'drama',
-                        rating: drama.rating.toDouble(),
-                        duration: drama.duration,
-                        releaseYear: drama.releaseYear,
-                        isPremium: drama.isPremium,
-                        onTap: () => Get.toNamed(
-                          '${WebRoutes.details}?id=${drama.id}&type=drama',
-                          arguments: {'id': drama.id, 'type': 'drama'},
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  // 3. Movies Section
-                  WebContentSection(
-                    title: 'Blockbuster Movies',
-                    subtitle: 'Cinematic widescreen movies in HD',
-                    onViewAll: () => Get.toNamed(WebRoutes.movies),
-                    isLoading: controller.isMoviesLoading.value,
-                    items: controller.movies.map((movie) {
-                      return WebContentCard(
-                        id: movie.id,
-                        title: movie.title,
-                        posterUrl: movie.poster.isNotEmpty ? movie.poster : movie.banner,
-                        category: movie.genre.isNotEmpty ? movie.genre.first : 'Movie',
-                        type: 'movie',
-                        rating: movie.rating,
-                        duration: movie.duration,
-                        releaseYear: movie.releaseYear,
-                        isPremium: movie.isPremium,
-                        onTap: () => Get.toNamed(
-                          '${WebRoutes.details}?id=${movie.id}&type=movie',
-                          arguments: {'id': movie.id, 'type': 'movie'},
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
-                  // 4. Web Series Section
-                  WebContentSection(
-                    title: 'Binge-Worthy Series',
-                    subtitle: 'Exciting multi-episode series and seasons',
-                    onViewAll: () => Get.toNamed(WebRoutes.series),
-                    isLoading: controller.isSeriesLoading.value,
-                    items: controller.series.map((s) {
-                      return WebContentCard(
-                        id: s.id,
-                        title: s.title,
-                        posterUrl: s.poster.isNotEmpty ? s.poster : s.banner,
-                        category: s.genre.isNotEmpty ? s.genre.first : 'Series',
-                        type: 'series',
-                        rating: s.rating,
-                        duration: s.duration,
-                        releaseYear: s.releaseYear,
-                        isPremium: s.isPremium,
-                        onTap: () => Get.toNamed(
-                          '${WebRoutes.details}?id=${s.id}&type=series',
-                          arguments: {'id': s.id, 'type': 'series'},
-                        ),
-                      );
-                    }).toList(),
-                  ),
-
                   // 5. Dynamic Category Rows from API (sorted by priority)
                   ...controller.categories.map((category) {
-                    final apiItems = controller.categoryContents[category.id] ?? [];
+                    final apiItems =
+                        controller.categoryContents[category.id] ?? [];
                     final matchedMovies = controller.movies
-                        .where((m) => WebCategoryHelper.matchesMovie(m, category))
+                        .where(
+                          (m) => WebCategoryHelper.matchesMovie(m, category),
+                        )
                         .toList();
                     final matchedSeries = controller.series
-                        .where((s) => WebCategoryHelper.matchesSeries(s, category))
+                        .where(
+                          (s) => WebCategoryHelper.matchesSeries(s, category),
+                        )
                         .toList();
                     final matchedDramas = controller.dramas
-                        .where((d) => WebCategoryHelper.matchesDrama(d, category))
+                        .where(
+                          (d) => WebCategoryHelper.matchesDrama(d, category),
+                        )
                         .toList();
 
                     final List<Map<String, dynamic>> combined = [];
@@ -144,7 +76,9 @@ class WebHomeScreen extends StatelessWidget {
                           'isPremium': c.isPremium,
                           'duration': c.duration,
                           'releaseYear': c.releaseYear,
-                          'category': c.genre.isNotEmpty ? c.genre.first : category.name,
+                          'category': c.genre.isNotEmpty
+                              ? c.genre.first
+                              : category.name,
                         });
                       }
                     }
@@ -162,7 +96,9 @@ class WebHomeScreen extends StatelessWidget {
                           'isPremium': m.isPremium,
                           'duration': m.duration,
                           'releaseYear': m.releaseYear,
-                          'category': m.genre.isNotEmpty ? m.genre.first : category.name,
+                          'category': m.genre.isNotEmpty
+                              ? m.genre.first
+                              : category.name,
                         });
                       }
                     }
@@ -180,7 +116,9 @@ class WebHomeScreen extends StatelessWidget {
                           'isPremium': s.isPremium,
                           'duration': s.duration,
                           'releaseYear': s.releaseYear,
-                          'category': s.genre.isNotEmpty ? s.genre.first : category.name,
+                          'category': s.genre.isNotEmpty
+                              ? s.genre.first
+                              : category.name,
                         });
                       }
                     }
@@ -242,10 +180,7 @@ class WebHomeScreen extends StatelessWidget {
                           isPremium: isPremium,
                           onTap: () => Get.toNamed(
                             '${WebRoutes.details}?id=$id&type=$type',
-                            arguments: {
-                              'id': id,
-                              'type': type,
-                            },
+                            arguments: {'id': id, 'type': type},
                           ),
                         );
                       }).toList(),

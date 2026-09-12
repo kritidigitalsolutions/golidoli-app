@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
+import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/screens/auth/web_login_dialog.dart';
@@ -175,10 +176,16 @@ class _WebNavDrawerState extends State<WebNavDrawer> {
               child: _isLoggedIn
                   ? OutlinedButton.icon(
                       onPressed: () async {
-                        await StorageService.logout();
                         Navigator.pop(context);
-                        setState(() => _isLoggedIn = false);
-                        Get.toNamed(WebRoutes.home);
+                        await StorageService.logout();
+                        if (Get.isRegistered<AiReelsController>()) {
+                          Get.find<AiReelsController>().resetState();
+                          Get.delete<AiReelsController>(force: true);
+                        }
+                        if (mounted) {
+                          setState(() => _isLoggedIn = false);
+                          Get.toNamed(WebRoutes.home);
+                        }
                       },
                       icon: const Icon(Icons.logout_rounded,
                           color: AppColors.primaryPink, size: 20),

@@ -11,6 +11,7 @@ import 'package:golidoli_app/features/profile/controllers/notification_settings_
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
+import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
 import '../../../core/services/storage_service.dart';
 
 // =================================────────────────────────────────────────────
@@ -116,6 +117,10 @@ class ProfileController extends GetxController {
                     child: GestureDetector(
                       onTap: () async {
                         await StorageService.logout();
+                        if (Get.isRegistered<AiReelsController>()) {
+                          Get.find<AiReelsController>().resetState();
+                          Get.delete<AiReelsController>(force: true);
+                        }
                         Get.back();
                         print("token deleted!");
                         Get.offAllNamed(AppRoutes.login);

@@ -8,6 +8,18 @@ class StorageService {
   static const String _likedAiReelsKey = 'liked_ai_reels_ids';
   static const String _likedContentKey = 'liked_content_ids';
   static const String _dislikedContentKey = 'disliked_content_ids';
+  static const String _loginMethodKey = 'auth_login_method';
+
+  // Save and get login method ('phone' or 'google')
+  static Future<void> saveLoginMethod(String method) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_loginMethodKey, method);
+  }
+
+  static Future<String?> getLoginMethod() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_loginMethodKey);
+  }
 
   // Save the token
   static Future<void> saveToken(String token) async {
@@ -138,5 +150,6 @@ class StorageService {
     await prefs.remove(_likedAiReelsKey);
     await prefs.remove(_likedContentKey);
     await prefs.remove(_dislikedContentKey);
+    await prefs.remove(_loginMethodKey);
   }
 }

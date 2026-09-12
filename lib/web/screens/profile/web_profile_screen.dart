@@ -5,8 +5,10 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
+import 'package:golidoli_app/core/data/exception/app_exception.dart';
 import 'package:golidoli_app/core/data/network/network_api_service.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
+import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
@@ -740,6 +742,10 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
                       onTap: () async {
                         Navigator.of(ctx).pop();
                         await StorageService.logout();
+                        if (Get.isRegistered<AiReelsController>()) {
+                          Get.find<AiReelsController>().resetState();
+                          Get.delete<AiReelsController>(force: true);
+                        }
                         if (mounted) {
                           setState(() {
                             _isLoggedIn = false;
@@ -1191,7 +1197,9 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
     final nameCtrl = TextEditingController(text: user?.name ?? '');
     final emailCtrl = TextEditingController(text: user?.email ?? '');
     final phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    final bool isPhoneAuth = user?.isPhoneAuth ?? true;
     bool isSaving = false;
+    String modalError = '';
 
     showDialog(
       context: context,
@@ -1204,7 +1212,9 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
             decoration: BoxDecoration(
               color: AppColors.backgroundColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+              border: Border.all(
+                color: AppColors.borderColor.withValues(alpha: 0.5),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1227,11 +1237,59 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 18),
+
+                // Inline error display inside modal
+                if (modalError.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.errorColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.errorColor.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: AppColors.errorColor,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            modalError,
+                            style: text12(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 _buildModalTextField('Full Name', nameCtrl),
                 const SizedBox(height: 14),
-                _buildModalTextField('Mobile Number', phoneCtrl),
+                _buildModalTextField(
+                  'Mobile Number',
+                  phoneCtrl,
+                  enabled: !isPhoneAuth,
+                  keyboardType: TextInputType.phone,
+                  helperText: isPhoneAuth
+                      ? 'Mobile number cannot be changed for phone login accounts'
+                      : null,
+                ),
                 const SizedBox(height: 14),
-                _buildModalTextField('Email Address', emailCtrl),
+                _buildModalTextField(
+                  'Email Address',
+                  emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -1239,37 +1297,75 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
                     onPressed: isSaving
                         ? null
                         : () async {
-                            setDialogState(() => isSaving = true);
+                            setDialogState(() {
+                              isSaving = true;
+                              modalError = '';
+                            });
                             try {
                               final api = NetworkApiService();
-                              final body = {
-                                "name": nameCtrl.text.trim(),
-                                "email": emailCtrl.text.trim(),
-                                "phone": phoneCtrl.text.trim(),
+                              final body = <String, dynamic>{
+                                if (nameCtrl.text.trim().isNotEmpty &&
+                                    nameCtrl.text.trim() != user?.name)
+                                  "name": nameCtrl.text.trim(),
+                                if (emailCtrl.text.trim().isNotEmpty &&
+                                    emailCtrl.text.trim() != user?.email)
+                                  "email": emailCtrl.text.trim(),
+                                if (!isPhoneAuth &&
+                                    phoneCtrl.text.trim().isNotEmpty &&
+                                    phoneCtrl.text.trim() != user?.phone)
+                                  "phone": phoneCtrl.text.trim(),
                               };
+
+                              if (body.isEmpty) {
+                                Navigator.of(ctx).pop();
+                                return;
+                              }
+
                               await api.pacthApi(AppUrl.updateProfile, body);
                               await _profileController.fetchProfile();
-                              if (mounted) {
+                              if (ctx.mounted) {
                                 Navigator.of(ctx).pop();
+                              }
+                              if (mounted) {
                                 Get.snackbar(
                                   'Profile Updated',
                                   'Your profile has been saved successfully.',
                                   snackPosition: SnackPosition.BOTTOM,
                                   backgroundColor: AppColors.primaryPink
-                                      .withOpacity(0.85),
+                                      .withValues(alpha: 0.85),
                                   colorText: Colors.white,
                                 );
                               }
                             } catch (e) {
+                              String cleanError = "Failed to update profile";
+                              if (e is AppException) {
+                                cleanError = e.message;
+                              } else {
+                                final errStr = e.toString();
+                                final stripped = errStr
+                                    .replaceFirst(
+                                      RegExp(r'^[a-zA-Z]+Exception:\s*'),
+                                      '',
+                                    )
+                                    .trim();
+                                cleanError = stripped.isNotEmpty
+                                    ? stripped
+                                    : "Failed to update profile";
+                              }
+
                               if (mounted) {
-                                setDialogState(() => isSaving = false);
+                                setDialogState(() {
+                                  isSaving = false;
+                                  modalError = cleanError;
+                                });
                                 Get.snackbar(
-                                  'Error',
-                                  'Failed to update profile: $e',
+                                  'Update Failed',
+                                  cleanError,
                                   snackPosition: SnackPosition.BOTTOM,
                                   backgroundColor: AppColors.errorColor
-                                      .withOpacity(0.8),
+                                      .withValues(alpha: 0.9),
                                   colorText: Colors.white,
+                                  duration: const Duration(seconds: 4),
                                 );
                               }
                             }
@@ -1307,18 +1403,45 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
     );
   }
 
-  Widget _buildModalTextField(String label, TextEditingController ctrl) {
+  Widget _buildModalTextField(
+    String label,
+    TextEditingController ctrl, {
+    bool enabled = true,
+    String? helperText,
+    TextInputType? keyboardType,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: text12(color: AppColors.secondaryTextColor)),
+        Row(
+          children: [
+            Text(label, style: text12(color: AppColors.secondaryTextColor)),
+            if (!enabled) ...[
+              const SizedBox(width: 6),
+              const Icon(
+                Icons.lock_outline_rounded,
+                size: 13,
+                color: AppColors.hintTextColor,
+              ),
+            ],
+          ],
+        ),
         const SizedBox(height: 6),
         TextField(
           controller: ctrl,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+          enabled: enabled,
+          keyboardType: keyboardType,
+          style: TextStyle(
+            color: enabled
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.5),
+            fontSize: 14,
+          ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: AppColors.surfaceColor,
+            fillColor: enabled
+                ? AppColors.surfaceColor
+                : AppColors.surfaceColor.withValues(alpha: 0.4),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 12,
@@ -1326,7 +1449,13 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide(
-                color: AppColors.borderColor.withOpacity(0.5),
+                color: AppColors.borderColor.withValues(alpha: 0.5),
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(
+                color: AppColors.borderColor.withValues(alpha: 0.2),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -1335,6 +1464,13 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
             ),
           ),
         ),
+        if (helperText != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            helperText,
+            style: text11(color: AppColors.hintTextColor),
+          ),
+        ],
       ],
     );
   }

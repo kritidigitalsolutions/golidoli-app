@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/core/services/firebase_service.dart';
 import 'package:golidoli_app/core/services/google_auth_service.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
+import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 
 // ── Splash Controller ──────────────────────────────────────────
@@ -299,6 +300,10 @@ class AuthController extends GetxController {
 
       if (result.success) {
         _timer?.cancel();
+        if (Get.isRegistered<AiReelsController>()) {
+          Get.find<AiReelsController>().resetState();
+          Get.delete<AiReelsController>(force: true);
+        }
         if (!result.profileComplete) {
           Get.offAllNamed(
             AppRoutes.createAccount,
@@ -452,6 +457,11 @@ class AuthController extends GetxController {
           }
         } catch (e) {
           debugPrint("FCM upload error on Google Login: $e");
+        }
+
+        if (Get.isRegistered<AiReelsController>()) {
+          Get.find<AiReelsController>().resetState();
+          Get.delete<AiReelsController>(force: true);
         }
 
         Get.offAllNamed(AppRoutes.home);
