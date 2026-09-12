@@ -7,8 +7,6 @@ import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import '../../../core/services/storage_service.dart';
-import '../../../main.dart';
-import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
