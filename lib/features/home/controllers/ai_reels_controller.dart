@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/home/controllers/home_controller.dart';
 import 'package:golidoli_app/features/home/models/ai_reel_model.dart';
 import 'package:golidoli_app/features/home/repositories/ai_reels_datasource.dart';
@@ -41,7 +42,20 @@ class AiReelsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    _loadSavedLikes();
     fetchInitialFeed();
+  }
+
+  /// Load persisted liked reel IDs from local storage
+  Future<void> _loadSavedLikes() async {
+    try {
+      final savedLikes = await StorageService.getLikedAiReels();
+      for (final reelId in savedLikes) {
+        isLikedMap[reelId] = true;
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error loading saved liked AI reels: $e");
+    }
   }
 
   /// Initial load when user opens AI Reels
@@ -55,6 +69,12 @@ class AiReelsController extends GetxController {
       _completedReelIds.clear();
       currentIndex.value = 0;
       isReplayMode.value = isReplay;
+
+      // Ensure saved likes are loaded
+      final savedLikes = await StorageService.getLikedAiReels();
+      for (final id in savedLikes) {
+        isLikedMap[id] = true;
+      }
 
       final response = await _datasource.fetchAiReels(
         limit: 10,
@@ -72,8 +92,13 @@ class AiReelsController extends GetxController {
       // Initialize like & share maps without losing user state
       for (final r in response.data) {
         likesCountMap[r.id] = r.likes;
-        if (!isLikedMap.containsKey(r.id)) {
-          isLikedMap[r.id] = r.isLiked;
+        if (savedLikes.contains(r.id)) {
+          isLikedMap[r.id] = true;
+        } else if (r.isLiked) {
+          isLikedMap[r.id] = true;
+          StorageService.setAiReelLiked(r.id, true);
+        } else if (!isLikedMap.containsKey(r.id)) {
+          isLikedMap[r.id] = false;
         }
         sharesCountMap[r.id] = r.shares;
       }
@@ -107,6 +132,8 @@ class AiReelsController extends GetxController {
         "🔄 Background prefetching next AI Reels batch with sessionId: ${sessionId.value}",
       );
 
+      final savedLikes = await StorageService.getLikedAiReels();
+
       final response = await _datasource.fetchAiReels(
         limit: 10,
         sessionId: sessionId.value,
@@ -130,8 +157,13 @@ class AiReelsController extends GetxController {
 
         for (final r in newItems) {
           likesCountMap[r.id] = r.likes;
-          if (!isLikedMap.containsKey(r.id)) {
-            isLikedMap[r.id] = r.isLiked;
+          if (savedLikes.contains(r.id)) {
+            isLikedMap[r.id] = true;
+          } else if (r.isLiked) {
+            isLikedMap[r.id] = true;
+            StorageService.setAiReelLiked(r.id, true);
+          } else if (!isLikedMap.containsKey(r.id)) {
+            isLikedMap[r.id] = false;
           }
           sharesCountMap[r.id] = r.shares;
         }
@@ -197,25 +229,38 @@ class AiReelsController extends GetxController {
     final wasLiked = isLikedMap[reelId] ?? false;
     final prevCount = likesCountMap[reelId] ?? 0;
 
-    // Optimistic UI update
+    // Optimistic UI update & immediate local persistence
     if (wasLiked) {
       isLikedMap[reelId] = false;
       likesCountMap[reelId] = (prevCount - 1).clamp(0, 99999999);
+      StorageService.setAiReelLiked(reelId, false);
     } else {
       isLikedMap[reelId] = true;
       likesCountMap[reelId] = prevCount + 1;
+      StorageService.setAiReelLiked(reelId, true);
     }
 
     try {
       final response = await _datasource.toggleLike(reelId);
       if (response != null && response.success) {
-        final msg = response.message.toLowerCase();
-        if (msg.contains("added") ||
-            msg.contains("liked") ||
-            (msg.contains("like") && !msg.contains("removed"))) {
-          isLikedMap[reelId] = true;
-        } else if (msg.contains("removed") || msg.contains("unliked")) {
-          isLikedMap[reelId] = false;
+        bool? serverIsLiked = response.isLiked;
+        if (serverIsLiked == null) {
+          final msg = response.message.toLowerCase();
+          if (msg.contains("added") ||
+              msg.contains("liked") ||
+              (msg.contains("like") &&
+                  !msg.contains("removed") &&
+                  !msg.contains("unliked") &&
+                  !msg.contains("dislike"))) {
+            serverIsLiked = true;
+          } else if (msg.contains("removed") || msg.contains("unliked")) {
+            serverIsLiked = false;
+          }
+        }
+
+        if (serverIsLiked != null) {
+          isLikedMap[reelId] = serverIsLiked;
+          StorageService.setAiReelLiked(reelId, serverIsLiked);
         }
         if (response.totalLikes >= 0) {
           likesCountMap[reelId] = response.totalLikes;
@@ -224,12 +269,14 @@ class AiReelsController extends GetxController {
         // Rollback on non-success
         isLikedMap[reelId] = wasLiked;
         likesCountMap[reelId] = prevCount;
+        StorageService.setAiReelLiked(reelId, wasLiked);
       }
     } catch (e) {
       debugPrint("⚠️ toggleReelLike error: $e");
       // Rollback on error
       isLikedMap[reelId] = wasLiked;
       likesCountMap[reelId] = prevCount;
+      StorageService.setAiReelLiked(reelId, wasLiked);
     } finally {
       isLikeLoadingMap[reelId] = false;
     }

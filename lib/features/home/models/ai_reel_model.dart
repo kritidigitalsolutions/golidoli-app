@@ -37,44 +37,43 @@ class AiReelModel {
 
   factory AiReelModel.fromJson(Map<String, dynamic> json) {
     int parsedLikes = 0;
-    if (json['like'] != null) {
-      if (json['like'] is num) {
-        parsedLikes = (json['like'] as num).toInt();
-      } else if (json['like'] is String) {
-        parsedLikes = int.tryParse(json['like'] as String) ?? 0;
-      }
-    } else if (json['likes'] != null) {
-      if (json['likes'] is num) {
-        parsedLikes = (json['likes'] as num).toInt();
-      } else if (json['likes'] is List) {
-        parsedLikes = (json['likes'] as List).length;
-      } else if (json['likes'] is String) {
-        parsedLikes = int.tryParse(json['likes'] as String) ?? 0;
+    final dynamic likesRaw = json['like'] ??
+        json['likes'] ??
+        json['totalLikes'] ??
+        json['likeCount'];
+    if (likesRaw != null) {
+      if (likesRaw is num) {
+        parsedLikes = likesRaw.toInt();
+      } else if (likesRaw is List) {
+        parsedLikes = likesRaw.length;
+      } else if (likesRaw is String) {
+        parsedLikes = int.tryParse(likesRaw) ?? 0;
       }
     }
 
     bool parsedIsLiked = false;
-    if (json['isLiked'] != null) {
-      if (json['isLiked'] is bool) {
-        parsedIsLiked = json['isLiked'];
-      } else if (json['isLiked'] is num) {
-        parsedIsLiked = json['isLiked'] == 1;
-      } else if (json['isLiked'] is String) {
-        parsedIsLiked = json['isLiked'].toString().toLowerCase() == 'true';
-      }
-    } else if (json['is_liked'] != null) {
-      if (json['is_liked'] is bool) {
-        parsedIsLiked = json['is_liked'];
-      } else if (json['is_liked'] is num) {
-        parsedIsLiked = json['is_liked'] == 1;
-      } else if (json['is_liked'] is String) {
-        parsedIsLiked = json['is_liked'].toString().toLowerCase() == 'true';
-      }
-    } else if (json['liked'] != null) {
-      if (json['liked'] is bool) {
-        parsedIsLiked = json['liked'];
-      } else if (json['liked'] is num) {
-        parsedIsLiked = json['liked'] == 1;
+    final dynamic isLikedRaw = json['isLiked'] ??
+        json['is_liked'] ??
+        json['liked'] ??
+        json['isLike'] ??
+        json['is_like'] ??
+        json['userLiked'] ??
+        json['user_liked'] ??
+        json['hasLiked'] ??
+        json['has_liked'] ??
+        json['likedByMe'] ??
+        json['liked_by_me'] ??
+        json['isUserLiked'] ??
+        json['is_user_liked'];
+
+    if (isLikedRaw != null) {
+      if (isLikedRaw is bool) {
+        parsedIsLiked = isLikedRaw;
+      } else if (isLikedRaw is num) {
+        parsedIsLiked = isLikedRaw == 1;
+      } else if (isLikedRaw is String) {
+        final s = isLikedRaw.trim().toLowerCase();
+        parsedIsLiked = s == 'true' || s == '1' || s == 'yes';
       }
     }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/shared/models/like_dislike_response.dart';
 import 'package:golidoli_app/shared/repositories/interaction_datasource.dart';
 
@@ -21,6 +22,27 @@ class InteractionController extends GetxController {
   final RxMap<String, bool> isDislikeLoadingMap = <String, bool>{}.obs;
   final RxMap<String, bool> loadingMap = <String, bool>{}.obs;
 
+  @override
+  void onInit() {
+    super.onInit();
+    _loadSavedInteractions();
+  }
+
+  Future<void> _loadSavedInteractions() async {
+    try {
+      final likedSet = await StorageService.getLikedContent();
+      for (final id in likedSet) {
+        isLikedMap[id] = true;
+      }
+      final dislikedSet = await StorageService.getDislikedContent();
+      for (final id in dislikedSet) {
+        isDislikedMap[id] = true;
+      }
+    } catch (e) {
+      debugPrint("⚠️ Error loading saved interactions: $e");
+    }
+  }
+
   void initContent({
     required String contentId,
     int initialLikes = 0,
@@ -31,8 +53,18 @@ class InteractionController extends GetxController {
     if (contentId.isEmpty) return;
     likesCount.putIfAbsent(contentId, () => initialLikes);
     dislikesCount.putIfAbsent(contentId, () => initialDislikes);
-    isLikedMap.putIfAbsent(contentId, () => initialIsLiked);
-    isDislikedMap.putIfAbsent(contentId, () => initialIsDisliked);
+    if (initialIsLiked) {
+      isLikedMap[contentId] = true;
+      StorageService.setContentLiked(contentId, true);
+    } else {
+      isLikedMap.putIfAbsent(contentId, () => false);
+    }
+    if (initialIsDisliked) {
+      isDislikedMap[contentId] = true;
+      StorageService.setContentDisliked(contentId, true);
+    } else {
+      isDislikedMap.putIfAbsent(contentId, () => false);
+    }
   }
 
   int getLikes(String contentId, [int fallback = 0]) =>
@@ -65,16 +97,19 @@ class InteractionController extends GetxController {
     final prevLikes = getLikes(contentId);
     final prevDislikes = getDislikes(contentId);
 
-    // Optimistic UI update
+    // Optimistic UI update & immediate persistence
     if (wasLiked) {
       isLikedMap[contentId] = false;
       likesCount[contentId] = (prevLikes - 1).clamp(0, 9999999);
+      StorageService.setContentLiked(contentId, false);
     } else {
       isLikedMap[contentId] = true;
       likesCount[contentId] = prevLikes + 1;
+      StorageService.setContentLiked(contentId, true);
       if (wasDisliked) {
         isDislikedMap[contentId] = false;
         dislikesCount[contentId] = (prevDislikes - 1).clamp(0, 9999999);
+        StorageService.setContentDisliked(contentId, false);
       }
     }
 
@@ -87,16 +122,28 @@ class InteractionController extends GetxController {
         likesCount[contentId] = response.totalLikes;
         dislikesCount[contentId] = response.totalDislikes;
 
-        final msg = response.message.toLowerCase();
-        if (msg.contains("added") ||
-            msg.contains("liked") ||
-            (msg.contains("like") &&
-                !msg.contains("removed") &&
-                !msg.contains("dislike"))) {
-          isLikedMap[contentId] = true;
-          isDislikedMap[contentId] = false;
-        } else if (msg.contains("removed") || msg.contains("unliked")) {
-          isLikedMap[contentId] = false;
+        bool? serverIsLiked = response.isLiked;
+        if (serverIsLiked == null) {
+          final msg = response.message.toLowerCase();
+          if (msg.contains("added") ||
+              msg.contains("liked") ||
+              (msg.contains("like") &&
+                  !msg.contains("removed") &&
+                  !msg.contains("unliked") &&
+                  !msg.contains("dislike"))) {
+            serverIsLiked = true;
+          } else if (msg.contains("removed") || msg.contains("unliked")) {
+            serverIsLiked = false;
+          }
+        }
+
+        if (serverIsLiked != null) {
+          isLikedMap[contentId] = serverIsLiked;
+          StorageService.setContentLiked(contentId, serverIsLiked);
+          if (serverIsLiked) {
+            isDislikedMap[contentId] = false;
+            StorageService.setContentDisliked(contentId, false);
+          }
         }
 
         if (showToast && response.message.isNotEmpty) {
@@ -115,6 +162,8 @@ class InteractionController extends GetxController {
         isDislikedMap[contentId] = wasDisliked;
         likesCount[contentId] = prevLikes;
         dislikesCount[contentId] = prevDislikes;
+        StorageService.setContentLiked(contentId, wasLiked);
+        StorageService.setContentDisliked(contentId, wasDisliked);
       }
       return response;
     } catch (e) {
@@ -124,6 +173,8 @@ class InteractionController extends GetxController {
       isDislikedMap[contentId] = wasDisliked;
       likesCount[contentId] = prevLikes;
       dislikesCount[contentId] = prevDislikes;
+      StorageService.setContentLiked(contentId, wasLiked);
+      StorageService.setContentDisliked(contentId, wasDisliked);
 
       Get.snackbar(
         'Error',
@@ -151,16 +202,19 @@ class InteractionController extends GetxController {
     final prevLikes = getLikes(contentId);
     final prevDislikes = getDislikes(contentId);
 
-    // Optimistic UI update
+    // Optimistic UI update & immediate persistence
     if (wasDisliked) {
       isDislikedMap[contentId] = false;
       dislikesCount[contentId] = (prevDislikes - 1).clamp(0, 9999999);
+      StorageService.setContentDisliked(contentId, false);
     } else {
       isDislikedMap[contentId] = true;
       dislikesCount[contentId] = prevDislikes + 1;
+      StorageService.setContentDisliked(contentId, true);
       if (wasLiked) {
         isLikedMap[contentId] = false;
         likesCount[contentId] = (prevLikes - 1).clamp(0, 9999999);
+        StorageService.setContentLiked(contentId, false);
       }
     }
 
@@ -173,14 +227,27 @@ class InteractionController extends GetxController {
         likesCount[contentId] = response.totalLikes;
         dislikesCount[contentId] = response.totalDislikes;
 
-        final msg = response.message.toLowerCase();
-        if (msg.contains("added") ||
-            msg.contains("disliked") ||
-            (msg.contains("dislike") && !msg.contains("removed"))) {
-          isDislikedMap[contentId] = true;
-          isLikedMap[contentId] = false;
-        } else if (msg.contains("removed") || msg.contains("undisliked")) {
-          isDislikedMap[contentId] = false;
+        bool? serverIsDisliked = response.isDisliked;
+        if (serverIsDisliked == null) {
+          final msg = response.message.toLowerCase();
+          if (msg.contains("added") ||
+              msg.contains("disliked") ||
+              (msg.contains("dislike") &&
+                  !msg.contains("removed") &&
+                  !msg.contains("undisliked"))) {
+            serverIsDisliked = true;
+          } else if (msg.contains("removed") || msg.contains("undisliked")) {
+            serverIsDisliked = false;
+          }
+        }
+
+        if (serverIsDisliked != null) {
+          isDislikedMap[contentId] = serverIsDisliked;
+          StorageService.setContentDisliked(contentId, serverIsDisliked);
+          if (serverIsDisliked) {
+            isLikedMap[contentId] = false;
+            StorageService.setContentLiked(contentId, false);
+          }
         }
 
         if (showToast && response.message.isNotEmpty) {
@@ -199,6 +266,8 @@ class InteractionController extends GetxController {
         isDislikedMap[contentId] = wasDisliked;
         likesCount[contentId] = prevLikes;
         dislikesCount[contentId] = prevDislikes;
+        StorageService.setContentLiked(contentId, wasLiked);
+        StorageService.setContentDisliked(contentId, wasDisliked);
       }
       return response;
     } catch (e) {
@@ -208,6 +277,8 @@ class InteractionController extends GetxController {
       isDislikedMap[contentId] = wasDisliked;
       likesCount[contentId] = prevLikes;
       dislikesCount[contentId] = prevDislikes;
+      StorageService.setContentLiked(contentId, wasLiked);
+      StorageService.setContentDisliked(contentId, wasDisliked);
 
       Get.snackbar(
         'Error',

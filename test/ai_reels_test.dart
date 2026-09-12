@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golidoli_app/constants/app_url.dart';
+import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/home/models/ai_reel_model.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
+import 'package:golidoli_app/shared/models/like_dislike_response.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('AI Reels Model and URL Generation Tests', () {
@@ -156,6 +159,45 @@ void main() {
       expect(shareResponse.shares, 1);
     });
 
+    test('LikeDislikeResponse parses various JSON formats correctly', () {
+      final json1 = {
+        "success": true,
+        "message": "Like added",
+        "totalLikes": 15,
+        "totalDislikes": 2,
+        "isLiked": true,
+      };
+      final res1 = LikeDislikeResponse.fromJson(json1);
+      expect(res1.success, true);
+      expect(res1.totalLikes, 15);
+      expect(res1.totalDislikes, 2);
+      expect(res1.isLiked, true);
+
+      final json2 = {
+        "success": true,
+        "message": "Liked successfully",
+        "data": {
+          "totalLikes": "42",
+          "isLiked": "true",
+        }
+      };
+      final res2 = LikeDislikeResponse.fromJson(json2);
+      expect(res2.success, true);
+      expect(res2.totalLikes, 42);
+      expect(res2.isLiked, true);
+
+      final json3 = {
+        "success": true,
+        "message": "Like removed",
+        "likes": 41,
+        "isLiked": false,
+      };
+      final res3 = LikeDislikeResponse.fromJson(json3);
+      expect(res3.success, true);
+      expect(res3.totalLikes, 41);
+      expect(res3.isLiked, false);
+    });
+
     test('Series.fromJson parses user Breaking Bad payload and isPremium correctly', () {
       final json = {
         "_id": "6a86d965977f982e2c1e327f",
@@ -192,6 +234,30 @@ void main() {
       expect(series.isComingSoon, false);
       expect(series.likes, 1);
       expect(series.dislikes, 0);
+    });
+
+    test('StorageService persists and removes liked AI reels', () async {
+      SharedPreferences.setMockInitialValues({});
+
+      var liked = await StorageService.getLikedAiReels();
+      expect(liked.isEmpty, true);
+
+      await StorageService.setAiReelLiked('reel_101', true);
+      liked = await StorageService.getLikedAiReels();
+      expect(liked.contains('reel_101'), true);
+
+      await StorageService.setAiReelLiked('reel_102', true);
+      liked = await StorageService.getLikedAiReels();
+      expect(liked.length, 2);
+
+      await StorageService.setAiReelLiked('reel_101', false);
+      liked = await StorageService.getLikedAiReels();
+      expect(liked.contains('reel_101'), false);
+      expect(liked.contains('reel_102'), true);
+
+      await StorageService.logout();
+      liked = await StorageService.getLikedAiReels();
+      expect(liked.isEmpty, true);
     });
   });
 }
