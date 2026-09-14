@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/home/widgets/continue_watching_helper.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/micro_drama/models/continue_watching_model.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -112,13 +113,8 @@ class _ContinueWatchingScreenState extends State<ContinueWatchingScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.backgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 18,
-          ),
-          onPressed: () => Navigator.pop(context),
+        leading: const Center(
+          child: AppBackButton(),
         ),
         title: Text(
           'Continue Watching',

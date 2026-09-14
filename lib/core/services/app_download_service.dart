@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
@@ -201,8 +202,26 @@ class AppDownloadService extends GetxService {
     int durationSeconds = 0,
     int episodeNumber = 1,
     Map<String, dynamic> extra = const {},
+    bool isPremium = false,
   }) async {
     if (id.isEmpty) return;
+
+    if (isPremium) {
+      final subController = Get.isRegistered<SubscriptionStatusController>()
+          ? Get.find<SubscriptionStatusController>()
+          : Get.put(SubscriptionStatusController());
+      if (!subController.isPremiumUser.value) {
+        Get.snackbar(
+          'Premium Required',
+          'A premium subscription plan is required to download this content.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: const Color(0xFF1E1E1E),
+          colorText: const Color(0xFFFFFFFF),
+          duration: const Duration(seconds: 3),
+        );
+        return;
+      }
+    }
 
     if (isDownloaded(id)) {
       Get.snackbar(
@@ -234,7 +253,7 @@ class AppDownloadService extends GetxService {
       }
 
       final ext = (mediaType == DownloadMediaType.audio) ? 'mp3' : 'mp4';
-      final localFilePath = '${saveDir.path}/${id}.$ext';
+      final localFilePath = '${saveDir.path}/$id.$ext';
 
       // Download file with progress
       await _dio.download(

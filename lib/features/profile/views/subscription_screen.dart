@@ -6,6 +6,7 @@ import 'package:golidoli_app/features/profile/controllers/payment_controller.dar
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import '../controllers/plan_controller.dart';
@@ -137,24 +138,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Get.back(),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.borderColor.withValues(alpha: 0.4),
-                ),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: AppColors.white,
-                size: 16,
-              ),
-            ),
-          ),
+          const AppBackButton(),
           const SizedBox(width: 14),
           Text(
             'Choose your plan',

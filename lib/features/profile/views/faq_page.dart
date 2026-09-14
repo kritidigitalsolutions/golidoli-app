@@ -5,6 +5,7 @@ import 'package:golidoli_app/features/profile/controllers/help_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../constants/enums.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 
 class FaqPage extends StatefulWidget {
@@ -38,9 +39,8 @@ class _FaqPageState extends State<FaqPage> {
         ),
         backgroundColor: AppColors.backgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
+        leading: const Center(
+          child: AppBackButton(),
         ),
       ),
       body: Obx(() {

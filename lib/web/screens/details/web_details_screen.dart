@@ -303,7 +303,6 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
     double? rating;
     String? duration;
     int? releaseYear;
-    bool isPremium = false;
 
     if (_movie != null) {
       title = _movie!.title;
@@ -314,7 +313,6 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
       rating = _movie!.rating;
       duration = _movie!.duration;
       releaseYear = _movie!.releaseYear;
-      isPremium = _movie!.isPremium;
     } else if (_series != null) {
       title = _series!.title;
       description = _series!.description;
@@ -324,7 +322,6 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
       rating = _series!.rating;
       duration = _series!.duration;
       releaseYear = _series!.releaseYear;
-      isPremium = _series!.isPremium;
     } else if (_drama != null) {
       title = _drama!.title;
       description = _drama!.description;
@@ -334,7 +331,6 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
       rating = _drama!.rating.toDouble();
       duration = _drama!.duration;
       releaseYear = _drama!.releaseYear;
-      isPremium = _drama!.isPremium;
     }
 
     final backdropImage = bannerUrl.isNotEmpty ? bannerUrl : posterUrl;
@@ -445,14 +441,16 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
                                   ),
                                 ),
                               ),
-                              if (isPremium) ...[
+                              // Premium tag (Uncomment if needed in future):
+                              /*
+                              if (isPremiumContent) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     gradient: const LinearGradient(
-                                      colors: [Color(0xFFFFB800), Color(0xFFFF8A00)],
+                                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
                                     ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -461,11 +459,13 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
                                     style: TextStyle(
                                       color: Colors.black,
                                       fontSize: 11,
-                                      fontWeight: FontWeight.w900,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
                                     ),
                                   ),
                                 ),
                               ],
+                              */
                             ],
                           ),
                           const SizedBox(height: 12),

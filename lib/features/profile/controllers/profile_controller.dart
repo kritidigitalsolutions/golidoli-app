@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
+import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
+import 'package:golidoli_app/features/micro_drama/views/micro_drama_player_screen.dart';
 import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
@@ -333,14 +335,46 @@ class DownloadsController extends GetxController {
         break;
 
       case DownloadMediaType.microDrama:
+        final dramaId = item.extra['dramaId']?.toString() ?? '';
+        final dramaEpisodes = appDownload.microDramaDownloads
+            .where((d) => dramaId.isNotEmpty
+                ? (d.extra['dramaId']?.toString() == dramaId)
+                : (d.parentTitle.isNotEmpty && d.parentTitle == item.parentTitle))
+            .toList();
+
+        final listToUse = dramaEpisodes.isNotEmpty ? dramaEpisodes : [item];
+        listToUse.sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+
+        final offlineEpisodes = listToUse.map((d) {
+          return MicroDramaEpisode(
+            id: d.id,
+            tvShowId: dramaId.isNotEmpty ? dramaId : d.id,
+            episodeNumber: d.episodeNumber,
+            title: d.title,
+            description: '',
+            videoUrl: d.localFilePath,
+            thumbnail: d.coverImage,
+            duration: d.durationSeconds.toString(),
+            isPremium: false,
+            isLocked: false,
+            isVertical: true,
+            views: 0,
+            likes: 0,
+            createdAt: d.downloadedAt.toIso8601String(),
+            updatedAt: d.downloadedAt.toIso8601String(),
+            version: 1,
+          );
+        }).toList();
+
+        final selectedIndex = listToUse.indexWhere((d) => d.id == item.id);
+        final initialIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => MoviePlayerScreen(
-              videoUrl: item.localFilePath,
-              title: item.title,
-              contentId: item.extra['dramaId']?.toString() ?? item.id,
-              contentType: 'microdrama',
-              episodeId: item.id,
+            builder: (context) => MicroDramaPlayerScreen(
+              dramaId: dramaId.isNotEmpty ? dramaId : item.id,
+              initialIndex: initialIndex,
+              offlineEpisodes: offlineEpisodes,
             ),
           ),
         );

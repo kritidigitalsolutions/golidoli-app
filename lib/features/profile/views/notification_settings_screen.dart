@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/profile/controllers/notification_settings_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class NotificationSettingsScreen extends StatelessWidget {
@@ -118,14 +119,7 @@ class NotificationSettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Get.back(),
-            child: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: AppColors.white,
-              size: 18,
-            ),
-          ),
+          const AppBackButton(),
           const SizedBox(width: 12),
           Text(
             'Notifications Settings',

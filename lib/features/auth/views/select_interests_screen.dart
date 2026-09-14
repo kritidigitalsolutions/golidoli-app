@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/auth/controllers/register_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/custom_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -36,15 +37,11 @@ class SelectInterestsScreen extends StatelessWidget {
             child: Column(
               children: [
                 // Back button
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.textColor,
-                      size: 20,
-                    ),
-                    onPressed: () => Get.back(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: AppBackButton(),
                   ),
                 ),
 

@@ -4,6 +4,8 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/audio_play/controllers/audio_player_controller.dart';
 import 'package:golidoli_app/features/audio_play/services/audio_download_service.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
@@ -111,21 +113,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () => Get.back(),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: AppColors.overlayColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
+                  const AppBackButton(isOverlay: true),
                   Column(
                     children: [
                       Text(
@@ -184,6 +172,14 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> {
           if (isDownloaded) {
             downloadService.removeDownload(epId);
           } else if (story != null) {
+            final isEpPrem = currentEp.isPremium || story.isPremium;
+            if (!checkDownloadable(
+              context,
+              isPremium: isEpPrem,
+              title: currentEp.title.isNotEmpty ? currentEp.title : story.title,
+            )) {
+              return;
+            }
             downloadService.downloadEpisode(currentEp, story);
           }
         },

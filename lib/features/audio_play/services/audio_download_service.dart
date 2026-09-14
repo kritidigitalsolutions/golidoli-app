@@ -41,6 +41,8 @@ class AudioDownloadService extends GetxService {
       }
     }
 
+    final isPrem = episode.isPremium || (story?.isPremium ?? false);
+
     await _appDownload.downloadMedia(
       id: episode.id,
       title: episode.title.isNotEmpty ? episode.title : 'Episode ${episode.episodeNumber}',
@@ -55,6 +57,7 @@ class AudioDownloadService extends GetxService {
         'storyTitle': story?.title ?? episode.storyTitle,
         'storyCoverImage': story?.coverImage ?? episode.storyCoverImage,
       },
+      isPremium: isPrem,
     );
   }
 

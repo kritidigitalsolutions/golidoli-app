@@ -1922,7 +1922,6 @@ class _HomeTabState extends State<HomeTab> {
     final title = item['title'] ?? '';
     final type = item['type'] ?? 'movie';
     final id = item['id'] ?? '';
-    final isPremium = item['isPremium'] == true;
 
     return GestureDetector(
       onTap: () {
@@ -1999,7 +1998,10 @@ class _HomeTabState extends State<HomeTab> {
                           ),
                         ),
                       ),
-                    if (isPremium)
+
+                    // Premium badge (Uncomment if needed in future):
+                    /*
+                    if (item['isPremium'] == true)
                       Positioned(
                         top: 6,
                         right: 6,
@@ -2009,19 +2011,22 @@ class _HomeTabState extends State<HomeTab> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.amber,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                            ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'PREMIUM',
                             style: TextStyle(
-                              fontSize: 8,
+                              fontSize: 7.5,
                               color: Colors.black,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
+                    */
                   ],
                 ),
               ),

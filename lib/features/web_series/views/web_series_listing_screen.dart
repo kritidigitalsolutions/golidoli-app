@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/model/SeriesModel.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -162,14 +163,7 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
               )
             : Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Get.back(),
-                    child: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.white,
-                      size: 18,
-                    ),
-                  ),
+                  const AppBackButton(),
                   const SizedBox(width: 12),
                   Text(
                     _controller.currentCategoryName == 'All'
@@ -436,7 +430,9 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
 }
 
   Widget _buildCard(Series item) {
-    final img = formatMediaUrl(item.poster);
+    final img = formatMediaUrl(
+      item.poster.isNotEmpty ? item.poster : item.banner,
+    );
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -450,43 +446,31 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              img,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: AppColors.cardColor,
-                child: Center(
-                  child: Icon(
-                    Icons.tv_rounded,
-                    color: AppColors.hintTextColor,
-                    size: 32,
-                  ),
-                ),
-              ),
-            ),
-            // Premium badge
-            if (item.isPremium)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'PREMIUM',
-                    style: text8(
-                      color: AppColors.black,
-                      fontWeight: FontWeight.bold,
+            img.isNotEmpty
+                ? Image.network(
+                    img,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: AppColors.cardColor,
+                      child: const Center(
+                        child: Icon(
+                          Icons.tv_rounded,
+                          color: AppColors.hintTextColor,
+                          size: 32,
+                        ),
+                      ),
+                    ),
+                  )
+                : Container(
+                    color: AppColors.cardColor,
+                    child: const Center(
+                      child: Icon(
+                        Icons.tv_rounded,
+                        color: AppColors.hintTextColor,
+                        size: 32,
+                      ),
                     ),
                   ),
-                ),
-              ),
             // Coming soon badge
             if (item.isComingSoon)
               Positioned(
@@ -510,6 +494,33 @@ class _WebSeriesListingScreenState extends State<WebSeriesListingScreen> {
                   ),
                 ),
               ),
+            // Premium badge (Uncomment if needed in future):
+            /*
+            if (item.isPremium)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'PREMIUM',
+                    style: text8(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            */
             // Bottom Title overlay
             Positioned(
               bottom: 0,

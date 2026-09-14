@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/audio_play/views/audio_stories_screen.dart';
 import 'package:golidoli_app/features/home/controllers/content_controller.dart';
@@ -14,6 +13,7 @@ import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_scree
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
 import 'package:golidoli_app/features/web_series/views/web_series_detail_screen.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class DiscoverTab extends StatefulWidget {
@@ -180,7 +180,23 @@ class _DiscoverTabState extends State<DiscoverTab> {
     final items = _contentController.searchContents.value?.content ?? [];
 
     if (status == Status.loading) {
-      return const ShimmerGrid(itemCount: 9);
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Searching for "${_currentQuery.value}"...',
+              style: text13(color: AppColors.secondaryTextColor),
+            ),
+            const SizedBox(height: 12),
+            const ShimmerGrid(
+              itemCount: 9,
+              padding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      );
     }
 
     if (status == Status.error) {
@@ -201,7 +217,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
         child: Center(
           child: Column(
             children: [
-              Icon(
+              const Icon(
                 Icons.search_off_rounded,
                 size: 48,
                 color: AppColors.secondaryTextColor,
@@ -218,7 +234,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -226,12 +242,17 @@ class _DiscoverTabState extends State<DiscoverTab> {
             '${items.length} result${items.length == 1 ? '' : 's'} for "${_currentQuery.value}"',
             style: text13(color: AppColors.secondaryTextColor),
           ),
-          const SizedBox(height: 14),
-          ListView.separated(
+          const SizedBox(height: 12),
+          GridView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 0.62,
+            ),
             itemBuilder: (_, i) => _buildSearchResultCard(items[i]),
           ),
         ],
@@ -241,122 +262,192 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
   Widget _buildSearchResultCard(HomeContent item) {
     final imageUrl = item.poster.isNotEmpty ? item.poster : item.banner;
+    final formattedImg = formatMediaUrl(imageUrl);
     final typeLabel = _typeLabel(item.type);
     final typeColor = _typeColor(item.type);
 
     return GestureDetector(
       onTap: () => _navigateToDetail(item),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.borderColor.withValues(alpha: 0.3),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardColor,
+            borderRadius: BorderRadius.circular(10),
           ),
-        ),
-        child: Row(
-          children: [
-            // Poster
-            ClipRRect(
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(12),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: "${AppUrl.baseUrl}$imageUrl",
-                width: 80,
-                height: 110,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Poster Image
+              CachedNetworkImage(
+                imageUrl: formattedImg,
                 fit: BoxFit.cover,
-                errorWidget: (context, url, error) => Container(
-                  width: 80,
-                  height: 110,
+                errorWidget: (_, _, _) => Container(
                   color: AppColors.surfaceColor,
-                  child: const Icon(
-                    Icons.image_not_supported_outlined,
-                    color: AppColors.hintTextColor,
+                  child: Center(
+                    child: Icon(
+                      _typeIcon(item.type),
+                      color: AppColors.hintTextColor,
+                      size: 28,
+                    ),
+                  ),
+                ),
+                placeholder: (_, _) => const ShimmerEffect(
+                  child: ShimmerBox(borderRadius: 10),
+                ),
+              ),
+
+              // Type badge (Movie / Series / Drama)
+              Positioned(
+                top: 6,
+                left: 6,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    typeLabel,
+                    style: appTextStyle(
+                      fontSize: 7,
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            // Content info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
+
+              // Premium badge (Uncomment if needed in future):
+              /*
+              if (item.isPremium)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
                       ),
-                      decoration: BoxDecoration(
-                        color: typeColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        typeLabel,
-                        style: text10(
-                          color: typeColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      'PREMIUM',
+                      style: appTextStyle(
+                        fontSize: 7,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    // Title
-                    Text(
-                      item.title,
-                      style: text14(fontWeight: FontWeight.w600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    // Meta row
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          color: AppColors.primaryColor,
-                          size: 14,
-                        ),
-                        const SizedBox(width: 3),
-                        Text(
-                          item.rating.toStringAsFixed(1),
-                          style: text12(color: AppColors.primaryColor),
-                        ),
-                        const SizedBox(width: 10),
-                        if (item.language.isNotEmpty)
-                          Text(
-                            item.language,
-                            style: text11(color: AppColors.secondaryTextColor),
-                          ),
+                  ),
+                ),
+              */
+
+              // Bottom gradient overlay with title & rating
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(6, 18, 6, 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.92),
                       ],
                     ),
-                    if (item.genre.isNotEmpty) ...[
-                      const SizedBox(height: 4),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        item.genre.take(2).join(' • '),
-                        style: text11(color: AppColors.hintTextColor),
+                        item.title,
+                        style: text11(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (item.rating > 0) ...[
+                            const Icon(
+                              Icons.star_rounded,
+                              color: AppColors.primaryColor,
+                              size: 11,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              item.rating.toStringAsFixed(1),
+                              style: appTextStyle(
+                                fontSize: 9,
+                                color: AppColors.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          if (item.language.isNotEmpty) ...[
+                            if (item.rating > 0)
+                              Text(
+                                ' • ',
+                                style: appTextStyle(
+                                  fontSize: 8,
+                                  color: AppColors.hintTextColor,
+                                ),
+                              ),
+                            Expanded(
+                              child: Text(
+                                item.language,
+                                style: appTextStyle(
+                                  fontSize: 9,
+                                  color: AppColors.secondaryTextColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: AppColors.secondaryTextColor,
-              size: 14,
-            ),
-            const SizedBox(width: 12),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  IconData _typeIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'movie':
+        return Icons.movie_outlined;
+      case 'series':
+      case 'web-series':
+      case 'webseries':
+        return Icons.tv_rounded;
+      case 'microdrama':
+      case 'micro-drama':
+      case 'micro_drama':
+        return Icons.video_collection_outlined;
+      default:
+        return Icons.play_circle_outline;
+    }
   }
 
   String _typeLabel(String type) {
@@ -553,7 +644,7 @@ class _DiscoverTabState extends State<DiscoverTab> {
                     padding: const EdgeInsets.only(right: 20),
                     child: Icon(
                       Icons.headphones_rounded,
-                      color: AppColors.primaryColor.withOpacity(0.3),
+                      color: AppColors.primaryColor.withValues(alpha: 0.3),
                       size: 90,
                     ),
                   ),

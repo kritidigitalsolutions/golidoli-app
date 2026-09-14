@@ -4,6 +4,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/audio_play/controllers/audio_stories_controller.dart';
 import 'package:golidoli_app/features/audio_play/models/audio_story_model.dart';
 import 'package:golidoli_app/features/audio_play/widgets/audio_mini_player.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -106,24 +107,7 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Get.back(),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.borderColor.withValues(alpha: 0.4),
-                ),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: AppColors.white,
-                size: 16,
-              ),
-            ),
-          ),
+          const AppBackButton(),
           const SizedBox(width: 12),
           Text('Audio Stories', style: text18(fontWeight: FontWeight.bold)),
         ],
@@ -433,28 +417,27 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
                   ),
                 ),
               ),
+              // Premium badge (Uncomment if needed in future):
+              /*
               if (story.isPremium)
                 Positioned(
-                  top: 14,
-                  right: 14,
+                  top: 12,
+                  right: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.amber,
-                      borderRadius: BorderRadius.circular(4),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                      ),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       'PREMIUM',
-                      style: text10(
-                        color: AppColors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: text8(color: Colors.black, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
+              */
               Positioned(
                 bottom: 16,
                 left: 16,
@@ -584,6 +567,8 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
                       errorBuilder: (_, _, _) =>
                           _fallbackPlaceholder(100, 110),
                     ),
+                    // Premium badge (Uncomment if needed in future):
+                    /*
                     if (story.isPremium)
                       Positioned(
                         top: 6,
@@ -594,18 +579,21 @@ class _AudioStoriesScreenState extends State<AudioStoriesScreen> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.amber,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                            ),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'PREMIUM',
                             style: text8(
-                              color: AppColors.black,
+                              color: Colors.black,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
+                    */
                   ],
                 ),
               ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/shared/widgets/custom_button.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -152,11 +152,7 @@ class _RateAppScreenState extends State<RateAppScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
-          CustomIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onPressed: Get.back,
-            color: AppColors.white,
-          ),
+          const AppBackButton(),
           const SizedBox(width: 12),
           Text('Rate App', style: text18(fontWeight: FontWeight.w700)),
         ],

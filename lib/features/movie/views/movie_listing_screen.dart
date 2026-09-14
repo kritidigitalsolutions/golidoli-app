@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/movie/models/MovieModel.dart';
 import 'package:golidoli_app/features/movie/views/movie_details_screen.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -162,14 +163,7 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
               )
             : Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: AppColors.white,
-                      size: 18,
-                    ),
-                  ),
+                  const AppBackButton(),
                   const SizedBox(width: 12),
                   Text(
                     _controller.currentCategoryName == 'All'
@@ -432,7 +426,9 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
   }
 
   Widget _buildCard(MovieModel movie) {
-    final img = formatMediaUrl(movie.poster);
+    final img = formatMediaUrl(
+      movie.poster.isNotEmpty ? movie.poster : movie.banner,
+    );
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -447,43 +443,31 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              img,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: AppColors.cardColor,
-                child: Center(
-                  child: Icon(
-                    Icons.movie_outlined,
-                    color: AppColors.hintTextColor,
-                    size: 32,
-                  ),
-                ),
-              ),
-            ),
-            // Premium badge
-            if (movie.isPremium)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'PREMIUM',
-                    style: text8(
-                      color: AppColors.black,
-                      fontWeight: FontWeight.bold,
+            img.isNotEmpty
+                ? Image.network(
+                    img,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: AppColors.cardColor,
+                      child: const Center(
+                        child: Icon(
+                          Icons.movie_outlined,
+                          color: AppColors.hintTextColor,
+                          size: 32,
+                        ),
+                      ),
+                    ),
+                  )
+                : Container(
+                    color: AppColors.cardColor,
+                    child: const Center(
+                      child: Icon(
+                        Icons.movie_outlined,
+                        color: AppColors.hintTextColor,
+                        size: 32,
+                      ),
                     ),
                   ),
-                ),
-              ),
             // Coming soon badge
             if (movie.isComingSoon)
               Positioned(
@@ -507,6 +491,33 @@ class _MovieListingScreenState extends State<MovieListingScreen> {
                   ),
                 ),
               ),
+            // Premium badge (Uncomment if needed in future):
+            /*
+            if (movie.isPremium)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'PREMIUM',
+                    style: text8(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            */
             // Gradient overlay and info
             Positioned(
               bottom: 0,

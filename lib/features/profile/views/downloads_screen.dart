@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -5,6 +8,7 @@ import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/widgets/profile_page_scaffold.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
+import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
@@ -93,14 +97,19 @@ class DownloadsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              ListView.separated(
+              GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.62,
+                ),
                 itemBuilder: (_, index) {
                   final item = items[index];
-                  return _DownloadedMediaTile(
+                  return _DownloadedMediaGridCard(
                     item: item,
                     onPlay: () => controller.playDownloadedItem(context, item),
                     onDelete: () => _confirmDelete(context, item),
@@ -250,12 +259,12 @@ class DownloadsScreen extends StatelessWidget {
   }
 }
 
-class _DownloadedMediaTile extends StatelessWidget {
+class _DownloadedMediaGridCard extends StatelessWidget {
   final DownloadedMediaItem item;
   final VoidCallback onPlay;
   final VoidCallback onDelete;
 
-  const _DownloadedMediaTile({
+  const _DownloadedMediaGridCard({
     required this.item,
     required this.onPlay,
     required this.onDelete,
@@ -263,140 +272,224 @@ class _DownloadedMediaTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minutes = item.durationSeconds ~/ 60;
-    final seconds = item.durationSeconds % 60;
-    final durationText = item.durationSeconds > 0
-        ? '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')} mins'
-        : '';
-
     final typeLabel = _getMediaTypeLabel(item.mediaType);
     final typeColor = _getMediaTypeColor(item.mediaType);
 
     return GestureDetector(
       onTap: onPlay,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppColors.borderColor.withValues(alpha: 0.4),
+      onLongPress: onDelete,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.cardColor,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Cover / Poster Image
+              _buildCoverImage(),
+
+              // Center play icon overlay
+              Center(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    color: AppColors.white,
+                    size: 20,
+                  ),
+                ),
+              ),
+
+              // Top row: Type badge & Delete button
+              Positioned(
+                top: 5,
+                left: 5,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    typeLabel,
+                    style: appTextStyle(
+                      fontSize: 7.5,
+                      color: AppColors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              Positioned(
+                top: 4,
+                right: 4,
+                child: GestureDetector(
+                  onTap: onDelete,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Colors.white70,
+                      size: 13,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Bottom gradient overlay with title & file info
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(6, 16, 6, 6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.95),
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (item.parentTitle.isNotEmpty)
+                        Text(
+                          item.parentTitle,
+                          style: appTextStyle(
+                            fontSize: 8,
+                            color: AppColors.secondaryTextColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Text(
+                        item.title,
+                        style: text11(
+                          color: AppColors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.offline_pin_rounded,
+                            color: AppColors.primaryColor,
+                            size: 10,
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              item.fileSize.isNotEmpty
+                                  ? item.fileSize
+                                  : 'Offline',
+                              style: appTextStyle(
+                                fontSize: 8.5,
+                                color: AppColors.hintTextColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (item.episodeNumber > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 1,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceColor.withValues(alpha: 0.8),
+                                borderRadius: BorderRadius.circular(3),
+                              ),
+                              child: Text(
+                                'EP ${item.episodeNumber}',
+                                style: appTextStyle(
+                                  fontSize: 7.5,
+                                  color: AppColors.primaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          children: [
-            // Thumbnail with badge
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(
-                width: 52,
-                height: 52,
-                child: item.coverImage.isNotEmpty
-                    ? Image.network(
-                        formatMediaUrl(item.coverImage),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            _fallbackPlaceholder(item.mediaType),
-                      )
-                    : _fallbackPlaceholder(item.mediaType),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Title & Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: typeColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: typeColor.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Text(
-                          typeLabel,
-                          style: appTextStyle(
-                            fontSize: 9,
-                            color: typeColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      if (item.parentTitle.isNotEmpty)
-                        Expanded(
-                          child: Text(
-                            item.parentTitle,
-                            style: text11(color: AppColors.secondaryTextColor),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.title,
-                    style: text13(fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.offline_pin_rounded,
-                        size: 12,
-                        color: AppColors.primaryColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        item.fileSize.isNotEmpty
-                            ? (durationText.isNotEmpty
-                                  ? '${item.fileSize} • $durationText'
-                                  : item.fileSize)
-                            : (durationText.isNotEmpty
-                                  ? durationText
-                                  : 'Offline'),
-                        style: text10(color: AppColors.hintTextColor),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // Play icon
-            IconButton(
-              icon: const Icon(
-                Icons.play_circle_fill_rounded,
-                color: AppColors.primaryColor,
-                size: 32,
-              ),
-              onPressed: onPlay,
-            ),
-
-            // Delete icon
-            IconButton(
-              icon: const Icon(
-                Icons.delete_outline_rounded,
-                color: AppColors.hintTextColor,
-                size: 22,
-              ),
-              onPressed: onDelete,
-            ),
-          ],
-        ),
       ),
+    );
+  }
+
+  Widget _buildCoverImage() {
+    final raw = item.coverImage.trim();
+    if (raw.isEmpty) {
+      return _fallbackPlaceholder(item.mediaType);
+    }
+
+    if (isLocalFilePath(raw)) {
+      final cleanPath = raw.startsWith('file://')
+          ? raw.replaceFirst('file://', '')
+          : raw;
+      return Image.file(
+        File(cleanPath),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) =>
+            _fallbackPlaceholder(item.mediaType),
+      );
+    }
+
+    final formatted = formatMediaUrl(raw);
+    if (isLocalFilePath(formatted)) {
+      final cleanPath = formatted.startsWith('file://')
+          ? formatted.replaceFirst('file://', '')
+          : formatted;
+      return Image.file(
+        File(cleanPath),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) =>
+            _fallbackPlaceholder(item.mediaType),
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: formatted,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => const ShimmerEffect(
+        child: ShimmerBox(borderRadius: 10),
+      ),
+      errorWidget: (context, url, error) =>
+          _fallbackPlaceholder(item.mediaType),
     );
   }
 
@@ -430,13 +523,14 @@ class _DownloadedMediaTile extends StatelessWidget {
     IconData iconData = Icons.headphones_rounded;
     if (type == DownloadMediaType.movie) iconData = Icons.movie_rounded;
     if (type == DownloadMediaType.webSeries) iconData = Icons.tv_rounded;
-    if (type == DownloadMediaType.microDrama)
+    if (type == DownloadMediaType.microDrama) {
       iconData = Icons.play_lesson_rounded;
+    }
 
     return Container(
-      color: AppColors.cardColor,
+      color: AppColors.surfaceColor,
       child: Center(
-        child: Icon(iconData, color: AppColors.primaryColor, size: 24),
+        child: Icon(iconData, color: AppColors.hintTextColor, size: 24),
       ),
     );
   }

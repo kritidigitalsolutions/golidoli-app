@@ -15,6 +15,7 @@ import 'package:golidoli_app/utils/text_style.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -117,27 +118,41 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
 
   // ── Hero cover ─────────────────────────────────────────────────────────────
   Widget _buildHero(Microdrama drama) {
-    final bannerUrl = formatMediaUrl(drama.banner);
+    final bannerUrl = formatMediaUrl(
+      drama.banner.isNotEmpty ? drama.banner : drama.poster,
+    );
     return Stack(
       children: [
         SizedBox(
           height: 280,
           width: double.infinity,
-          child: Image.network(
-            bannerUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              height: 280,
-              color: AppColors.cardColor,
-              child: Center(
-                child: Icon(
-                  Icons.movie_outlined,
-                  color: AppColors.hintTextColor,
-                  size: 60,
+          child: bannerUrl.isNotEmpty
+              ? Image.network(
+                  bannerUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    height: 280,
+                    color: AppColors.cardColor,
+                    child: const Center(
+                      child: Icon(
+                        Icons.movie_outlined,
+                        color: AppColors.hintTextColor,
+                        size: 60,
+                      ),
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 280,
+                  color: AppColors.cardColor,
+                  child: const Center(
+                    child: Icon(
+                      Icons.movie_outlined,
+                      color: AppColors.hintTextColor,
+                      size: 60,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
         ),
         // Bottom gradient
         Container(
@@ -161,13 +176,12 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _iconBtn(
-                    Icons.arrow_back_ios_new_rounded,
-                    () => Navigator.of(context).maybePop(),
-                  ),
+                  const AppBackButton(isOverlay: true),
                   _iconBtn(Icons.share_outlined, () async {
                     try {
-                      final imageUrl = formatMediaUrl(drama.banner);
+                      final imageUrl = formatMediaUrl(
+                        drama.banner.isNotEmpty ? drama.banner : drama.poster,
+                      );
                       final response = await http.get(Uri.parse(imageUrl));
 
                       if (response.statusCode != 200) {
@@ -203,41 +217,14 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
             ),
           ),
         ),
-        // Title at bottom of hero with Premium badge
+        // Title at bottom of hero
         Positioned(
           bottom: 14,
           left: 16,
           right: 16,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Text(
-                  drama.title,
-                  style: text22(fontWeight: FontWeight.bold),
-                ),
-              ),
-              if (drama.isPremium) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'PREMIUM',
-                    style: text10(
-                      color: AppColors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ],
+          child: Text(
+            drama.title,
+            style: text22(fontWeight: FontWeight.bold),
           ),
         ),
       ],
@@ -278,21 +265,6 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
           // Additional tags: total episodes, language, etc.
           _buildTag('${drama.totalEpisodes} Episodes'),
           _buildTag(drama.language),
-          if (drama.isPremium)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.amber,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'PREMIUM',
-                style: text10(
-                  color: AppColors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
           if (drama.isComingSoon)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -308,6 +280,26 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                 ),
               ),
             ),
+          // Premium badge (Uncomment if needed in future):
+          /*
+          if (drama.isPremium)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'PREMIUM',
+                style: text10(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          */
         ],
       ),
     );
@@ -656,7 +648,11 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
             itemBuilder: (context, i) {
               final ep = episodes[i];
               final isSelected = selectedEpisode.value == i;
-              final thumbUrl = formatMediaUrl(ep.thumbnail);
+              final thumbUrl = formatMediaUrl(
+                ep.thumbnail.isNotEmpty
+                    ? ep.thumbnail
+                    : (drama.poster.isNotEmpty ? drama.poster : drama.banner),
+              );
 
               return GestureDetector(
                 onTap: () => _onEpisodeTap(i, ep.isLocked),
@@ -680,23 +676,35 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: Stack(
                           children: [
-                            Image.network(
-                              thumbUrl,
-                              width: 100,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(
-                                width: 100,
-                                height: 60,
-                                color: AppColors.cardColor,
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.movie_outlined,
-                                    color: AppColors.hintTextColor,
+                            thumbUrl.isNotEmpty
+                                ? Image.network(
+                                    thumbUrl,
+                                    width: 100,
+                                    height: 60,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      width: 100,
+                                      height: 60,
+                                      color: AppColors.cardColor,
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.movie_outlined,
+                                          color: AppColors.hintTextColor,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 100,
+                                    height: 60,
+                                    color: AppColors.cardColor,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.movie_outlined,
+                                        color: AppColors.hintTextColor,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ),
                             Positioned.fill(
                               child: Center(
                                 child: Container(
@@ -830,6 +838,14 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                           onPressed: () {
+                            final isEpPrem = ep.isPremium || ep.isLocked || drama.isPremium;
+                            if (!checkDownloadable(
+                              context,
+                              isPremium: isEpPrem,
+                              title: ep.title.isNotEmpty ? ep.title : drama.title,
+                            )) {
+                              return;
+                            }
                             downloadService.downloadMedia(
                               id: ep.id,
                               title: ep.title.isNotEmpty
@@ -841,6 +857,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                               mediaType: DownloadMediaType.microDrama,
                               episodeNumber: ep.episodeNumber,
                               extra: {'dramaId': drama.id},
+                              isPremium: isEpPrem,
                             );
                           },
                         );
@@ -889,6 +906,50 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
               style: text12(color: AppColors.secondaryTextColor),
             ),
             const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.play_circle_fill_rounded,
+                color: AppColors.primaryColor,
+              ),
+              title: Text(
+                'Watch Offline',
+                style: text14(color: AppColors.white),
+              ),
+              onTap: () {
+                Get.back();
+                final localPath = downloadService.getLocalFilePath(ep.id);
+                if (localPath != null && localPath.isNotEmpty) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MicroDramaPlayerScreen(
+                        dramaId: widget.id,
+                        initialIndex: 0,
+                        offlineEpisodes: [
+                          MicroDramaEpisode(
+                            id: ep.id,
+                            tvShowId: widget.id,
+                            episodeNumber: ep.episodeNumber,
+                            title: ep.title,
+                            description: ep.description,
+                            videoUrl: localPath,
+                            thumbnail: ep.thumbnail,
+                            duration: ep.duration,
+                            isPremium: false,
+                            isLocked: false,
+                            isVertical: true,
+                            views: ep.views,
+                            likes: ep.likes,
+                            createdAt: ep.createdAt,
+                            updatedAt: ep.updatedAt,
+                            version: ep.version,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
             ListTile(
               leading: const Icon(
                 Icons.delete_outline_rounded,
@@ -943,19 +1004,29 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(
-                        imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          color: AppColors.cardColor,
-                          child: const Center(
-                            child: Icon(
-                              Icons.movie_outlined,
-                              color: AppColors.hintTextColor,
+                      imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                color: AppColors.cardColor,
+                                child: const Center(
+                                  child: Icon(
+                                    Icons.movie_outlined,
+                                    color: AppColors.hintTextColor,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Container(
+                              color: AppColors.cardColor,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.movie_outlined,
+                                  color: AppColors.hintTextColor,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ),
                       // Gradient
                       Positioned(
                         bottom: 0,

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/utils/helpers.dart';
@@ -18,6 +17,7 @@ import 'package:golidoli_app/features/movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 
 class MovieDetailsScreen extends StatefulWidget {
@@ -115,24 +115,36 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
   }
 
   Widget _buildHero(MovieModel movie) {
+    final heroImg = formatMediaUrl(
+      movie.banner.isNotEmpty ? movie.banner : movie.poster,
+    );
     return Stack(
       children: [
         // Backdrop image
         SizedBox(
           height: 240,
           width: double.infinity,
-          child: Image.network(
-            "${AppUrl.baseUrl}${movie.banner}",
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              color: AppColors.cardColor,
-              child: const Icon(
-                Icons.movie_outlined,
-                color: AppColors.hintTextColor,
-                size: 48,
-              ),
-            ),
-          ),
+          child: heroImg.isNotEmpty
+              ? Image.network(
+                  heroImg,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    color: AppColors.cardColor,
+                    child: const Icon(
+                      Icons.movie_outlined,
+                      color: AppColors.hintTextColor,
+                      size: 48,
+                    ),
+                  ),
+                )
+              : Container(
+                  color: AppColors.cardColor,
+                  child: const Icon(
+                    Icons.movie_outlined,
+                    color: AppColors.hintTextColor,
+                    size: 48,
+                  ),
+                ),
         ),
         // Gradient overlay
         Container(
@@ -156,25 +168,13 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.overlayColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
+                  const AppBackButton(isOverlay: true),
                   GestureDetector(
                     onTap: () async {
                       try {
-                        final imageUrl = formatMediaUrl(movie.banner);
+                        final imageUrl = formatMediaUrl(
+                          movie.banner.isNotEmpty ? movie.banner : movie.poster,
+                        );
                         final response = await http.get(Uri.parse(imageUrl));
 
                         if (response.statusCode != 200) {
@@ -225,26 +225,6 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
             ),
           ),
         ),
-        // Premium badge if applicable
-        if (movie.isPremium)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.amber,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'PREMIUM',
-                style: text10(
-                  color: AppColors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
         // Coming soon badge if applicable
         if (movie.isComingSoon)
           Positioned(
@@ -265,6 +245,30 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               ),
             ),
           ),
+        // Premium badge (Uncomment if needed in future):
+        /*
+        if (movie.isPremium)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'PREMIUM',
+                style: text10(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        */
       ],
     );
   }
@@ -278,21 +282,36 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           // Movie poster
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              "${AppUrl.baseUrl}${movie.poster}",
-              width: 90,
-              height: 120,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                width: 90,
-                height: 120,
-                color: AppColors.cardColor,
-                child: const Icon(
-                  Icons.movie_outlined,
-                  color: AppColors.hintTextColor,
-                ),
-              ),
-            ),
+            child: () {
+              final posterImg = formatMediaUrl(
+                movie.poster.isNotEmpty ? movie.poster : movie.banner,
+              );
+              return posterImg.isNotEmpty
+                  ? Image.network(
+                      posterImg,
+                      width: 90,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 90,
+                        height: 120,
+                        color: AppColors.cardColor,
+                        child: const Icon(
+                          Icons.movie_outlined,
+                          color: AppColors.hintTextColor,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 90,
+                      height: 120,
+                      color: AppColors.cardColor,
+                      child: const Icon(
+                        Icons.movie_outlined,
+                        color: AppColors.hintTextColor,
+                      ),
+                    );
+            }(),
           ),
           const SizedBox(width: 14),
           // Info
@@ -540,15 +559,25 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                     if (isDownloaded) {
                       _showDownloadOptions(context, movie, downloadService);
                     } else {
+                      if (!checkDownloadable(
+                        context,
+                        isPremium: movie.isPremium,
+                        title: movie.title,
+                      )) {
+                        return;
+                      }
                       downloadService.downloadMedia(
                         id: movie.id,
                         title: movie.title,
                         parentTitle: movie.genre.join(', '),
-                        coverImage: movie.poster.isNotEmpty
-                            ? movie.poster
-                            : movie.banner,
+                        coverImage: formatMediaUrl(
+                          movie.poster.isNotEmpty
+                              ? movie.poster
+                              : movie.banner,
+                        ),
                         remoteUrl: movie.videoUrl,
                         mediaType: DownloadMediaType.movie,
+                        isPremium: movie.isPremium,
                       );
                     }
                   },
@@ -751,19 +780,34 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                 },
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    "${AppUrl.baseUrl}${movie.poster}",
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: AppColors.cardColor,
-                      child: const Center(
-                        child: Icon(
-                          Icons.movie_outlined,
-                          color: AppColors.hintTextColor,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: () {
+                    final mPoster = formatMediaUrl(
+                      movie.poster.isNotEmpty ? movie.poster : movie.banner,
+                    );
+                    return mPoster.isNotEmpty
+                        ? Image.network(
+                            mPoster,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              color: AppColors.cardColor,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.movie_outlined,
+                                  color: AppColors.hintTextColor,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: AppColors.cardColor,
+                            child: const Center(
+                              child: Icon(
+                                Icons.movie_outlined,
+                                color: AppColors.hintTextColor,
+                              ),
+                            ),
+                          );
+                  }(),
                 ),
               );
             },

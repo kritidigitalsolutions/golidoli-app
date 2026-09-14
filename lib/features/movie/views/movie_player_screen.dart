@@ -8,6 +8,7 @@ import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
@@ -68,10 +69,12 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         : null;
 
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      final formattedUrl = formatMediaUrl(widget.videoUrl);
-      _qualityUrls['Auto'] = formattedUrl;
-      _selectedQuality = 'Auto';
-      _initializePlayer(formattedUrl);
+      final rawUrl = widget.videoUrl!.trim();
+      final isLocal = isLocalFilePath(rawUrl);
+      final playUrl = isLocal ? rawUrl : formatMediaUrl(rawUrl);
+      _qualityUrls[isLocal ? 'Offline' : 'Auto'] = playUrl;
+      _selectedQuality = isLocal ? 'Offline' : 'Auto';
+      _initializePlayer(playUrl);
     } else if (widget.episodeId != null && widget.episodeId!.isNotEmpty) {
       _episodeController = Get.put(EpisodeController());
 
@@ -353,15 +356,32 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   String _getFullUrl(String videoUrl) {
+    if (isLocalFilePath(videoUrl)) return videoUrl;
     return formatMediaUrl(videoUrl);
   }
 
   void _initializePlayer(String videoUrl) {
     try {
-      final fullUrl = _getFullUrl(videoUrl);
-      if (!videoUrl.startsWith('http://') && !videoUrl.startsWith('https://') && File(videoUrl).existsSync()) {
-        _videoController = VideoPlayerController.file(File(videoUrl));
+      final isLocal = isLocalFilePath(videoUrl);
+      if (isLocal) {
+        final cleanPath = videoUrl.startsWith('file://')
+            ? videoUrl.replaceFirst('file://', '')
+            : videoUrl;
+        final file = File(cleanPath);
+        if (file.existsSync()) {
+          _videoController = VideoPlayerController.file(file);
+        } else {
+          debugPrint('❌ Local video file not found: $cleanPath');
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _errorMessage = 'Downloaded video file not found on device.';
+            });
+          }
+          return;
+        }
       } else {
+        final fullUrl = _getFullUrl(videoUrl);
         _videoController = VideoPlayerController.networkUrl(Uri.parse(fullUrl));
       }
 
@@ -553,14 +573,11 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
       child: Row(
         children: [
-          IconButton(
+          AppBackButton(
+            isOverlay: true,
             onPressed: onBack,
-            icon: const Icon(
-              Icons.arrow_back_ios_new_rounded,
-              color: AppColors.white,
-              size: 18,
-            ),
           ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
@@ -888,7 +905,7 @@ class _ControlsOverlay extends StatelessWidget {
                           : Icons.volume_up_rounded,
                       onTap: toggleMute,
                     ),
-                    if (qualityUrls.isNotEmpty)
+                    if (qualityUrls.length > 1)
                       _SmallAction(
                         icon: Icons.hd_rounded,
                         onTap: () => _showQualitySheet(context),

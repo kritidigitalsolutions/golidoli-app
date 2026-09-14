@@ -9,6 +9,7 @@ import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_contro
 import 'package:golidoli_app/features/micro_drama/models/continue_watching_model.dart';
 import 'package:golidoli_app/features/micro_drama/models/micro_drama_model.dart';
 import 'package:golidoli_app/features/micro_drama/views/micro_drama_detail_screen.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
@@ -248,24 +249,7 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => Navigator.of(context).maybePop(),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.borderColor.withValues(alpha: 0.4),
-                ),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: AppColors.white,
-                size: 16,
-              ),
-            ),
-          ),
+          const AppBackButton(),
           const SizedBox(width: 12),
           Obx(() {
             final name = currentCategoryName;
@@ -729,29 +713,6 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
                 ),
               ),
             ),
-            // Premium badge
-            if (drama.isPremium)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.amber,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'PREMIUM',
-                    style: text8(
-                      color: AppColors.black,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
             // Coming soon badge
             if (drama.isComingSoon)
               Positioned(
@@ -775,6 +736,33 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
                   ),
                 ),
               ),
+            // Premium badge (Uncomment if needed in future):
+            /*
+            if (drama.isPremium)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    ),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'PREMIUM',
+                    style: text8(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            */
             // Gradient overlay
             Positioned(
               bottom: 0,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/shared/widgets/custom_button.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 
 class ProfilePageScaffold extends StatelessWidget {
@@ -47,11 +46,7 @@ class ProfilePageScaffold extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Row(
                 children: [
-                  CustomIconButton(
-                    icon: Icons.arrow_back_ios_new_rounded,
-                    onPressed: Get.back,
-                    color: AppColors.white,
-                  ),
+                  const AppBackButton(),
 
                   const SizedBox(width: 12),
 

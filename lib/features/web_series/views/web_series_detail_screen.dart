@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/core/services/app_download_service.dart';
 import 'package:golidoli_app/features/web_series/controllers/series_controller.dart';
 import 'package:golidoli_app/features/web_series/controllers/episode_controller.dart';
@@ -20,6 +19,7 @@ import '../../movie/views/movie_player_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/controllers/interaction_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 
 class WebSeriesDetailScreen extends StatefulWidget {
@@ -127,20 +127,38 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
     );
   }
 
-  // ── Hero ──────────────────────────────────────────────────────────────────
   Widget _buildHero(Series series) {
-    final bannerImg = formatMediaUrl(series.banner);
+    final bannerImg = formatMediaUrl(
+      series.banner.isNotEmpty ? series.banner : series.poster,
+    );
     return Stack(
       children: [
         SizedBox(
           height: 240,
           width: double.infinity,
-          child: Image.network(
-            bannerImg,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) =>
-                Container(height: 240, color: AppColors.cardColor),
-          ),
+          child: bannerImg.isNotEmpty
+              ? Image.network(
+                  bannerImg,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    height: 240,
+                    color: AppColors.cardColor,
+                    child: const Icon(
+                      Icons.tv_rounded,
+                      color: AppColors.hintTextColor,
+                      size: 48,
+                    ),
+                  ),
+                )
+              : Container(
+                  height: 240,
+                  color: AppColors.cardColor,
+                  child: const Icon(
+                    Icons.tv_rounded,
+                    color: AppColors.hintTextColor,
+                    size: 48,
+                  ),
+                ),
         ),
         Container(
           height: 240,
@@ -163,10 +181,12 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _iconBtn(Icons.arrow_back_ios_new_rounded, () => Get.back()),
+                  const AppBackButton(isOverlay: true),
                   _iconBtn(Icons.share_outlined, () async {
                     try {
-                      final imageUrl = formatMediaUrl(series.banner);
+                      final imageUrl = formatMediaUrl(
+                        series.banner.isNotEmpty ? series.banner : series.poster,
+                      );
                       final response = await http.get(Uri.parse(imageUrl));
 
                       if (response.statusCode != 200) {
@@ -203,11 +223,11 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           ),
         ),
 
-        // Premium badge on hero banner
+        // Coming soon badge on hero banner
         if (series.isComingSoon)
           Positioned(
             bottom: 16,
-            left: series.isPremium ? 90 : 16,
+            left: 16,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
@@ -223,29 +243,64 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
               ),
             ),
           ),
+        // Premium badge (Uncomment if needed in future):
+        /*
+        if (series.isPremium)
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'PREMIUM',
+                style: text10(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        */
       ],
     );
   }
 
   // ── Info row (poster + title/rating/tags/description) ─────────────────────
   Widget _buildInfo(Series series) {
-    final posterImg = formatMediaUrl(series.poster);
+    final posterImg = formatMediaUrl(
+      series.poster.isNotEmpty ? series.poster : series.banner,
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Poster with Premium badge overlay
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  posterImg,
-                  width: 90,
-                  height: 120,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
+          // Poster
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: posterImg.isNotEmpty
+                ? Image.network(
+                    posterImg,
+                    width: 90,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 90,
+                      height: 120,
+                      color: AppColors.cardColor,
+                      child: const Icon(
+                        Icons.tv_rounded,
+                        color: AppColors.hintTextColor,
+                      ),
+                    ),
+                  )
+                : Container(
                     width: 90,
                     height: 120,
                     color: AppColors.cardColor,
@@ -254,45 +309,15 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                       color: AppColors.hintTextColor,
                     ),
                   ),
-                ),
-              ),
-            ],
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        series.title,
-                        style: text18(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    if (series.isPremium) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.amber,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'PREMIUM',
-                          style: text10(
-                            color: AppColors.black,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
+                Text(
+                  series.title,
+                  style: text18(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 // Rating
@@ -705,9 +730,16 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
   }
 
   Widget _buildEpisodeTile(Episode ep) {
+    final series = _seriesController.seriesDetail.value;
+    final epThumb = formatMediaUrl(
+      ep.thumbnail.isNotEmpty
+          ? ep.thumbnail
+          : (series?.poster.isNotEmpty == true
+              ? series!.poster
+              : (series?.banner ?? '')),
+    );
     return GestureDetector(
       onTap: () {
-        final series = _seriesController.seriesDetail.value;
         final isPremium = series?.isPremium ?? false;
         final title = series?.title;
         final localPath = AppDownloadService.to.getLocalFilePath(ep.id);
@@ -753,23 +785,31 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                ep.thumbnail.isNotEmpty
-                    ? "${AppUrl.baseUrl}${ep.thumbnail}"
-                    : '',
-                width: 70,
-                height: 46,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 70,
-                  height: 46,
-                  color: AppColors.cardColor,
-                  child: const Icon(
-                    Icons.play_circle,
-                    color: AppColors.hintTextColor,
-                  ),
-                ),
-              ),
+              child: epThumb.isNotEmpty
+                  ? Image.network(
+                      epThumb,
+                      width: 70,
+                      height: 46,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 70,
+                        height: 46,
+                        color: AppColors.cardColor,
+                        child: const Icon(
+                          Icons.play_circle,
+                          color: AppColors.hintTextColor,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 70,
+                      height: 46,
+                      color: AppColors.cardColor,
+                      child: const Icon(
+                        Icons.play_circle,
+                        color: AppColors.hintTextColor,
+                      ),
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -841,13 +881,19 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                   size: 22,
                 ),
                 onPressed: () {
+                  final isEpPremium = ep.isPremium || (series?.isPremium ?? false);
+                  if (!checkDownloadable(
+                    context,
+                    isPremium: isEpPremium,
+                    title: ep.title.isNotEmpty ? ep.title : series?.title,
+                  )) {
+                    return;
+                  }
                   downloadService.downloadMedia(
                     id: ep.id,
                     title: ep.title,
                     parentTitle: series?.title ?? 'Web Series',
-                    coverImage: ep.thumbnail.isNotEmpty
-                        ? '${AppUrl.baseUrl}${ep.thumbnail}'
-                        : '',
+                    coverImage: epThumb,
                     remoteUrl: ep.videoUrl,
                     mediaType: DownloadMediaType.webSeries,
                     episodeNumber: ep.episodeNumber,
@@ -855,6 +901,7 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                       'seriesId': widget.id,
                       'seasonNumber': ep.seasonNumber,
                     },
+                    isPremium: isEpPremium,
                   );
                 },
               );
@@ -901,6 +948,33 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
               style: text12(color: AppColors.secondaryTextColor),
             ),
             const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(
+                Icons.play_circle_fill_rounded,
+                color: AppColors.primaryColor,
+              ),
+              title: Text(
+                'Watch Offline',
+                style: text14(color: AppColors.white),
+              ),
+              onTap: () {
+                Get.back();
+                final localPath = downloadService.getLocalFilePath(ep.id);
+                if (localPath != null && localPath.isNotEmpty) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => MoviePlayerScreen(
+                        videoUrl: localPath,
+                        title: ep.title,
+                        contentId: widget.id,
+                        contentType: 'series',
+                        episodeId: ep.id,
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
             ListTile(
               leading: const Icon(
                 Icons.delete_outline_rounded,

@@ -1254,6 +1254,8 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                             ],
                           ),
                         ),
+                        // VIP badge on episode (Uncomment if needed in future):
+                        /*
                         if (ep.isPremium || ep.isLocked)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -1285,6 +1287,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               ],
                             ),
                           ),
+                        */
                       ],
                     ),
                   ),

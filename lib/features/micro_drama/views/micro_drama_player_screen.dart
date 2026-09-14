@@ -11,6 +11,7 @@ import 'package:golidoli_app/features/micro_drama/controllers/micro_drama_contro
 import 'package:golidoli_app/features/micro_drama/models/episode_detail_response.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/watchlist_controller.dart';
+import 'package:golidoli_app/shared/widgets/app_back_button.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:video_player/video_player.dart';
@@ -25,12 +26,14 @@ class MicroDramaPlayerScreen extends StatefulWidget {
   final String dramaId;
   final int initialIndex;
   final int? initialPositionSeconds;
+  final List<MicroDramaEpisode>? offlineEpisodes;
 
   const MicroDramaPlayerScreen({
     super.key,
     required this.dramaId,
     this.initialIndex = 0,
     this.initialPositionSeconds,
+    this.offlineEpisodes,
   });
 
   @override
@@ -55,6 +58,12 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // Strictly lock orientation to vertical portrait for micro drama
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
     currentIndex.value = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
     _controller = Get.isRegistered<MicroDramaController>()
@@ -64,12 +73,14 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
         ? Get.find<ContinueWatchingController>()
         : Get.put(ContinueWatchingController());
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_controller.episodeDetail.value == null ||
-          _controller.episodeDetail.value?.episodes.isEmpty == true) {
-        _controller.fetchEpisodeDetail(widget.dramaId);
-      }
-    });
+    if (widget.offlineEpisodes == null || widget.offlineEpisodes!.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_controller.episodeDetail.value == null ||
+            _controller.episodeDetail.value?.episodes.isEmpty == true) {
+          _controller.fetchEpisodeDetail(widget.dramaId);
+        }
+      });
+    }
 
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
@@ -78,6 +89,12 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
   void dispose() {
     _pageController.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
@@ -100,6 +117,12 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
 
   void _onBack() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     Navigator.of(context).maybePop();
   }
 
@@ -123,8 +146,47 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
     }
   }
 
+  Widget _buildEpisodeList(List<MicroDramaEpisode> episodes) {
+    return SafeArea(
+      child: PageView.builder(
+        scrollDirection: Axis.vertical,
+        itemCount: episodes.length,
+        onPageChanged: _onPageChanged,
+        controller: _pageController,
+        itemBuilder: (_, index) {
+          final episode = episodes[index];
+          final isInitialItem = widget.initialIndex == index;
+          return _DramaReelItem(
+            key: _keyFor(index),
+            episode: episode,
+            dramaId: widget.dramaId,
+            episodeIndex: index,
+            totalEpisodes: episodes.length,
+            isActive: currentIndex.value == index,
+            isLiked: likedIndices.contains(index),
+            onToggleLike: () => _toggleLike(index),
+            onBack: _onBack,
+            cwController: _cwController,
+            initialPositionSeconds: isInitialItem
+                ? widget.initialPositionSeconds
+                : null,
+            onEpisodeComplete: () =>
+                _onEpisodeComplete(index, episodes.length),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.offlineEpisodes != null && widget.offlineEpisodes!.isNotEmpty) {
+      return Scaffold(
+        backgroundColor: AppColors.black,
+        body: _buildEpisodeList(widget.offlineEpisodes!),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.black,
       body: Obx(() {
@@ -136,6 +198,37 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
 
         if (_controller.episodeDetailStatus.value == Status.error ||
             _controller.episodeDetail.value == null) {
+          final downloaded = AppDownloadService.to.microDramaDownloads
+              .where((d) =>
+                  d.extra['dramaId']?.toString() == widget.dramaId ||
+                  d.id == widget.dramaId)
+              .toList();
+
+          if (downloaded.isNotEmpty) {
+            downloaded.sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+            final offline = downloaded.map((d) {
+              return MicroDramaEpisode(
+                id: d.id,
+                tvShowId: widget.dramaId,
+                episodeNumber: d.episodeNumber,
+                title: d.title,
+                description: '',
+                videoUrl: d.localFilePath,
+                thumbnail: d.coverImage,
+                duration: d.durationSeconds.toString(),
+                isPremium: false,
+                isLocked: false,
+                isVertical: true,
+                views: 0,
+                likes: 0,
+                createdAt: d.downloadedAt.toIso8601String(),
+                updatedAt: d.downloadedAt.toIso8601String(),
+                version: 1,
+              );
+            }).toList();
+            return _buildEpisodeList(offline);
+          }
+
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -168,35 +261,7 @@ class _MicroDramaPlayerScreenState extends State<MicroDramaPlayerScreen> {
           );
         }
 
-        return SafeArea(
-          child: PageView.builder(
-            scrollDirection: Axis.vertical,
-            itemCount: episodes.length,
-            onPageChanged: _onPageChanged,
-            controller: _pageController,
-            itemBuilder: (_, index) {
-              final episode = episodes[index];
-              final isInitialItem = widget.initialIndex == index;
-              return _DramaReelItem(
-                key: _keyFor(index),
-                episode: episode,
-                dramaId: widget.dramaId,
-                episodeIndex: index,
-                totalEpisodes: episodes.length,
-                isActive: currentIndex.value == index,
-                isLiked: likedIndices.contains(index),
-                onToggleLike: () => _toggleLike(index),
-                onBack: _onBack,
-                cwController: _cwController,
-                initialPositionSeconds: isInitialItem
-                    ? widget.initialPositionSeconds
-                    : null,
-                onEpisodeComplete: () =>
-                    _onEpisodeComplete(index, episodes.length),
-              );
-            },
-          ),
-        );
+        return _buildEpisodeList(episodes);
       }),
     );
   }
@@ -252,6 +317,10 @@ class _DramaReelItemState extends State<_DramaReelItem> {
   bool _autoPlayPending = false;
 
   bool get isEpisodeLocked {
+    if (AppDownloadService.to.isDownloaded(widget.episode.id) ||
+        isLocalFilePath(widget.episode.videoUrl)) {
+      return false;
+    }
     final subController = Get.isRegistered<SubscriptionStatusController>()
         ? Get.find<SubscriptionStatusController>()
         : Get.put(SubscriptionStatusController());
@@ -268,8 +337,15 @@ class _DramaReelItemState extends State<_DramaReelItem> {
         localPath.isNotEmpty &&
         File(localPath).existsSync();
 
+    final isEpLocal = isLocalFilePath(widget.episode.videoUrl);
+
     if (isLocal) {
       _vpc = VideoPlayerController.file(File(localPath));
+    } else if (isEpLocal) {
+      final clean = widget.episode.videoUrl.startsWith('file://')
+          ? widget.episode.videoUrl.replaceFirst('file://', '')
+          : widget.episode.videoUrl;
+      _vpc = VideoPlayerController.file(File(clean));
     } else {
       final videoUrl = formatMediaUrl(widget.episode.videoUrl);
       _vpc = VideoPlayerController.networkUrl(
@@ -510,6 +586,46 @@ class _DramaReelItemState extends State<_DramaReelItem> {
             );
           }),
 
+          // ── Top Bar: Back button & Episode title ─────────────────────────
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    AppBackButton(
+                      isOverlay: true,
+                      onPressed: widget.onBack,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Obx(
+                        () => AnimatedOpacity(
+                          duration: const Duration(milliseconds: 300),
+                          opacity: showControls.value ? 1.0 : 0.0,
+                          child: Text(
+                            episode.title.isNotEmpty
+                                ? episode.title
+                                : 'Micro Drama',
+                            style: text14(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.white,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
           // ── Right side actions (auto-hides) ──────────────────────────────
           Positioned(
             right: 12,
@@ -583,6 +699,20 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                                   ?.dramaDetail
                                   .value
                                   ?.microdrama;
+                              final isEpPrem = widget.episode.isPremium ||
+                                  widget.episode.isLocked ||
+                                  (drama?.isPremium ?? false);
+
+                              if (!checkDownloadable(
+                                context,
+                                isPremium: isEpPrem,
+                                title: widget.episode.title.isNotEmpty
+                                    ? widget.episode.title
+                                    : drama?.title,
+                              )) {
+                                return;
+                              }
+
                               downloadService.downloadMedia(
                                 id: widget.episode.id,
                                 title: widget.episode.title.isNotEmpty
@@ -598,6 +728,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
                                     int.tryParse(widget.episode.duration) ?? 0,
                                 episodeNumber: widget.episode.episodeNumber,
                                 extra: {'dramaId': widget.dramaId},
+                                isPremium: isEpPrem,
                               );
                             }
                           },
