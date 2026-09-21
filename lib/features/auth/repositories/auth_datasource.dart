@@ -72,7 +72,8 @@ class AuthDatasource {
         final bool isNewUser = response["isNewUser"] == true;
         final bool profileComplete =
             (userData != null && (userData["profileComplete"] == true)) ||
-            (response["profileComplete"] == true);
+            (response["profileComplete"] == true) ||
+            (!isNewUser && userModel != null && userModel.name.isNotEmpty);
 
         return VerifyOtpResult(
           success: true,
@@ -154,9 +155,24 @@ class AuthDatasource {
       );
 
       if (response != null) {
-        final String token = response["token"];
-        await StorageService.saveToken(token);
-        _apiService.setToken(token);
+        final String token = response["token"]?.toString() ??
+            response["user"]?["token"]?.toString() ??
+            response["data"]?["token"]?.toString() ??
+            "";
+        if (token.isNotEmpty) {
+          await StorageService.saveToken(token);
+          _apiService.setToken(token);
+        }
+        await StorageService.saveLoginMethod('phone');
+
+        if (response["user"] is Map) {
+          final userData = Map<String, dynamic>.from(response["user"]);
+          userData["authProvider"] = "phone";
+          final userModel = UserModel.fromJson(userData);
+          await StorageService.saveUser(userModel);
+        } else {
+          await fetchProfile();
+        }
         return true;
       }
 

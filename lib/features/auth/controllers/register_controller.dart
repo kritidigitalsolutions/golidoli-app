@@ -105,22 +105,7 @@ class RegistrationController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-
-    if (Get.arguments != null) {
-      if (Get.arguments['mobile'] != null) {
-        phoneController.text = Get.arguments['mobile'].toString();
-      }
-      if (Get.arguments['name'] != null &&
-          Get.arguments['name'].toString().isNotEmpty) {
-        nameController.text = Get.arguments['name'].toString();
-        name.value = nameController.text.trim();
-      }
-      if (Get.arguments['email'] != null &&
-          Get.arguments['email'].toString().isNotEmpty) {
-        emailController.text = Get.arguments['email'].toString();
-        email.value = emailController.text.trim();
-      }
-    }
+    loadArguments();
 
     nameController.addListener(() {
       final val = nameController.text.trim();
@@ -145,6 +130,25 @@ class RegistrationController extends GetxController {
         emailError.value = '';
       }
     });
+  }
+
+  void loadArguments() {
+    if (Get.arguments != null) {
+      if (Get.arguments['mobile'] != null &&
+          phoneController.text.trim().isEmpty) {
+        phoneController.text = Get.arguments['mobile'].toString();
+      }
+      if (Get.arguments['name'] != null &&
+          Get.arguments['name'].toString().isNotEmpty) {
+        nameController.text = Get.arguments['name'].toString();
+        name.value = nameController.text.trim();
+      }
+      if (Get.arguments['email'] != null &&
+          Get.arguments['email'].toString().isNotEmpty) {
+        emailController.text = Get.arguments['email'].toString();
+        email.value = emailController.text.trim();
+      }
+    }
   }
 
   // Relaxed: interests are optional now (skip flow allowed)

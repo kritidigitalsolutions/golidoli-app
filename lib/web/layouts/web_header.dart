@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/auth/models/response/user_model.dart';
+import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/screens/auth/web_login_dialog.dart';
@@ -34,10 +35,16 @@ class _WebHeaderState extends State<WebHeader> {
 
   Future<void> _checkAuthState() async {
     final token = await StorageService.getToken();
-    final user = await StorageService.getUser();
+    var user = await StorageService.getUser();
+    final hasToken = token != null && token.isNotEmpty;
+    if (hasToken && user == null) {
+      try {
+        user = await AuthDatasource().fetchProfile();
+      } catch (_) {}
+    }
     if (mounted) {
       setState(() {
-        _isLoggedIn = token != null && token.isNotEmpty;
+        _isLoggedIn = hasToken;
         _user = user;
       });
     }

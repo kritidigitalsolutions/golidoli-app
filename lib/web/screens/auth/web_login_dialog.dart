@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/core/services/google_auth_service.dart';
+import 'package:golidoli_app/features/auth/models/request/user_payload.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 
@@ -22,12 +23,15 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
   final GoogleAuthService _googleAuthService = GoogleAuthService();
 
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final List<TextEditingController> _otpControllers =
       List.generate(4, (_) => TextEditingController());
   final List<FocusNode> _otpFocusNodes =
       List.generate(4, (_) => FocusNode());
 
   bool _isOtpSent = false;
+  bool _isCompletingProfile = false;
   bool _isLoading = false;
   String _errorMessage = '';
   int _resendCountdown = 30;
@@ -37,6 +41,8 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
   void dispose() {
     _countdownTimer?.cancel();
     _phoneController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
     for (var c in _otpControllers) {
       c.dispose();
     }
@@ -101,6 +107,66 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
     setState(() => _isLoading = false);
 
     if (result.success) {
+      if (!result.profileComplete || result.isNewUser) {
+        // Unregistered new account: prompt user to complete profile/registration
+        setState(() {
+          _isCompletingProfile = true;
+          _errorMessage = '';
+          if (result.user != null && result.user!.name.isNotEmpty) {
+            _nameController.text = result.user!.name;
+          }
+          if (result.user != null && result.user!.email.isNotEmpty) {
+            _emailController.text = result.user!.email;
+          }
+        });
+      } else {
+        // Existing registered user: finish login
+        if (Get.isRegistered<SubscriptionStatusController>()) {
+          Get.find<SubscriptionStatusController>().checkStatus();
+        }
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
+      }
+    } else {
+      setState(() => _errorMessage = result.message ?? 'Invalid OTP code');
+    }
+  }
+
+  Future<void> _completeProfile() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+
+    if (name.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your full name');
+      return;
+    }
+    if (name.length < 3) {
+      setState(() => _errorMessage = 'Name must be at least 3 characters');
+      return;
+    }
+    if (email.isNotEmpty && !GetUtils.isEmail(email)) {
+      setState(() => _errorMessage = 'Please enter a valid email address');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    final success = await _authDatasource.completeProfile(
+      userPayload: UserPayload(
+        phone: _phoneController.text.trim(),
+        name: name,
+        email: email,
+        interests: [],
+      ),
+    );
+
+    setState(() => _isLoading = false);
+
+    if (success) {
       if (Get.isRegistered<SubscriptionStatusController>()) {
         Get.find<SubscriptionStatusController>().checkStatus();
       }
@@ -108,7 +174,7 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
         Navigator.of(context).pop(true);
       }
     } else {
-      setState(() => _errorMessage = result.message ?? 'Invalid OTP code');
+      setState(() => _errorMessage = 'Failed to complete registration. Please try again.');
     }
   }
 
@@ -140,11 +206,24 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
       setState(() => _isLoading = false);
 
       if (result.success) {
-        if (Get.isRegistered<SubscriptionStatusController>()) {
-          Get.find<SubscriptionStatusController>().checkStatus();
-        }
-        if (mounted) {
-          Navigator.of(context).pop(true);
+        if (!result.profileComplete || result.isNewUser) {
+          setState(() {
+            _isCompletingProfile = true;
+            _errorMessage = '';
+            if (result.user != null && result.user!.name.isNotEmpty) {
+              _nameController.text = result.user!.name;
+            }
+            if (result.user != null && result.user!.email.isNotEmpty) {
+              _emailController.text = result.user!.email;
+            }
+          });
+        } else {
+          if (Get.isRegistered<SubscriptionStatusController>()) {
+            Get.find<SubscriptionStatusController>().checkStatus();
+          }
+          if (mounted) {
+            Navigator.of(context).pop(true);
+          }
         }
       } else {
         setState(() => _errorMessage = result.message ?? 'Google Sign-In failed');
@@ -222,7 +301,9 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
 
             // Modal Title & Subtitle
             Text(
-              _isOtpSent ? 'Verify OTP' : 'Sign In to GoliDoli',
+              _isCompletingProfile
+                  ? 'Create Your Account'
+                  : (_isOtpSent ? 'Verify OTP' : 'Sign In to GoliDoli'),
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 22,
@@ -231,10 +312,12 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
             ),
             const SizedBox(height: 8),
             Text(
-              _isOtpSent
-                  ? 'We sent a 4-digit verification code to +91 ${_phoneController.text}'
-                  : (widget.customMessage ??
-                      'Enter your mobile number to unlock full movies, series, and dramas.'),
+              _isCompletingProfile
+                  ? 'Enter your details to finish setting up your account for +91 ${_phoneController.text.trim()}'
+                  : (_isOtpSent
+                      ? 'We sent a 4-digit verification code to +91 ${_phoneController.text.trim()}'
+                      : (widget.customMessage ??
+                          'Enter your mobile number to unlock full movies, series, and dramas.')),
               style: const TextStyle(
                 color: AppColors.secondaryTextColor,
                 fontSize: 13,
@@ -269,7 +352,125 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
               const SizedBox(height: 16),
             ],
 
-            if (!_isOtpSent) ...[
+            if (_isCompletingProfile) ...[
+              // Name Input Field
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E222D),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+                ),
+                child: TextField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.person_outline_rounded,
+                        color: AppColors.secondaryTextColor, size: 20),
+                    hintText: 'Full Name (Required)',
+                    hintStyle: TextStyle(
+                      color: AppColors.secondaryTextColor,
+                      fontSize: 14,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Email Input Field
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E222D),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+                ),
+                child: TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.email_outlined,
+                        color: AppColors.secondaryTextColor, size: 20),
+                    hintText: 'Email Address (Optional)',
+                    hintStyle: TextStyle(
+                      color: AppColors.secondaryTextColor,
+                      fontSize: 14,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Agreement text
+              const Text(
+                'By creating an account, you agree to GoliDoli Terms of Service and Privacy Policy.',
+                style: TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 12,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Create Account Button
+              ElevatedButton(
+                onPressed: _isLoading ? null : _completeProfile,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryPink,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Create Account & Continue',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 12),
+
+              // Back to sign in button
+              Center(
+                child: TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _isCompletingProfile = false;
+                            _isOtpSent = false;
+                            _errorMessage = '';
+                            for (var c in _otpControllers) {
+                              c.clear();
+                            }
+                          });
+                        },
+                  child: const Text(
+                    'Cancel & Back to Sign In',
+                    style: TextStyle(
+                      color: AppColors.secondaryTextColor,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+            ] else if (!_isOtpSent) ...[
               // Phone Input Field
               Container(
                 decoration: BoxDecoration(

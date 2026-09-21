@@ -226,7 +226,6 @@ class _WebContentCardState extends State<WebContentCard> {
                   Center(
                     child: Container(
                       width: 48,
-
                       height: 48,
                       decoration: BoxDecoration(
                         color: AppColors.primaryPink,

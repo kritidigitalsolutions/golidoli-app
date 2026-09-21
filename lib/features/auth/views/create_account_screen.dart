@@ -10,12 +10,16 @@ import 'package:golidoli_app/utils/text_style.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class CreateAccountScreen extends StatelessWidget {
-  CreateAccountScreen({super.key});
-
-  final RegistrationController controller = Get.put(RegistrationController());
+  const CreateAccountScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final RegistrationController controller =
+        Get.isRegistered<RegistrationController>()
+            ? Get.find<RegistrationController>()
+            : Get.put(RegistrationController());
+    controller.loadArguments();
+
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: Stack(
