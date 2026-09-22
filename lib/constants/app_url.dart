@@ -1,6 +1,8 @@
 class AppUrl {
-  //static const String baseUrl = 'http://192.168.1.28:5000';
+  // static const String baseUrl = 'http://192.168.1.13:5000';
   static const String baseUrl = 'https://api.golidoli.com';
+
+  // static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
   static const String googleLogin = "$baseUrl/api/auth/google-login";

@@ -22,6 +22,7 @@ import 'package:golidoli_app/features/profile/views/profile_screen.dart';
 import 'package:golidoli_app/routes/app_pages.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/shared/widgets/bottom_nav_bar.dart';
+import 'package:golidoli_app/web/screens/home/web_home_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:golidoli_app/core/services/firebase_service.dart';
 import 'package:golidoli_app/web/routes/web_pages.dart';
@@ -47,7 +48,10 @@ void main() async {
     final appDownloadService = Get.put(AppDownloadService(), permanent: true);
     await appDownloadService.init();
 
-    final audioDownloadService = Get.put(AudioDownloadService(), permanent: true);
+    final audioDownloadService = Get.put(
+      AudioDownloadService(),
+      permanent: true,
+    );
     await audioDownloadService.init();
 
     // Initialize audio_service — registers the background service & notification
@@ -88,12 +92,12 @@ class AppWebScrollBehavior extends MaterialScrollBehavior {
 
   @override
   Set<PointerDeviceKind> get dragDevices => {
-        PointerDeviceKind.touch,
-        PointerDeviceKind.mouse,
-        PointerDeviceKind.trackpad,
-        PointerDeviceKind.stylus,
-        PointerDeviceKind.unknown,
-      };
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+    PointerDeviceKind.unknown,
+  };
 }
 
 class MyApp extends StatelessWidget {
@@ -132,11 +136,12 @@ class MyApp extends StatelessWidget {
         ),
       ),
       initialRoute: kIsWeb ? WebRoutes.home : AppRoutes.splash,
+      unknownRoute: GetPage(
+        name: '/not-found',
+        page: () => kIsWeb ? const WebHomeScreen() : MyHomePage(),
+      ),
       getPages: kIsWeb
-          ? [
-              ...WebPages.pages,
-              ...AppPages.pages,
-            ]
+          ? [...WebPages.pages, ...AppPages.pages]
           : [
               GetPage(
                 name: AppRoutes.home,

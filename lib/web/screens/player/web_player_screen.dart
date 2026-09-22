@@ -52,6 +52,28 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
   bool _isLiked = false;
   bool _isLoadingEpisode = false;
 
+  // Playback Speed & Quality Controls
+  double _playbackSpeed = 1.0;
+  final List<double> _availableSpeeds = const [
+    0.5,
+    0.75,
+    1.0,
+    1.25,
+    1.5,
+    1.75,
+    2.0,
+  ];
+
+  String _selectedQuality = 'Auto';
+  final List<String> _availableQualities = const [
+    'Auto',
+    '1080p',
+    '720p',
+    '480p',
+    '360p',
+    '240p',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -63,7 +85,8 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     _contentId = args?['contentId']?.toString() ?? Get.parameters['id'] ?? '';
     _type = (args?['type']?.toString() ?? Get.parameters['type'] ?? 'movie')
         .toLowerCase();
-    _title = args?['title']?.toString() ??
+    _title =
+        args?['title']?.toString() ??
         Get.parameters['title'] ??
         'Playing Media';
     _dramaTitle = args?['dramaTitle']?.toString() ?? _title;
@@ -79,8 +102,8 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
       _seriesEpisodes = args!['seriesEpisodes'] as List<Episode>;
     }
 
-    final bool isPremium = args?['isPremium'] == true ||
-        Get.parameters['isPremium'] == 'true';
+    final bool isPremium =
+        args?['isPremium'] == true || Get.parameters['isPremium'] == 'true';
 
     if (isPremium) {
       final isSubscribed = await WebAuthGuard.isSubscribed();
@@ -133,7 +156,11 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     }
   }
 
-  Future<void> _initPlayer(String url) async {
+  Future<void> _initPlayer(
+    String url, {
+    Duration? seekToPosition,
+    bool autoPlay = true,
+  }) async {
     try {
       setState(() {
         _isLoadingEpisode = true;
@@ -149,12 +176,20 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
       await _controller!.initialize();
       _controller!.addListener(_videoListener);
       _controller!.setVolume(_isMuted ? 0.0 : _volume);
-      await _controller!.play();
+      if (_playbackSpeed != 1.0) {
+        await _controller!.setPlaybackSpeed(_playbackSpeed);
+      }
+      if (seekToPosition != null && seekToPosition > Duration.zero) {
+        await _controller!.seekTo(seekToPosition);
+      }
+      if (autoPlay) {
+        await _controller!.play();
+      }
 
       if (mounted) {
         setState(() {
           _isInitialized = true;
-          _isPlaying = true;
+          _isPlaying = autoPlay;
           _isLoadingEpisode = false;
           _errorMessage = null;
         });
@@ -170,6 +205,31 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
         });
       }
     }
+  }
+
+  void _setPlaybackSpeed(double speed) {
+    setState(() {
+      _playbackSpeed = speed;
+      _controller?.setPlaybackSpeed(speed);
+    });
+    _onUserInteraction();
+  }
+
+  void _changeQuality(String quality) {
+    if (_selectedQuality == quality) return;
+    final currentPos = _controller?.value.position ?? Duration.zero;
+    final wasPlaying = _isPlaying;
+
+    setState(() {
+      _selectedQuality = quality;
+    });
+
+    _initPlayer(
+      formatMediaUrl(_videoUrl),
+      seekToPosition: currentPos,
+      autoPlay: wasPlaying,
+    );
+    _onUserInteraction();
   }
 
   void _videoListener() {
@@ -474,11 +534,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
         ),
 
         // Mobile Floating Action Rail (Right Side Overlaid on Video)
-        Positioned(
-          right: 12,
-          bottom: 90,
-          child: _buildMobileActionRail(),
-        ),
+        Positioned(right: 12, bottom: 90, child: _buildMobileActionRail()),
       ],
     );
   }
@@ -549,7 +605,8 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
 
   Widget _buildMicroDramaTopHeader({required bool isMobile}) {
     final epCount = _dramaEpisodes.length;
-    final currentEpNum = _dramaEpisodes.isNotEmpty &&
+    final currentEpNum =
+        _dramaEpisodes.isNotEmpty &&
             _currentEpisodeIndex < _dramaEpisodes.length
         ? _dramaEpisodes[_currentEpisodeIndex].episodeNumber
         : (_currentEpisodeIndex + 1);
@@ -682,8 +739,9 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                     _autoPlayNext
                         ? Icons.autorenew_rounded
                         : Icons.pause_circle_outline_rounded,
-                    color:
-                        _autoPlayNext ? AppColors.primaryPink : Colors.white60,
+                    color: _autoPlayNext
+                        ? AppColors.primaryPink
+                        : Colors.white60,
                     size: 15,
                   ),
                   if (!isMobile) ...[
@@ -793,8 +851,9 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
               Container(
                 color: Colors.black45,
                 child: const Center(
-                  child:
-                      CircularProgressIndicator(color: AppColors.primaryPink),
+                  child: CircularProgressIndicator(
+                    color: AppColors.primaryPink,
+                  ),
                 ),
               ),
 
@@ -875,8 +934,9 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               size: 22,
                             ),
                             tooltip: 'Previous Episode (Up Arrow)',
-                            onPressed:
-                                _hasEpisodePrev() ? _playPreviousEpisode : null,
+                            onPressed: _hasEpisodePrev()
+                                ? _playPreviousEpisode
+                                : null,
                           ),
                           const SizedBox(width: 4),
                           IconButton(
@@ -909,8 +969,9 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               size: 22,
                             ),
                             tooltip: 'Next Episode (Down Arrow)',
-                            onPressed:
-                                _hasEpisodeNext() ? _playNextEpisode : null,
+                            onPressed: _hasEpisodeNext()
+                                ? _playNextEpisode
+                                : null,
                           ),
                           const SizedBox(width: 4),
                           IconButton(
@@ -929,6 +990,10 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                             onPressed: _toggleMute,
                           ),
                           const Spacer(),
+                          _buildSpeedButton(isCompact: true),
+                          const SizedBox(width: 6),
+                          _buildQualityButton(isCompact: true),
+                          const SizedBox(width: 8),
                           if (_isInitialized && _controller != null)
                             ValueListenableBuilder(
                               valueListenable: _controller!,
@@ -987,6 +1052,20 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
           },
         ),
         const SizedBox(height: 14),
+        _buildRailButton(
+          icon: Icons.speed_rounded,
+          label: _playbackSpeed == 1.0 ? 'Speed' : '${_playbackSpeed}x',
+          onTap: () => _showSpeedDialog(context),
+        ),
+        const SizedBox(height: 14),
+        _buildRailButton(
+          icon: Icons.hd_rounded,
+          label: _selectedQuality.startsWith('Auto')
+              ? 'Quality'
+              : _selectedQuality.split(' ').first,
+          onTap: () => _showQualityDialog(context),
+        ),
+        const SizedBox(height: 14),
         if (_dramaEpisodes.isNotEmpty)
           _buildRailButton(
             icon: Icons.format_list_bulleted_rounded,
@@ -1027,6 +1106,16 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
             }
           },
         ),
+        const SizedBox(height: 12),
+        _buildMobileFloatingButton(
+          icon: Icons.speed_rounded,
+          onTap: () => _showSpeedDialog(context),
+        ),
+        const SizedBox(height: 12),
+        _buildMobileFloatingButton(
+          icon: Icons.hd_rounded,
+          onTap: () => _showQualityDialog(context),
+        ),
       ],
     );
   }
@@ -1050,11 +1139,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
             width: 1,
           ),
         ),
-        child: Icon(
-          icon,
-          color: enabled ? color : Colors.white24,
-          size: 22,
-        ),
+        child: Icon(icon, color: enabled ? color : Colors.white24, size: 22),
       ),
     );
   }
@@ -1067,8 +1152,9 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     bool enabled = true,
     bool isActive = false,
   }) {
-    final effectiveColor =
-        enabled ? (isActive ? AppColors.primaryPink : color) : Colors.white24;
+    final effectiveColor = enabled
+        ? (isActive ? AppColors.primaryPink : color)
+        : Colors.white24;
 
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -1114,9 +1200,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
       decoration: BoxDecoration(
         color: AppColors.backgroundColor.withValues(alpha: 0.92),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: AppColors.borderColor.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.5),
@@ -1335,8 +1419,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
               const SizedBox(height: 14),
               Expanded(
                 child: GridView.builder(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 5,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
@@ -1423,15 +1506,11 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                     const SizedBox(height: 16),
                     Text(
                       _errorMessage!,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 15),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () =>
-                          _initPlayer(formatMediaUrl(_videoUrl)),
+                      onPressed: () => _initPlayer(formatMediaUrl(_videoUrl)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryPink,
                       ),
@@ -1445,8 +1524,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
               )
             else
               const Center(
-                child:
-                    CircularProgressIndicator(color: AppColors.primaryPink),
+                child: CircularProgressIndicator(color: AppColors.primaryPink),
               ),
 
             // 2. Overlay Controls
@@ -1628,8 +1706,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                     inactiveTrackColor: Colors.white24,
                                     thumbColor: Colors.white,
                                     trackHeight: 2.5,
-                                    thumbShape:
-                                        const RoundSliderThumbShape(
+                                    thumbShape: const RoundSliderThumbShape(
                                       enabledThumbRadius: 5.0,
                                     ),
                                   ),
@@ -1657,6 +1734,10 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               },
                             ),
                             const Spacer(),
+                            _buildSpeedButton(isCompact: isMobile),
+                            const SizedBox(width: 8),
+                            _buildQualityButton(isCompact: isMobile),
+                            const SizedBox(width: 12),
                             if (!isMobile)
                               const Text(
                                 'Press ESC to exit',
@@ -1673,6 +1754,385 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                 ),
             ],
           ],
+        ),
+      ),
+    );
+  }
+
+  // ─── SPEED & QUALITY CONTROLS & DIALOGS ─────────────────────────────────
+
+  Widget _buildSpeedButton({bool isCompact = false}) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        cardColor: const Color(0xFF181B24),
+        popupMenuTheme: PopupMenuThemeData(
+          color: const Color(0xFF181B24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+        ),
+      ),
+      child: PopupMenuButton<double>(
+        tooltip: 'Playback Speed',
+        offset: const Offset(0, -290),
+        color: const Color(0xFF181B24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        onSelected: _setPlaybackSpeed,
+        itemBuilder: (context) {
+          return [
+            const PopupMenuItem<double>(
+              enabled: false,
+              height: 32,
+              child: Text(
+                'PLAYBACK SPEED',
+                style: TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            ..._availableSpeeds.map((speed) {
+              final isSelected = _playbackSpeed == speed;
+              return PopupMenuItem<double>(
+                value: speed,
+                height: 36,
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      size: 16,
+                      color: isSelected
+                          ? AppColors.primaryPink
+                          : Colors.white30,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      speed == 1.0 ? '1.0x (Normal)' : '${speed}x',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ];
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 6 : 9,
+            vertical: isCompact ? 3 : 5,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.speed_rounded, color: Colors.white, size: 15),
+              const SizedBox(width: 4),
+              Text(
+                _playbackSpeed == 1.0 ? '1.0x' : '${_playbackSpeed}x',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isCompact ? 10.5 : 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQualityButton({bool isCompact = false}) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        cardColor: const Color(0xFF181B24),
+        popupMenuTheme: PopupMenuThemeData(
+          color: const Color(0xFF181B24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+        ),
+      ),
+      child: PopupMenuButton<String>(
+        tooltip: 'Video Quality',
+        offset: const Offset(0, -240),
+        color: const Color(0xFF181B24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        onSelected: _changeQuality,
+        itemBuilder: (context) {
+          return [
+            const PopupMenuItem<String>(
+              enabled: false,
+              height: 32,
+              child: Text(
+                'STREAM QUALITY',
+                style: TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            ..._availableQualities.map((quality) {
+              final isSelected = _selectedQuality == quality;
+              final isAuto = quality.startsWith('Auto');
+              final isHD =
+                  quality.contains('1080p') || quality.contains('720p');
+              return PopupMenuItem<String>(
+                value: quality,
+                height: 36,
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      size: 16,
+                      color: isSelected
+                          ? AppColors.primaryPink
+                          : Colors.white30,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        quality,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white70,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (isAuto)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryPink.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: AppColors.primaryPink.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Text(
+                          'DEFAULT',
+                          style: TextStyle(
+                            color: AppColors.primaryPink,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    else if (isHD)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.blueAccent.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: const Text(
+                          'HD',
+                          style: TextStyle(
+                            color: Colors.blueAccent,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            }),
+          ];
+        },
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 6 : 9,
+            vertical: isCompact ? 3 : 5,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.hd_rounded, color: Colors.white, size: 15),
+              const SizedBox(width: 4),
+              Text(
+                _selectedQuality.startsWith('Auto')
+                    ? 'Auto'
+                    : _selectedQuality.split(' ').first,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isCompact ? 10.5 : 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSpeedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181B24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.speed_rounded, color: AppColors.primaryPink, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Playback Speed',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _availableSpeeds.map((speed) {
+            final isSelected = _playbackSpeed == speed;
+            return ListTile(
+              dense: true,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              tileColor: isSelected
+                  ? AppColors.primaryPink.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              leading: Icon(
+                isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                color: isSelected ? AppColors.primaryPink : Colors.white38,
+                size: 20,
+              ),
+              title: Text(
+                speed == 1.0 ? '1.0x (Normal)' : '${speed}x',
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              onTap: () {
+                _setPlaybackSpeed(speed);
+                Navigator.of(ctx).pop();
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showQualityDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181B24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.hd_rounded, color: AppColors.primaryPink, size: 22),
+            SizedBox(width: 10),
+            Text(
+              'Stream Quality',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: _availableQualities.map((quality) {
+            final isSelected = _selectedQuality == quality;
+            return ListTile(
+              dense: true,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              tileColor: isSelected
+                  ? AppColors.primaryPink.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              leading: Icon(
+                isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                color: isSelected ? AppColors.primaryPink : Colors.white38,
+                size: 20,
+              ),
+              title: Text(
+                quality,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              onTap: () {
+                _changeQuality(quality);
+                Navigator.of(ctx).pop();
+              },
+            );
+          }).toList(),
         ),
       ),
     );

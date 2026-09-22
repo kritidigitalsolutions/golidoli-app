@@ -42,8 +42,32 @@
     }
   </style>
 
-  <!-- Google Sign-In Web Client ID -->
+  <!-- Google Sign-In Web Client ID & Google Identity Services -->
   <meta name="google-signin-client_id" content="807853365926-ad785gcjvkcq1oiusk3sn9uisc586k4q.apps.googleusercontent.com">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Firebase App & Analytics (Web) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1IIV8KUw2SuVdrN2SvWwE94MGixeSmnY",
+      authDomain: "golidoli.firebaseapp.com",
+      projectId: "golidoli",
+      storageBucket: "golidoli.firebasestorage.app",
+      messagingSenderId: "807853365926",
+      appId: "1:807853365926:web:d4346503b77b59f1207267",
+      measurementId: "G-DNE0L66MV9"
+    };
+
+    // Initialize Firebase Web
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    window.firebaseApp = app;
+    window.firebaseAnalytics = analytics;
+  </script>
+
   <!-- Razorpay Web Checkout -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>

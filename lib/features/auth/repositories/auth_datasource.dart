@@ -69,11 +69,42 @@ class AuthDatasource {
           await StorageService.saveUser(userModel);
         }
 
-        final bool isNewUser = response["isNewUser"] == true;
-        final bool profileComplete =
-            (userData != null && (userData["profileComplete"] == true)) ||
-            (response["profileComplete"] == true) ||
-            (!isNewUser && userModel != null && userModel.name.isNotEmpty);
+        final bool isNewUser = response["isNewUser"] == true ||
+            (userData != null && userData["isNewUser"] == true) ||
+            response["newUser"] == true ||
+            (userData != null && userData["newUser"] == true) ||
+            response["isRegistered"] == false ||
+            (userData != null && userData["isRegistered"] == false);
+
+        final bool isExplicitlyIncomplete =
+            (userData != null &&
+                (userData["profileComplete"] == false ||
+                    userData["isProfileComplete"] == false ||
+                    userData["profileCompleted"] == false)) ||
+            response["profileComplete"] == false ||
+            response["isProfileComplete"] == false ||
+            response["profileCompleted"] == false;
+
+        final bool hasExplicitProfileComplete =
+            (userData != null &&
+                (userData["profileComplete"] == true ||
+                    userData["isProfileComplete"] == true ||
+                    userData["profileCompleted"] == true)) ||
+            response["profileComplete"] == true ||
+            response["isProfileComplete"] == true ||
+            response["profileCompleted"] == true;
+
+        final rawName = userModel?.name.trim() ?? '';
+        final bool hasValidCustomName = rawName.isNotEmpty &&
+            rawName.toLowerCase() != 'user' &&
+            rawName.toLowerCase() != 'new user' &&
+            rawName.toLowerCase() != 'golidoli user' &&
+            rawName != userModel?.phone.trim() &&
+            rawName != phone.trim();
+
+        final bool profileComplete = !isNewUser &&
+            !isExplicitlyIncomplete &&
+            (hasExplicitProfileComplete || hasValidCustomName);
 
         return VerifyOtpResult(
           success: true,
@@ -95,11 +126,22 @@ class AuthDatasource {
 
   Future<VerifyOtpResult> googleLogin({
     required String idToken,
+    String? accessToken,
+    String? email,
+    String? name,
+    String? photoUrl,
+    String? googleId,
     String? fcmToken,
   }) async {
     try {
       final Map<String, dynamic> body = {
         "idToken": idToken,
+        "token": idToken,
+        if (accessToken != null && accessToken.isNotEmpty) "accessToken": accessToken,
+        if (email != null && email.isNotEmpty) "email": email,
+        if (name != null && name.isNotEmpty) "name": name,
+        if (photoUrl != null && photoUrl.isNotEmpty) "photoUrl": photoUrl,
+        if (googleId != null && googleId.isNotEmpty) "googleId": googleId,
         if (fcmToken != null && fcmToken.isNotEmpty) "fcmToken": fcmToken,
       };
 
@@ -123,11 +165,42 @@ class AuthDatasource {
           await StorageService.saveUser(userModel);
         }
 
-        final bool isNewUser = response["isNewUser"] == true;
-        final bool profileComplete =
-            (userData != null && (userData["profileComplete"] == true)) ||
-            (response["profileComplete"] == true) ||
-            (!isNewUser && userModel != null && userModel.name.isNotEmpty);
+        final bool isNewUser = response["isNewUser"] == true ||
+            (userData != null && userData["isNewUser"] == true) ||
+            response["newUser"] == true ||
+            (userData != null && userData["newUser"] == true) ||
+            response["isRegistered"] == false ||
+            (userData != null && userData["isRegistered"] == false);
+
+        final bool isExplicitlyIncomplete =
+            (userData != null &&
+                (userData["profileComplete"] == false ||
+                    userData["isProfileComplete"] == false ||
+                    userData["profileCompleted"] == false)) ||
+            response["profileComplete"] == false ||
+            response["isProfileComplete"] == false ||
+            response["profileCompleted"] == false;
+
+        final bool hasExplicitProfileComplete =
+            (userData != null &&
+                (userData["profileComplete"] == true ||
+                    userData["isProfileComplete"] == true ||
+                    userData["profileCompleted"] == true)) ||
+            response["profileComplete"] == true ||
+            response["isProfileComplete"] == true ||
+            response["profileCompleted"] == true;
+
+        final rawName = userModel?.name.trim() ?? '';
+        final bool hasValidCustomName = rawName.isNotEmpty &&
+            rawName.toLowerCase() != 'user' &&
+            rawName.toLowerCase() != 'new user' &&
+            rawName.toLowerCase() != 'golidoli user' &&
+            rawName != userModel?.phone.trim() &&
+            rawName != (userModel?.email.trim() ?? '');
+
+        final bool profileComplete = !isNewUser &&
+            !isExplicitlyIncomplete &&
+            (hasExplicitProfileComplete || hasValidCustomName);
 
         return VerifyOtpResult(
           success: response["success"] == true || token.isNotEmpty,

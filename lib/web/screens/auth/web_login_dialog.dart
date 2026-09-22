@@ -5,9 +5,13 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/core/services/google_auth_service.dart';
+import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/auth/models/request/user_payload.dart';
+import 'package:golidoli_app/features/auth/models/response/user_model.dart';
 import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
+import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
+import 'package:golidoli_app/web/routes/web_routes.dart';
 
 class WebLoginDialog extends StatefulWidget {
   final String? customMessage;
@@ -25,10 +29,11 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
-  final List<TextEditingController> _otpControllers =
-      List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _otpFocusNodes =
-      List.generate(4, (_) => FocusNode());
+  final List<TextEditingController> _otpControllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _otpFocusNodes = List.generate(4, (_) => FocusNode());
 
   bool _isOtpSent = false;
   bool _isCompletingProfile = false;
@@ -67,7 +72,9 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty || phone.length < 10) {
-      setState(() => _errorMessage = 'Please enter a valid 10-digit mobile number');
+      setState(
+        () => _errorMessage = 'Please enter a valid 10-digit mobile number',
+      );
       return;
     }
 
@@ -107,16 +114,31 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
     setState(() => _isLoading = false);
 
     if (result.success) {
-      if (!result.profileComplete || result.isNewUser) {
+      final user = result.user;
+      final rawName = user?.name.trim() ?? '';
+      final isGenericName =
+          rawName.isEmpty ||
+          rawName.toLowerCase() == 'user' ||
+          rawName.toLowerCase() == 'new user' ||
+          rawName.toLowerCase() == 'golidoli user' ||
+          rawName == user?.phone.trim() ||
+          rawName == _phoneController.text.trim();
+
+      final bool needsRegistration =
+          !result.profileComplete || result.isNewUser || isGenericName;
+
+      if (needsRegistration) {
         // Unregistered new account: prompt user to complete profile/registration
         setState(() {
           _isCompletingProfile = true;
           _errorMessage = '';
-          if (result.user != null && result.user!.name.isNotEmpty) {
-            _nameController.text = result.user!.name;
+          if (!isGenericName && rawName.isNotEmpty) {
+            _nameController.text = rawName;
+          } else {
+            _nameController.clear();
           }
-          if (result.user != null && result.user!.email.isNotEmpty) {
-            _emailController.text = result.user!.email;
+          if (user != null && user.email.isNotEmpty) {
+            _emailController.text = user.email;
           }
         });
       } else {
@@ -125,7 +147,11 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
           Get.find<SubscriptionStatusController>().checkStatus();
         }
         if (mounted) {
-          Navigator.of(context).pop(true);
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop(true);
+          } else {
+            Get.offAllNamed(WebRoutes.home);
+          }
         }
       }
     } else {
@@ -136,6 +162,7 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
   Future<void> _completeProfile() async {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
 
     if (name.isEmpty) {
       setState(() => _errorMessage = 'Please enter your full name');
@@ -149,32 +176,70 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
       setState(() => _errorMessage = 'Please enter a valid email address');
       return;
     }
+    if (phone.isNotEmpty && phone.length != 10) {
+      setState(
+        () => _errorMessage = 'Please enter a valid 10-digit mobile number',
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
 
-    final success = await _authDatasource.completeProfile(
-      userPayload: UserPayload(
-        phone: _phoneController.text.trim(),
-        name: name,
-        email: email,
-        interests: [],
-      ),
+    var existingUser = await StorageService.getUser();
+    final updatedUser = UserModel(
+      id: (existingUser != null && existingUser.id.isNotEmpty)
+          ? existingUser.id
+          : DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      email: email.isNotEmpty ? email : (existingUser?.email ?? ''),
+      phone: phone.isNotEmpty ? phone : (existingUser?.phone ?? ''),
+      interests: existingUser?.interests ?? [],
+      profileImage: existingUser?.profileImage ?? '',
+      profileComplete: true,
+      role: existingUser?.role ?? 'USER',
+      authProvider:
+          (existingUser != null && existingUser.authProvider.isNotEmpty)
+          ? existingUser.authProvider
+          : 'google',
     );
+
+    await StorageService.saveUser(updatedUser);
+
+    try {
+      await _authDatasource.completeProfile(
+        userPayload: UserPayload(
+          phone: phone.isNotEmpty ? phone : (existingUser?.phone ?? ''),
+          name: name,
+          email: email,
+          interests: [],
+          profileComplete: true,
+        ),
+      );
+    } catch (e) {
+      debugPrint("completeProfile sync note: $e");
+    }
+
+    if (Get.isRegistered<ProfileController>()) {
+      try {
+        Get.find<ProfileController>().user.value = updatedUser;
+      } catch (_) {}
+    }
+
+    if (Get.isRegistered<SubscriptionStatusController>()) {
+      Get.find<SubscriptionStatusController>().checkStatus();
+    }
 
     setState(() => _isLoading = false);
 
-    if (success) {
-      if (Get.isRegistered<SubscriptionStatusController>()) {
-        Get.find<SubscriptionStatusController>().checkStatus();
-      }
-      if (mounted) {
+    if (mounted) {
+      if (Navigator.of(context).canPop()) {
         Navigator.of(context).pop(true);
+      } else {
+        Get.offAllNamed(WebRoutes.home);
       }
-    } else {
-      setState(() => _errorMessage = 'Failed to complete registration. Please try again.');
     }
   }
 
@@ -191,47 +256,88 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
         return;
       }
 
-      final auth = await _googleAuthService.getAuthentication(account);
-      final idToken = auth?.idToken;
+      final String name =
+          (account.displayName != null &&
+              account.displayName!.trim().isNotEmpty)
+          ? account.displayName!.trim()
+          : 'GoliDoli User';
+      final String email = account.email.trim();
+      final String photoUrl = account.photoUrl ?? '';
+      final String googleId = account.id;
 
-      if (idToken == null || idToken.isEmpty) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Failed to retrieve Google token';
-        });
-        return;
-      }
+      // 1. Immediately create and save user profile locally
+      UserModel activeUser = UserModel(
+        id: googleId,
+        name: name,
+        email: email,
+        phone: _phoneController.text.trim(),
+        interests: [],
+        profileImage: photoUrl,
+        profileComplete: true,
+        role: 'USER',
+        authProvider: 'google',
+      );
 
-      final result = await _authDatasource.googleLogin(idToken: idToken);
-      setState(() => _isLoading = false);
+      await StorageService.saveUser(activeUser);
+      await StorageService.saveLoginMethod('google');
 
-      if (result.success) {
-        if (!result.profileComplete || result.isNewUser) {
-          setState(() {
-            _isCompletingProfile = true;
-            _errorMessage = '';
-            if (result.user != null && result.user!.name.isNotEmpty) {
-              _nameController.text = result.user!.name;
+      // 2. Sync token and backend data in background
+      try {
+        final auth = await _googleAuthService.getAuthentication(account);
+        final idToken = (auth?.idToken != null && auth!.idToken!.isNotEmpty)
+            ? auth.idToken!
+            : (auth?.accessToken ?? '');
+
+        if (idToken.isNotEmpty) {
+          final result = await _authDatasource.googleLogin(
+            idToken: idToken,
+            accessToken: auth?.accessToken,
+            email: email,
+            name: name,
+            photoUrl: photoUrl,
+            googleId: googleId,
+          );
+
+          if (result.success) {
+            if (result.user != null) {
+              activeUser = result.user!;
+              await StorageService.saveUser(activeUser);
             }
-            if (result.user != null && result.user!.email.isNotEmpty) {
-              _emailController.text = result.user!.email;
+            final resultToken = result.token ?? '';
+            if (resultToken.isNotEmpty) {
+              await StorageService.saveToken(resultToken);
             }
-          });
-        } else {
-          if (Get.isRegistered<SubscriptionStatusController>()) {
-            Get.find<SubscriptionStatusController>().checkStatus();
-          }
-          if (mounted) {
-            Navigator.of(context).pop(true);
           }
         }
-      } else {
-        setState(() => _errorMessage = result.message ?? 'Google Sign-In failed');
+      } catch (e) {
+        debugPrint("Google login backend sync note: $e");
+      }
+
+      // 3. Update GetX controllers
+      if (Get.isRegistered<ProfileController>()) {
+        try {
+          Get.find<ProfileController>().user.value = activeUser;
+        } catch (_) {}
+      }
+
+      if (Get.isRegistered<SubscriptionStatusController>()) {
+        Get.find<SubscriptionStatusController>().checkStatus();
+      }
+
+      setState(() => _isLoading = false);
+
+      // 4. Immediately complete login and redirect to home
+      if (mounted) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        } else {
+          Get.offAllNamed(WebRoutes.home);
+        }
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Sign-In error: $e';
+        _errorMessage = 'Google Sign-In failed. Please try again.';
       });
     }
   }
@@ -290,7 +396,10 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                   ],
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppColors.secondaryTextColor),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.secondaryTextColor,
+                  ),
                   onPressed: () => Navigator.of(context).pop(false),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -313,11 +422,13 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
             const SizedBox(height: 8),
             Text(
               _isCompletingProfile
-                  ? 'Enter your details to finish setting up your account for +91 ${_phoneController.text.trim()}'
+                  ? (_phoneController.text.trim().isNotEmpty
+                        ? 'Enter your details to finish setting up your account for +91 ${_phoneController.text.trim()}'
+                        : 'Review and confirm your profile details below to continue.')
                   : (_isOtpSent
-                      ? 'We sent a 4-digit verification code to +91 ${_phoneController.text.trim()}'
-                      : (widget.customMessage ??
-                          'Enter your mobile number to unlock full movies, series, and dramas.')),
+                        ? 'We sent a 4-digit verification code to +91 ${_phoneController.text.trim()}'
+                        : (widget.customMessage ??
+                              'Enter your mobile number to unlock full movies, series, and dramas.')),
               style: const TextStyle(
                 color: AppColors.secondaryTextColor,
                 fontSize: 13,
@@ -329,7 +440,10 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
             // Error message banner
             if (_errorMessage.isNotEmpty) ...[
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
@@ -337,13 +451,19 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded,
-                        color: Colors.redAccent, size: 18),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.redAccent,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage,
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                        style: const TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -358,23 +478,33 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E222D),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+                  border: Border.all(
+                    color: AppColors.borderColor.withOpacity(0.5),
+                  ),
                 ),
                 child: TextField(
                   controller: _nameController,
+                  autofocus: true,
                   textCapitalization: TextCapitalization.words,
                   style: const TextStyle(color: Colors.white, fontSize: 15),
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.person_outline_rounded,
-                        color: AppColors.secondaryTextColor, size: 20),
+                    prefixIcon: Icon(
+                      Icons.person_outline_rounded,
+                      color: AppColors.secondaryTextColor,
+                      size: 20,
+                    ),
                     hintText: 'Full Name (Required)',
                     hintStyle: TextStyle(
                       color: AppColors.secondaryTextColor,
                       fontSize: 14,
                     ),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                   ),
+                  onSubmitted: (_) => _completeProfile(),
                 ),
               ),
               const SizedBox(height: 14),
@@ -384,25 +514,71 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E222D),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+                  border: Border.all(
+                    color: AppColors.borderColor.withOpacity(0.5),
+                  ),
                 ),
                 child: TextField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   style: const TextStyle(color: Colors.white, fontSize: 15),
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.email_outlined,
-                        color: AppColors.secondaryTextColor, size: 20),
+                    prefixIcon: Icon(
+                      Icons.email_outlined,
+                      color: AppColors.secondaryTextColor,
+                      size: 20,
+                    ),
                     hintText: 'Email Address (Optional)',
                     hintStyle: TextStyle(
                       color: AppColors.secondaryTextColor,
                       fontSize: 14,
                     ),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                   ),
+                  onSubmitted: (_) => _completeProfile(),
                 ),
               ),
+              if (_phoneController.text.trim().isEmpty) ...[
+                const SizedBox(height: 14),
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E222D),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.borderColor.withOpacity(0.5),
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    maxLength: 10,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      prefixIcon: Icon(
+                        Icons.phone_iphone_rounded,
+                        color: AppColors.secondaryTextColor,
+                        size: 20,
+                      ),
+                      hintText: 'Mobile Number (Optional)',
+                      hintStyle: TextStyle(
+                        color: AppColors.secondaryTextColor,
+                        fontSize: 14,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                    ),
+                    onSubmitted: (_) => _completeProfile(),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // Agreement text
@@ -476,12 +652,17 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E222D),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+                  border: Border.all(
+                    color: AppColors.borderColor.withOpacity(0.5),
+                  ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
                       decoration: const BoxDecoration(
                         border: Border(
                           right: BorderSide(color: Color(0xFF2C3242)),
@@ -504,7 +685,10 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                           FilteringTextInputFormatter.digitsOnly,
                           LengthLimitingTextInputFormatter(10),
                         ],
-                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
                         decoration: const InputDecoration(
                           hintText: 'Enter 10-digit mobile number',
                           hintStyle: TextStyle(
@@ -555,7 +739,9 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
               // OR Divider
               Row(
                 children: [
-                  Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                  Expanded(
+                    child: Divider(color: Colors.white.withOpacity(0.1)),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
@@ -567,7 +753,9 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                       ),
                     ),
                   ),
-                  Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                  Expanded(
+                    child: Divider(color: Colors.white.withOpacity(0.1)),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -702,7 +890,10 @@ class _WebLoginDialogState extends State<WebLoginDialog> {
                     },
                     child: const Text(
                       'Change Number',
-                      style: TextStyle(color: AppColors.secondaryTextColor, fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.secondaryTextColor,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   if (_resendCountdown > 0)

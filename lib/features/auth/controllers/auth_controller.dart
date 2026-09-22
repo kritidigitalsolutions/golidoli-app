@@ -418,13 +418,15 @@ class AuthController extends GetxController {
       }
 
       final auth = await googleAuthService.getAuthentication(account);
-      final idToken = auth?.idToken;
+      final idToken = (auth?.idToken != null && auth!.idToken!.isNotEmpty)
+          ? auth.idToken!
+          : (auth?.accessToken ?? '');
 
-      if (idToken == null || idToken.isEmpty) {
+      if (idToken.isEmpty) {
         isGoogleLoading.value = false;
         Get.snackbar(
           "Login Failed",
-          "Failed to get Google ID token. Please try again.",
+          "Failed to get Google token. Please try again.",
           backgroundColor: Colors.red,
           colorText: Colors.white,
           snackPosition: SnackPosition.TOP,
@@ -444,6 +446,11 @@ class AuthController extends GetxController {
 
       final result = await authDatasource.googleLogin(
         idToken: idToken,
+        accessToken: auth?.accessToken,
+        email: account.email,
+        name: account.displayName,
+        photoUrl: account.photoUrl,
+        googleId: account.id,
         fcmToken: fcmToken,
       );
 

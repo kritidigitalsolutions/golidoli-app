@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/features/home/models/category_model.dart';
@@ -16,6 +17,8 @@ class WebHomeController extends GetxController {
   final MicroDramaDatasource _dramaDatasource = MicroDramaDatasource();
   final MovieDatasource _movieDatasource = MovieDatasource();
   final SeriesDatasource _seriesDatasource = SeriesDatasource();
+
+  Timer? _bannerAutoRefreshTimer;
 
   // Banners
   final RxList<HomeBannerItem> banners = <HomeBannerItem>[].obs;
@@ -40,6 +43,21 @@ class WebHomeController extends GetxController {
   void onInit() {
     super.onInit();
     fetchAllHomeData();
+    _startBannerAutoRefresh();
+  }
+
+  void _startBannerAutoRefresh() {
+    _bannerAutoRefreshTimer?.cancel();
+    // Silently re-fetch banners every 60 seconds to ensure any pre-signed S3 / CloudFront URLs are always renewed
+    _bannerAutoRefreshTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      fetchBanners(isSilent: true);
+    });
+  }
+
+  @override
+  void onClose() {
+    _bannerAutoRefreshTimer?.cancel();
+    super.onClose();
   }
 
   Future<void> fetchAllHomeData() async {
@@ -50,9 +68,11 @@ class WebHomeController extends GetxController {
     fetchCategories();
   }
 
-  Future<void> fetchBanners() async {
+  Future<void> fetchBanners({bool isSilent = false}) async {
     try {
-      isBannersLoading.value = true;
+      if (!isSilent && banners.isEmpty) {
+        isBannersLoading.value = true;
+      }
       final response = await _homeDatasource.fetchHomeBanners();
       if (response != null && response.data != null && response.data!.isNotEmpty) {
         banners.assignAll(response.data!);
@@ -60,7 +80,9 @@ class WebHomeController extends GetxController {
     } catch (e) {
       debugPrint("Web Home: fetchBanners error: $e");
     } finally {
-      isBannersLoading.value = false;
+      if (!isSilent) {
+        isBannersLoading.value = false;
+      }
     }
   }
 

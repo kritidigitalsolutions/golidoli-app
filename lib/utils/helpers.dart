@@ -36,12 +36,30 @@ bool isLocalFilePath(String? path) {
 String formatMediaUrl(String? url) {
   if (url == null || url.trim().isEmpty) return '';
   final trimmed = url.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    return trimmed;
-  }
+
+  // Preserves local device file paths untouched so offline media plays correctly.
   if (isLocalFilePath(trimmed)) {
     return trimmed;
   }
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    // Upgrade http to https for golidoli domain to prevent mixed-content blocking on web
+    if (trimmed.startsWith('http://api.golidoli.com') ||
+        trimmed.startsWith('http://golidoli.com')) {
+      return trimmed.replaceFirst('http://', 'https://');
+    }
+    // Fix any localhost or local IP URLs coming from test databases
+    if (trimmed.contains('localhost') ||
+        trimmed.contains('127.0.0.1') ||
+        trimmed.contains('192.168.')) {
+      final uri = Uri.tryParse(trimmed);
+      if (uri != null) {
+        return '${AppUrl.baseUrl}${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+      }
+    }
+    return trimmed;
+  }
+
   if (trimmed.startsWith('/')) {
     return '${AppUrl.baseUrl}$trimmed';
   }

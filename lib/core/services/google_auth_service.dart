@@ -13,7 +13,7 @@ class GoogleAuthService {
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: kIsWeb ? webClientId : null,
     serverClientId: kIsWeb ? null : webClientId,
-    scopes: <String>['email', 'profile'],
+    scopes: <String>['email', 'profile', 'openid'],
   );
 
   GoogleSignInAccount? get currentUser => _googleSignIn.currentUser;
@@ -21,10 +21,12 @@ class GoogleAuthService {
   /// Trigger interactive Google Sign-In
   Future<GoogleSignInAccount?> signIn() async {
     try {
-      // Ensure previous session is cleared to allow selecting accounts cleanly
-      if (await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
-      }
+      try {
+        if (await _googleSignIn.isSignedIn()) {
+          await _googleSignIn.signOut();
+        }
+      } catch (_) {}
+
       final account = await _googleSignIn.signIn();
       return account;
     } catch (e) {
@@ -38,7 +40,11 @@ class GoogleAuthService {
     GoogleSignInAccount account,
   ) async {
     try {
-      return await account.authentication;
+      final auth = await account.authentication;
+      debugPrint(
+        'Google Auth obtained: idToken length = ${auth.idToken?.length ?? 0}, accessToken length = ${auth.accessToken?.length ?? 0}',
+      );
+      return auth;
     } catch (e) {
       debugPrint('Google Get Authentication Error: $e');
       return null;

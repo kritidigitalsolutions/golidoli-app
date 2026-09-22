@@ -1,11 +1,14 @@
+import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/features/home/models/home_banner_model.dart';
 import 'package:golidoli_app/utils/helpers.dart';
+import 'package:golidoli_app/web/controllers/web_home_controller.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/utils/web_auth_guard.dart';
 import 'package:golidoli_app/web/utils/web_responsive.dart';
@@ -137,27 +140,8 @@ class _WebHeroCarouselState extends State<WebHeroCarousel> {
                 return Stack(
                   fit: StackFit.expand,
                   children: [
-                    // 1. Background Backdrop Image
-                    if (imageUrl.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: imageUrl,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                        placeholder: (_, __) =>
-                            Container(color: AppColors.surfaceColor),
-                        errorWidget: (_, __, ___) => Container(
-                          color: AppColors.surfaceColor,
-                          child: const Center(
-                            child: Icon(
-                              Icons.broken_image_rounded,
-                              color: AppColors.secondaryTextColor,
-                              size: 60,
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Container(color: AppColors.surfaceColor),
+                    // 1. Background Backdrop Image with Multi-Tier Fallback
+                    _HeroBannerImage(banner: banner),
 
                     // 2. Cinematic Gradients
                     // // Left-to-Right dark vignette for text readability
@@ -383,6 +367,153 @@ class _WebHeroCarouselState extends State<WebHeroCarousel> {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeroBannerImage extends StatefulWidget {
+  final HomeBannerItem banner;
+
+  const _HeroBannerImage({required this.banner});
+
+  @override
+  State<_HeroBannerImage> createState() => _HeroBannerImageState();
+}
+
+class _HeroBannerImageState extends State<_HeroBannerImage> {
+  int _candidateIndex = 0;
+  List<String> _candidates = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _buildCandidates();
+  }
+
+  @override
+  void didUpdateWidget(covariant _HeroBannerImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.banner.id != widget.banner.id ||
+        oldWidget.banner.banner != widget.banner.banner ||
+        oldWidget.banner.content?.banner != widget.banner.content?.banner ||
+        oldWidget.banner.content?.poster != widget.banner.content?.poster) {
+      _candidateIndex = 0;
+      _buildCandidates();
+    }
+  }
+
+  void _buildCandidates() {
+    final banner = widget.banner;
+    final rawList = <String?>[
+      banner.banner,
+      banner.content?.banner,
+      banner.content?.poster,
+    ];
+
+    final uniqueFormatted = <String>[];
+    for (final raw in rawList) {
+      if (raw != null && raw.trim().isNotEmpty) {
+        final formatted = formatMediaUrl(raw);
+        if (formatted.isNotEmpty && !uniqueFormatted.contains(formatted)) {
+          uniqueFormatted.add(formatted);
+        }
+      }
+    }
+
+    _candidates = uniqueFormatted;
+  }
+
+  void _onError() {
+    if (_candidateIndex + 1 < _candidates.length) {
+      if (mounted) {
+        setState(() {
+          _candidateIndex++;
+        });
+      }
+    } else {
+      // If all candidates failed, trigger silent background re-fetch in case URLs expired
+      if (Get.isRegistered<WebHomeController>()) {
+        Get.find<WebHomeController>().fetchBanners(isSilent: true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_candidates.isEmpty) {
+      return _buildPlaceholder();
+    }
+
+    final currentUrl = _candidates[_candidateIndex];
+    final isPosterCandidate =
+        currentUrl == formatMediaUrl(widget.banner.content?.poster) &&
+            _candidates.length > 1;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // If falling back to vertical poster, add ambient blur background
+        if (isPosterCandidate)
+          Positioned.fill(
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+              child: Image.network(
+                currentUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          ),
+
+        // Primary Image
+        Image.network(
+          currentUrl,
+          fit: isPosterCandidate ? BoxFit.contain : BoxFit.cover,
+          alignment: Alignment.topCenter,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if (wasSynchronouslyLoaded || frame != null) {
+              return child;
+            }
+            return Container(color: AppColors.surfaceColor);
+          },
+          errorBuilder: (context, error, stackTrace) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => _onError());
+            return _candidateIndex + 1 < _candidates.length
+                ? Container(color: AppColors.surfaceColor)
+                : _buildPlaceholder();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1B1E29),
+            Color(0xFF13151D),
+            Color(0xFF0E0F15),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Opacity(
+          opacity: 0.25,
+          child: Image.asset(
+            AppImages.logo,
+            height: 64,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.movie_creation_outlined,
+              color: AppColors.secondaryTextColor,
+              size: 56,
+            ),
+          ),
         ),
       ),
     );
