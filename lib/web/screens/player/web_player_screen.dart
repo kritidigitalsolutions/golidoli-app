@@ -513,14 +513,22 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Fullscreen Vertical Video Surface
+        // Fullscreen Vertical Video Surface bounded by constraints
         Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 480),
+            width: constraints.maxWidth,
+            height: constraints.maxHeight,
             color: Colors.black,
-            child: AspectRatio(
-              aspectRatio: 9 / 16,
-              child: _buildVerticalVideoSurface(isMobile: true),
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: 360,
+                height: 640,
+                child: AspectRatio(
+                  aspectRatio: 9 / 16,
+                  child: _buildVerticalVideoSurface(isMobile: true),
+                ),
+              ),
             ),
           ),
         ),
@@ -534,7 +542,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
         ),
 
         // Mobile Floating Action Rail (Right Side Overlaid on Video)
-        Positioned(right: 12, bottom: 90, child: _buildMobileActionRail()),
+        Positioned(right: 8, bottom: 80, child: _buildMobileActionRail()),
       ],
     );
   }
@@ -917,7 +925,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                         ),
 
-                      // Control Buttons Row (Responsive)
+                      // Control Buttons Row (Responsive with proper gaps)
                       Row(
                         children: [
                           IconButton(
@@ -938,7 +946,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                 ? _playPreviousEpisode
                                 : null,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 10),
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
@@ -954,7 +962,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                             ),
                             onPressed: _togglePlayPause,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 10),
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
@@ -973,7 +981,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                 ? _playNextEpisode
                                 : null,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 10),
                           IconButton(
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(
@@ -990,10 +998,14 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                             onPressed: _toggleMute,
                           ),
                           const Spacer(),
-                          _buildSpeedButton(isCompact: true),
-                          const SizedBox(width: 6),
-                          _buildQualityButton(isCompact: true),
-                          const SizedBox(width: 8),
+                          if (isMobile)
+                            _buildMoreOptionsMenu(isCompact: true)
+                          else ...[
+                            _buildSpeedButton(isCompact: true),
+                            const SizedBox(width: 8),
+                            _buildQualityButton(isCompact: true),
+                          ],
+                          const SizedBox(width: 12),
                           if (_isInitialized && _controller != null)
                             ValueListenableBuilder(
                               valueListenable: _controller!,
@@ -1002,7 +1014,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                   '${_formatDuration(val.position)} / ${_formatDuration(val.duration)}',
                                   style: const TextStyle(
                                     color: Colors.white70,
-                                    fontSize: 11,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 );
@@ -1655,6 +1667,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               ),
                               onPressed: _togglePlayPause,
                             ),
+                            const SizedBox(width: 10),
                             IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
@@ -1664,10 +1677,11 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               icon: const Icon(
                                 Icons.replay_10_rounded,
                                 color: Colors.white,
-                                size: 20,
+                                size: 22,
                               ),
                               onPressed: () => _seekRelative(-10),
                             ),
+                            const SizedBox(width: 10),
                             IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
@@ -1677,10 +1691,11 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                               icon: const Icon(
                                 Icons.forward_10_rounded,
                                 color: Colors.white,
-                                size: 20,
+                                size: 22,
                               ),
                               onPressed: () => _seekRelative(10),
                             ),
+                            const SizedBox(width: 10),
                             IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
@@ -1692,12 +1707,12 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                     ? Icons.volume_off_rounded
                                     : Icons.volume_up_rounded,
                                 color: Colors.white,
-                                size: 20,
+                                size: 22,
                               ),
                               onPressed: _toggleMute,
                             ),
                             if (!isMobile) ...[
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 10),
                               SizedBox(
                                 width: 80,
                                 child: SliderTheme(
@@ -1719,7 +1734,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                 ),
                               ),
                             ],
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 12),
                             ValueListenableBuilder(
                               valueListenable: _controller!,
                               builder: (context, VideoPlayerValue val, _) {
@@ -1727,16 +1742,20 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                   '${_formatDuration(val.position)} / ${_formatDuration(val.duration)}',
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 12,
+                                    fontSize: 12.5,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 );
                               },
                             ),
                             const Spacer(),
-                            _buildSpeedButton(isCompact: isMobile),
-                            const SizedBox(width: 8),
-                            _buildQualityButton(isCompact: isMobile),
+                            if (isMobile)
+                              _buildMoreOptionsMenu(isCompact: isMobile)
+                            else ...[
+                              _buildSpeedButton(isCompact: isMobile),
+                              const SizedBox(width: 8),
+                              _buildQualityButton(isCompact: isMobile),
+                            ],
                             const SizedBox(width: 12),
                             if (!isMobile)
                               const Text(
@@ -2016,6 +2035,152 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoreOptionsMenu({bool isCompact = false}) {
+    return Theme(
+      data: Theme.of(context).copyWith(
+        cardColor: const Color(0xFF181B24),
+        popupMenuTheme: PopupMenuThemeData(
+          color: const Color(0xFF181B24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+        ),
+      ),
+      child: PopupMenuButton<String>(
+        tooltip: 'More Options (Speed & Quality)',
+        offset: const Offset(0, -220),
+        color: const Color(0xFF181B24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+        itemBuilder: (context) {
+          return [
+            const PopupMenuItem<String>(
+              enabled: false,
+              height: 28,
+              child: Text(
+                'PLAYBACK SPEED',
+                style: TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ..._availableSpeeds.map((speed) {
+              final isSelected = _playbackSpeed == speed;
+              return PopupMenuItem<String>(
+                value: 'speed_$speed',
+                height: 34,
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      size: 15,
+                      color: isSelected
+                          ? AppColors.primaryPink
+                          : Colors.white30,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      speed == 1.0 ? '1.0x (Normal)' : '${speed}x',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontSize: 12.5,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const PopupMenuDivider(height: 12),
+            const PopupMenuItem<String>(
+              enabled: false,
+              height: 28,
+              child: Text(
+                'STREAM QUALITY',
+                style: TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ..._availableQualities.map((quality) {
+              final isSelected = _selectedQuality == quality;
+              return PopupMenuItem<String>(
+                value: 'quality_$quality',
+                height: 34,
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.circle_outlined,
+                      size: 15,
+                      color: isSelected
+                          ? AppColors.primaryPink
+                          : Colors.white30,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      quality,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontSize: 12.5,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ];
+        },
+        onSelected: (value) {
+          if (value.startsWith('speed_')) {
+            final speed = double.parse(value.replaceFirst('speed_', ''));
+            _setPlaybackSpeed(speed);
+          } else if (value.startsWith('quality_')) {
+            final quality = value.replaceFirst('quality_', '');
+            _changeQuality(quality);
+          }
+        },
+        child: Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.18),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: const Icon(
+            Icons.more_vert_rounded,
+            color: Colors.white,
+            size: 20,
           ),
         ),
       ),

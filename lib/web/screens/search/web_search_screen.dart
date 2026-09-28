@@ -24,65 +24,87 @@ class WebSearchScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search Bar Header
-            Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 700),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF181C26),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: AppColors.borderColor.withOpacity(0.6),
-                    width: 1.5,
+            // Search Bar Header with Back Button
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 24,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  tooltip: 'Back',
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Get.back();
+                    } else {
+                      Get.toNamed(WebRoutes.home);
+                    }
+                  },
                 ),
-                child: Row(
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: Icon(Icons.search_rounded,
-                          color: AppColors.primaryPink, size: 24),
-                    ),
-                    Expanded(
-                      child: TextField(
-                        controller: controller.searchInputController,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
-                        decoration: const InputDecoration(
-                          hintText: 'Search for dramas, movies, series, genres...',
-                          hintStyle: TextStyle(
-                            color: AppColors.secondaryTextColor,
-                            fontSize: 15,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 700),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF181C26),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.borderColor.withOpacity(0.6),
+                          width: 1.5,
                         ),
-                        onChanged: controller.onQueryChanged,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.4),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
+                            child: Icon(Icons.search_rounded,
+                                color: AppColors.primaryPink, size: 24),
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: controller.searchInputController,
+                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              decoration: const InputDecoration(
+                                hintText: 'Search for dramas, movies, series, genres...',
+                                hintStyle: TextStyle(
+                                  color: AppColors.secondaryTextColor,
+                                  fontSize: 15,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              onChanged: controller.onQueryChanged,
+                            ),
+                          ),
+                          Obx(() {
+                            if (controller.query.value.isNotEmpty) {
+                              return IconButton(
+                                icon: const Icon(Icons.clear_rounded,
+                                    color: AppColors.secondaryTextColor, size: 20),
+                                onPressed: () {
+                                  controller.searchInputController.clear();
+                                  controller.onQueryChanged('');
+                                },
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          }),
+                          const SizedBox(width: 8),
+                        ],
                       ),
                     ),
-                    Obx(() {
-                      if (controller.query.value.isNotEmpty) {
-                        return IconButton(
-                          icon: const Icon(Icons.clear_rounded,
-                              color: AppColors.secondaryTextColor, size: 20),
-                          onPressed: () {
-                            controller.searchInputController.clear();
-                            controller.onQueryChanged('');
-                          },
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    }),
-                    const SizedBox(width: 8),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
 
             const SizedBox(height: 24),

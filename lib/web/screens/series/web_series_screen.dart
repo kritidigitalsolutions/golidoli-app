@@ -24,9 +24,25 @@ class WebSeriesScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Page Title
+            // Page Title with Back Button
             Row(
               children: [
+                IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  tooltip: 'Back',
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Get.back();
+                    } else {
+                      Get.toNamed(WebRoutes.home);
+                    }
+                  },
+                ),
+                const SizedBox(width: 6),
                 Container(
                   width: 5,
                   height: 30,
@@ -36,12 +52,14 @@ class WebSeriesScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Web Series',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
+                const Expanded(
+                  child: Text(
+                    'Web Series',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
               ],

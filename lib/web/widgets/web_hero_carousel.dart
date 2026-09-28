@@ -1,5 +1,3 @@
-import 'dart:ui';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -92,7 +90,9 @@ class _WebHeroCarouselState extends State<WebHeroCarousel> {
   Widget build(BuildContext context) {
     final isMobile = WebResponsive.isMobile(context);
     final isTablet = WebResponsive.isTablet(context);
-    final double bannerHeight = isMobile ? 320.0 : (isTablet ? 420.0 : 520.0);
+    final double bannerHeight = isMobile
+        ? 340.0
+        : (isTablet ? 460.0 : 560.0);
 
     if (widget.isLoading) {
       return WebShimmerBanner(height: bannerHeight);
@@ -130,11 +130,6 @@ class _WebHeroCarouselState extends State<WebHeroCarousel> {
               ),
               itemBuilder: (context, index, realIndex) {
                 final banner = widget.banners[index];
-                final imageUrl = formatMediaUrl(
-                  banner.banner ??
-                      banner.content?.banner ??
-                      banner.content?.poster,
-                );
                 final description = banner.content?.storyline ?? '';
 
                 return Stack(
@@ -447,31 +442,15 @@ class _HeroBannerImageState extends State<_HeroBannerImage> {
     }
 
     final currentUrl = _candidates[_candidateIndex];
-    final isPosterCandidate =
-        currentUrl == formatMediaUrl(widget.banner.content?.poster) &&
-            _candidates.length > 1;
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // If falling back to vertical poster, add ambient blur background
-        if (isPosterCandidate)
-          Positioned.fill(
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Image.network(
-                currentUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
-          ),
-
-        // Primary Image
+        // Primary Banner Image (Cover to prevent stretching, with increased height for complete view)
         Image.network(
           currentUrl,
-          fit: isPosterCandidate ? BoxFit.contain : BoxFit.cover,
-          alignment: Alignment.topCenter,
+          fit: BoxFit.fill,
+          alignment: Alignment.center,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if (wasSynchronouslyLoaded || frame != null) {
               return child;
@@ -484,6 +463,22 @@ class _HeroBannerImageState extends State<_HeroBannerImage> {
                 ? Container(color: AppColors.surfaceColor)
                 : _buildPlaceholder();
           },
+        ),
+
+        // Dark gradient overlay for text readability
+        Positioned.fill(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.2),
+                  Colors.black.withOpacity(0.6),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );

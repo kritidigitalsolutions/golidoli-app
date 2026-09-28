@@ -246,6 +246,172 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
     );
   }
 
+  Widget _buildDetailsMeta({
+    required bool isMobile,
+    required bool isTablet,
+    required String type,
+    required String title,
+    required double? rating,
+    required int? releaseYear,
+    required String? duration,
+    required List<dynamic> genres,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Type Tag
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryPink,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                type.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Title
+        Text(
+          title,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: isMobile ? 26 : (isTablet ? 34 : 44),
+            fontWeight: FontWeight.w900,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Metadata Badges (Rating, Year, Duration, Episodes)
+        Wrap(
+          spacing: 14,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (rating != null && rating > 0)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star_rounded,
+                      color: Color(0xFFFFC107), size: 18),
+                  const SizedBox(width: 4),
+                  Text(
+                    rating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            if (releaseYear != null)
+              Text(
+                releaseYear.toString(),
+                style: const TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 14,
+                ),
+              ),
+            if (duration != null && duration.isNotEmpty)
+              Text(
+                duration,
+                style: const TextStyle(
+                  color: AppColors.secondaryTextColor,
+                  fontSize: 14,
+                ),
+              ),
+            if (_type.contains('series') && _seriesEpisodes.isNotEmpty)
+              Text(
+                '${_seriesEpisodes.length} Episodes',
+                style: const TextStyle(
+                  color: AppColors.primaryPink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            if (_type.contains('drama') && _dramaEpisodes.isNotEmpty)
+              Text(
+                '${_dramaEpisodes.length} Episodes',
+                style: const TextStyle(
+                  color: AppColors.primaryPink,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Genre Tags
+        if (genres.isNotEmpty)
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: genres.map((g) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.15),
+                  ),
+                ),
+                child: Text(
+                  g.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        const SizedBox(height: 18),
+
+        // Watch Now Button
+        ElevatedButton.icon(
+          onPressed: () => _onPlayClicked(),
+          icon: const Icon(Icons.play_arrow_rounded,
+              size: 26, color: Colors.white),
+          label: const Text(
+            'Watch Now',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryPink,
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 24 : 32,
+              vertical: isMobile ? 12 : 16,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            elevation: 8,
+            shadowColor: AppColors.primaryPink.withOpacity(0.5),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -343,23 +509,23 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
           // 1. Hero Backdrop & Content Header
           Stack(
             children: [
-              // Backdrop Image
+              // Backdrop Image (.fill as requested, clear)
               if (backdropImage.isNotEmpty)
                 SizedBox(
-                  height: isMobile ? 380 : 520,
+                  height: isMobile ? 480 : 520,
                   width: double.infinity,
                   child: CachedNetworkImage(
                     imageUrl: formatMediaUrl(backdropImage),
-                    fit: BoxFit.cover,
+                    fit: BoxFit.fill,
                     alignment: Alignment.topCenter,
                     placeholder: (_, __) => Container(color: AppColors.surfaceColor),
                     errorWidget: (_, __, ___) => Container(color: AppColors.surfaceColor),
                   ),
                 )
               else
-                Container(height: isMobile ? 380 : 520, color: AppColors.surfaceColor),
+                Container(height: isMobile ? 480 : 520, color: AppColors.surfaceColor),
 
-              // Gradient Overlay
+              // Gradient Overlay into page background
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -367,242 +533,122 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.black.withOpacity(0.3),
+                        Colors.black.withOpacity(0.4),
                         AppColors.backgroundColor.withOpacity(0.85),
                         AppColors.backgroundColor,
                       ],
-                      stops: const [0.0, 0.6, 1.0],
+                      stops: const [0.0, 0.75, 1.0],
                     ),
                   ),
                 ),
               ),
 
-              // Content Details Header
+              // Floating Back Button at top-left
               Positioned(
-                bottom: 30,
+                top: 16,
                 left: horizontalPadding,
-                right: horizontalPadding,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    // Floating Poster (Desktop/Tablet)
-                    if (!isMobile && posterUrl.isNotEmpty) ...[
-                      Container(
-                        width: isTablet ? 160 : 220,
-                        height: isTablet ? 240 : 330,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 1.5,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.8),
-                              blurRadius: 24,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(15),
-                          child: CachedNetworkImage(
-                            imageUrl: formatMediaUrl(posterUrl),
-                            fit: BoxFit.cover,
-                          ),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Get.back();
+                      } else {
+                        Get.toNamed(WebRoutes.home);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.65),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.25),
+                          width: 1,
                         ),
                       ),
-                      const SizedBox(width: 32),
-                    ],
-
-                    // Meta Information
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Type & Premium Tag
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryPink,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  _type.toUpperCase(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ),
-                              // Premium tag (Uncomment if needed in future):
-                              /*
-                              if (isPremiumContent) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                                    ),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'PREMIUM',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              */
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Title
+                          Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 6),
                           Text(
-                            title,
+                            'Back',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: isMobile ? 26 : (isTablet ? 34 : 44),
-                              fontWeight: FontWeight.w900,
-                              height: 1.15,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Metadata Badges (Rating, Year, Duration)
-                          Wrap(
-                            spacing: 14,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              if (rating != null && rating > 0)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.star_rounded,
-                                        color: Color(0xFFFFC107), size: 18),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      rating.toStringAsFixed(1),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              if (releaseYear != null)
-                                Text(
-                                  releaseYear.toString(),
-                                  style: const TextStyle(
-                                    color: AppColors.secondaryTextColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              if (duration != null && duration.isNotEmpty)
-                                Text(
-                                  duration,
-                                  style: const TextStyle(
-                                    color: AppColors.secondaryTextColor,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              if (_type.contains('series') &&
-                                  _seriesEpisodes.isNotEmpty)
-                                Text(
-                                  '${_seriesEpisodes.length} Episodes',
-                                  style: const TextStyle(
-                                    color: AppColors.primaryPink,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              if (_type.contains('drama') &&
-                                  _dramaEpisodes.isNotEmpty)
-                                Text(
-                                  '${_dramaEpisodes.length} Episodes',
-                                  style: const TextStyle(
-                                    color: AppColors.primaryPink,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Genre Tags
-                          if (genres.isNotEmpty)
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 6,
-                              children: genres.map((g) {
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: Colors.white.withOpacity(0.15),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    g.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          const SizedBox(height: 24),
-
-                          // Play / Watch Button
-                          ElevatedButton.icon(
-                            onPressed: () => _onPlayClicked(),
-                            icon: const Icon(Icons.play_arrow_rounded,
-                                size: 28, color: Colors.white),
-                            label: const Text(
-                              'Watch Now',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryPink,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: 8,
-                              shadowColor: AppColors.primaryPink.withOpacity(0.5),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
+              ),
+
+              // Content Details Header (Floating Poster shown on Desktop/Laptop only, Meta & Watch Now on both)
+              Positioned(
+                bottom: 20,
+                left: horizontalPadding,
+                right: horizontalPadding,
+                child: isMobile
+                    ? _buildDetailsMeta(
+                        isMobile: true,
+                        isTablet: false,
+                        type: _type,
+                        title: title,
+                        rating: rating,
+                        releaseYear: releaseYear,
+                        duration: duration,
+                        genres: genres,
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (posterUrl.isNotEmpty) ...[
+                            Container(
+                              width: isTablet ? 160 : 220,
+                              height: isTablet ? 240 : 330,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.2),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.8),
+                                    blurRadius: 24,
+                                    offset: const Offset(0, 10),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(15),
+                                child: CachedNetworkImage(
+                                  imageUrl: formatMediaUrl(posterUrl),
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 32),
+                          ],
+                          Expanded(
+                            child: _buildDetailsMeta(
+                              isMobile: false,
+                              isTablet: isTablet,
+                              type: _type,
+                              title: title,
+                              rating: rating,
+                              releaseYear: releaseYear,
+                              duration: duration,
+                              genres: genres,
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ],
           ),

@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/utils/web_auth_guard.dart';
+import 'package:golidoli_app/web/utils/web_responsive.dart';
 
 class WebContentCard extends StatefulWidget {
   final String id;
@@ -62,7 +63,10 @@ class _WebContentCardState extends State<WebContentCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = WebResponsive.isMobile(context);
     final formattedPoster = formatMediaUrl(widget.posterUrl);
+    final effectiveWidth = (isMobile && widget.width == 190) ? 140.0 : widget.width;
+    final effectiveHeight = (isMobile && widget.height == 280) ? 210.0 : widget.height;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -73,8 +77,8 @@ class _WebContentCardState extends State<WebContentCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 220),
           curve: Curves.easeOutCubic,
-          width: widget.width,
-          height: widget.height,
+          width: effectiveWidth,
+          height: effectiveHeight,
           transform: Matrix4.identity()
             ..scale(_isHovered ? 1.05 : 1.0)
             ..translate(0.0, _isHovered ? -6.0 : 0.0),
@@ -102,27 +106,31 @@ class _WebContentCardState extends State<WebContentCard> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                // 1. Poster Image
+                // 1. Poster Image (BoxFit.contain to ensure full poster is shown without cuts)
                 if (formattedPoster.isNotEmpty)
-                  CachedNetworkImage(
-                    imageUrl: formattedPoster,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppColors.surfaceColor,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppColors.primaryPink,
+                  Container(
+                    color: AppColors.surfaceColor,
+                    child: CachedNetworkImage(
+                      imageUrl: formattedPoster,
+                      fit: BoxFit.contain,
+                      alignment: Alignment.center,
+                      placeholder: (context, url) => Container(
+                        color: AppColors.surfaceColor,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primaryPink,
+                          ),
                         ),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: AppColors.surfaceColor,
-                      child: const Center(
-                        child: Icon(
-                          Icons.movie_creation_outlined,
-                          color: AppColors.secondaryTextColor,
-                          size: 40,
+                      errorWidget: (context, url, error) => Container(
+                        color: AppColors.surfaceColor,
+                        child: const Center(
+                          child: Icon(
+                            Icons.movie_creation_outlined,
+                            color: AppColors.secondaryTextColor,
+                            size: 40,
+                          ),
                         ),
                       ),
                     ),

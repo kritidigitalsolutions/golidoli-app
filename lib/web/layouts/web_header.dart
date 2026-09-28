@@ -105,7 +105,11 @@ class _WebHeaderState extends State<WebHeader> {
   @override
   Widget build(BuildContext context) {
     final isMobile = WebResponsive.isMobileOrTablet(context);
-    final horizontalPadding = WebResponsive.contentHorizontalPadding(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isVerySmall = screenWidth < 400;
+    final horizontalPadding = isVerySmall
+        ? 6.0
+        : WebResponsive.contentHorizontalPadding(context);
 
     return Container(
       height: 72,
@@ -128,17 +132,46 @@ class _WebHeaderState extends State<WebHeader> {
       ),
       child: Row(
         children: [
+          // Back Button (shown when not on Home route)
+          if (widget.activeRoute != WebRoutes.home &&
+              widget.activeRoute != WebRoutes.root) ...[
+            IconButton(
+              padding: isVerySmall ? EdgeInsets.zero : const EdgeInsets.all(8),
+              constraints: isVerySmall
+                  ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                  : null,
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: Colors.white,
+                size: isVerySmall ? 20 : 24,
+              ),
+              tooltip: 'Back',
+              onPressed: () {
+                if (Navigator.canPop(context)) {
+                  Get.back();
+                } else {
+                  Get.toNamed(WebRoutes.home);
+                }
+              },
+            ),
+            SizedBox(width: isVerySmall ? 2 : 4),
+          ],
+
           // Mobile Hamburger Button
           if (isMobile) ...[
             IconButton(
-              icon: const Icon(
+              padding: isVerySmall ? EdgeInsets.zero : const EdgeInsets.all(8),
+              constraints: isVerySmall
+                  ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                  : null,
+              icon: Icon(
                 Icons.menu_rounded,
                 color: Colors.white,
-                size: 26,
+                size: isVerySmall ? 22 : 26,
               ),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: isVerySmall ? 4 : 8),
           ],
 
           // Logo
@@ -152,24 +185,29 @@ class _WebHeaderState extends State<WebHeader> {
                 }
               },
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Image.asset(
                     AppImages.logo,
-                    height: 38,
+                    height: isVerySmall ? 26 : 38,
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.play_circle_fill_rounded,
                       color: AppColors.primaryPink,
-                      size: 36,
+                      size: 32,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'GoliDoli',
-                    style: TextStyle(
-                      color: AppColors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
+                  SizedBox(width: isVerySmall ? 6 : 10),
+                  Flexible(
+                    child: Text(
+                      'GoliDoli',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: (screenWidth * 0.05).clamp(14.0, 22.0),
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                   ),
                 ],
@@ -196,12 +234,16 @@ class _WebHeaderState extends State<WebHeader> {
           MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Container(
-              margin: const EdgeInsets.only(right: 14),
+              margin: EdgeInsets.only(right: isVerySmall ? 6 : 14),
               child: IconButton(
-                icon: const Icon(
+                padding: isVerySmall ? EdgeInsets.zero : const EdgeInsets.all(8),
+                constraints: isVerySmall
+                    ? const BoxConstraints(minWidth: 32, minHeight: 32)
+                    : null,
+                icon: Icon(
                   Icons.search_rounded,
                   color: Colors.white,
-                  size: 24,
+                  size: isVerySmall ? 20 : 24,
                 ),
                 tooltip: 'Search',
                 onPressed: () {
@@ -224,8 +266,8 @@ class _WebHeaderState extends State<WebHeader> {
                   }
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isVerySmall ? 8 : 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
@@ -238,7 +280,7 @@ class _WebHeaderState extends State<WebHeader> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        radius: 14,
+                        radius: isVerySmall ? 12 : 14,
                         backgroundColor: AppColors.primaryPink,
                         backgroundImage:
                             (_user?.profileImage != null &&
@@ -254,9 +296,9 @@ class _WebHeaderState extends State<WebHeader> {
                                 (_user?.name.isNotEmpty == true)
                                     ? _user!.name[0].toUpperCase()
                                     : 'U',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
+                                  fontSize: isVerySmall ? 10 : 12,
                                   fontWeight: FontWeight.bold,
                                 ),
                               )
@@ -284,20 +326,20 @@ class _WebHeaderState extends State<WebHeader> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryPink,
                 padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 14 : 20,
-                  vertical: 12,
+                  horizontal: isVerySmall ? 10 : (isMobile ? 14 : 20),
+                  vertical: isVerySmall ? 8 : 12,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
                 elevation: 4,
               ),
-              child: const Text(
+              child: Text(
                 'Sign In',
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: isVerySmall ? 12 : 14,
                 ),
               ),
             ),

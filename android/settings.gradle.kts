@@ -1,3 +1,14 @@
+runCatching {
+    val processEnvironment = Class.forName("java.lang.ProcessEnvironment")
+    val unmodifiableMapField = processEnvironment.getDeclaredField("theUnmodifiableEnvironment").apply { isAccessible = true }
+    val map = unmodifiableMapField.get(null) as? MutableMap<*, *>
+    (map as? MutableMap<String, String>)?.remove("ANDROID_PREFS_ROOT")
+
+    val envField = processEnvironment.getDeclaredField("theEnvironment").apply { isAccessible = true }
+    val envMap = envField.get(null) as? MutableMap<*, *>
+    (envMap as? MutableMap<String, String>)?.remove("ANDROID_PREFS_ROOT")
+}
+
 pluginManagement {
     val flutterSdkPath =
         run {

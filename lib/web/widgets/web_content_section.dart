@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
+import 'package:golidoli_app/web/utils/web_responsive.dart';
 import 'package:golidoli_app/web/widgets/web_shimmer.dart';
 
 class WebContentSection extends StatefulWidget {
@@ -222,7 +223,7 @@ class _WebContentSectionState extends State<WebContentSection> {
 
               // Content Row with scroll buttons
               SizedBox(
-                height: widget.cardHeight + 16,
+                height: (WebResponsive.isMobile(context) && widget.cardHeight == 280) ? 226.0 : (widget.cardHeight + 16.0),
                 child: Stack(
                   children: [
                     ListView.separated(

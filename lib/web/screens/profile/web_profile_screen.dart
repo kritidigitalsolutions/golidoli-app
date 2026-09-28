@@ -216,6 +216,22 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
+            tooltip: 'Back',
+            onPressed: () {
+              if (Navigator.canPop(context)) {
+                Get.back();
+              } else {
+                Get.toNamed(WebRoutes.home);
+              }
+            },
+          ),
+          const SizedBox(width: 4),
           Text(
             'Profile',
             style: text18(fontWeight: FontWeight.w600, color: AppColors.white),
@@ -1899,7 +1915,15 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(title, style: text18(fontWeight: FontWeight.bold)),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text18(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(
                       Icons.close,
@@ -1984,10 +2008,15 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Frequently Asked Questions",
-                    style: text18(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      "Frequently Asked Questions",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text18(fontWeight: FontWeight.bold),
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(
                       Icons.close,
