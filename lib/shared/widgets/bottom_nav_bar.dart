@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
-import 'package:golidoli_app/utils/text_style.dart';
 
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -27,15 +26,22 @@ class BottomNavBar extends StatelessWidget {
         'AI Reels',
       ),
       _NavItem(Icons.search_rounded, Icons.search_rounded, 'Discover'),
+      _NavItem(
+        Icons.movie_outlined,
+        Icons.movie_rounded,
+        'Micro Drama',
+      ),
       _NavItem(Icons.person_outline_rounded, Icons.person_rounded, 'Profile'),
     ];
 
     return Container(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.backgroundColor,
         border: Border(
-          top: BorderSide(color: AppColors.accentColor.withOpacity(0.14)),
+          top: BorderSide(
+            color: AppColors.accentColor.withValues(alpha: 0.14),
+          ),
         ),
       ),
       child: SafeArea(
@@ -47,31 +53,38 @@ class BottomNavBar extends StatelessWidget {
             return Expanded(
               child: InkWell(
                 onTap: () => onTap(index),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 9),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 4,
+                    horizontal: 1,
+                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         isActive ? item.activeIcon : item.icon,
-                        size: 21,
+                        size: 20,
                         color: isActive
                             ? AppColors.accentColor
                             : AppColors.secondaryTextColor,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text10(
-                          color: isActive
-                              ? AppColors.accentColor
-                              : AppColors.secondaryTextColor,
-                          fontWeight: isActive
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                      const SizedBox(height: 3),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 9.5,
+                            letterSpacing: -0.2,
+                            color: isActive
+                                ? AppColors.accentColor
+                                : AppColors.secondaryTextColor,
+                            fontWeight: isActive
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
                         ),
                       ),
                     ],

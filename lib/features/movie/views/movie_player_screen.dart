@@ -382,7 +382,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         }
       } else {
         final fullUrl = _getFullUrl(videoUrl);
-        _videoController = VideoPlayerController.networkUrl(Uri.parse(fullUrl));
+        _videoController = VideoPlayerController.networkUrl(
+          Uri.parse(fullUrl),
+          httpHeaders: getVideoPlayerHeaders(fullUrl),
+        );
       }
 
       _videoController!

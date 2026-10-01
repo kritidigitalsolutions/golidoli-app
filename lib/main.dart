@@ -16,6 +16,7 @@ import 'package:golidoli_app/features/home/views/discover_tab.dart';
 import 'package:golidoli_app/features/home/views/home_tab.dart';
 import 'package:golidoli_app/features/home/views/reels_tab.dart';
 import 'package:golidoli_app/features/home/views/watchlist_tab.dart';
+import 'package:golidoli_app/features/micro_drama/views/micro_drama_screen.dart';
 import 'package:golidoli_app/features/profile/controllers/notification_settings_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/views/profile_screen.dart';
@@ -197,6 +198,7 @@ class _MyHomePageState extends State<MyHomePage> {
       WatchlistScreen(),
       ReelsTab(),
       DiscoverTab(),
+      MicroDramaScreen(),
       ProfileScreen(),
     ];
   }

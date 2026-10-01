@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:golidoli_app/utils/helpers.dart';
 import 'package:video_player/video_player.dart';
 
 class MoviePlayerController extends GetxController {
@@ -29,7 +30,10 @@ class MoviePlayerController extends GetxController {
 
   Future<void> _initializePlayer(String url, {Duration? seekTo, bool play = true}) async {
     isInitialized.value = false;
-    videoController = VideoPlayerController.networkUrl(Uri.parse(url));
+    videoController = VideoPlayerController.networkUrl(
+      Uri.parse(url),
+      httpHeaders: getVideoPlayerHeaders(url),
+    );
     await videoController.initialize();
     videoController.addListener(_videoListener);
     duration.value = videoController.value.duration;

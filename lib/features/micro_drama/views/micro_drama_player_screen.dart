@@ -350,11 +350,7 @@ class _DramaReelItemState extends State<_DramaReelItem> {
       final videoUrl = formatMediaUrl(widget.episode.videoUrl);
       _vpc = VideoPlayerController.networkUrl(
         Uri.parse(videoUrl),
-        httpHeaders: {
-          'User-Agent':
-              'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-          'Accept': '*/*',
-        },
+        httpHeaders: getVideoPlayerHeaders(videoUrl),
       );
     }
 

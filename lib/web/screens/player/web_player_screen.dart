@@ -12,6 +12,7 @@ import 'package:golidoli_app/utils/helpers.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/utils/web_auth_guard.dart';
+import 'package:golidoli_app/web/utils/web_fullscreen_helper.dart';
 import 'package:video_player/video_player.dart';
 
 class WebPlayerScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
   bool _isInitialized = false;
   bool _isPlaying = false;
   bool _isMuted = false;
+  bool _isFullscreen = false;
   double _volume = 1.0;
   bool _showControls = true;
   Timer? _hideControlsTimer;
@@ -171,7 +173,10 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
       _controller?.dispose();
 
       final uri = Uri.parse(url);
-      _controller = VideoPlayerController.networkUrl(uri);
+      _controller = VideoPlayerController.networkUrl(
+        uri,
+        httpHeaders: getVideoPlayerHeaders(url),
+      );
 
       await _controller!.initialize();
       _controller!.addListener(_videoListener);
@@ -382,6 +387,14 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     _onUserInteraction();
   }
 
+  void _toggleFullscreen() {
+    WebFullscreenHelper.toggleFullscreen(!_isFullscreen);
+    setState(() {
+      _isFullscreen = WebFullscreenHelper.isFullscreen() || !_isFullscreen;
+    });
+    _onUserInteraction();
+  }
+
   void _onVolumeChanged(double val) {
     if (_controller == null || !_isInitialized) return;
     setState(() {
@@ -406,6 +419,8 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     if (event is KeyDownEvent) {
       if (event.logicalKey == LogicalKeyboardKey.space) {
         _togglePlayPause();
+      } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+        _toggleFullscreen();
       } else if (event.logicalKey == LogicalKeyboardKey.arrowUp ||
           event.logicalKey == LogicalKeyboardKey.pageUp) {
         _playPreviousEpisode();
@@ -865,27 +880,34 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                 ),
               ),
 
-            // Center Play / Pause Animated Overlay
+            // Center Play / Pause Animated Overlay (On-Screen Only)
             if (_showControls || !_isPlaying)
               Center(
                 child: GestureDetector(
                   onTap: _togglePlayPause,
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
+                      color: Colors.black.withValues(alpha: 0.65),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.3),
                         width: 1.5,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.4),
+                          blurRadius: 15,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                     child: Icon(
                       _isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
                       color: Colors.white,
-                      size: 38,
+                      size: 42,
                     ),
                   ),
                 ),
@@ -904,7 +926,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        Colors.black.withValues(alpha: 0.9),
+                        Colors.black.withValues(alpha: 0.92),
                         Colors.transparent,
                       ],
                     ),
@@ -925,87 +947,43 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 4),
                         ),
 
-                      // Control Buttons Row (Responsive with proper gaps)
+                      // Control Buttons Row (Time on left, Sound/Speed/Quality/Fullscreen in one line on right)
                       Row(
                         children: [
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
+                          if (_hasEpisodePrev()) ...[
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 28,
+                                minHeight: 28,
+                              ),
+                              icon: const Icon(
+                                Icons.skip_previous_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              tooltip: 'Previous Episode',
+                              onPressed: _playPreviousEpisode,
                             ),
-                            icon: Icon(
-                              Icons.skip_previous_rounded,
-                              color: _hasEpisodePrev()
-                                  ? Colors.white
-                                  : Colors.white24,
-                              size: 22,
-                            ),
-                            tooltip: 'Previous Episode (Up Arrow)',
-                            onPressed: _hasEpisodePrev()
-                                ? _playPreviousEpisode
-                                : null,
-                          ),
-                          const SizedBox(width: 10),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                            icon: Icon(
-                              _isPlaying
-                                  ? Icons.pause_rounded
-                                  : Icons.play_arrow_rounded,
-                              color: Colors.white,
-                              size: 26,
-                            ),
-                            onPressed: _togglePlayPause,
-                          ),
-                          const SizedBox(width: 10),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                            icon: Icon(
-                              Icons.skip_next_rounded,
-                              color: _hasEpisodeNext()
-                                  ? Colors.white
-                                  : Colors.white24,
-                              size: 22,
-                            ),
-                            tooltip: 'Next Episode (Down Arrow)',
-                            onPressed: _hasEpisodeNext()
-                                ? _playNextEpisode
-                                : null,
-                          ),
-                          const SizedBox(width: 10),
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                            icon: Icon(
-                              _isMuted || _volume == 0
-                                  ? Icons.volume_off_rounded
-                                  : Icons.volume_up_rounded,
-                              color: Colors.white,
-                              size: 19,
-                            ),
-                            onPressed: _toggleMute,
-                          ),
-                          const Spacer(),
-                          if (isMobile)
-                            _buildMoreOptionsMenu(isCompact: true)
-                          else ...[
-                            _buildSpeedButton(isCompact: true),
-                            const SizedBox(width: 8),
-                            _buildQualityButton(isCompact: true),
+                            const SizedBox(width: 4),
                           ],
-                          const SizedBox(width: 12),
+                          if (_hasEpisodeNext()) ...[
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 28,
+                                minHeight: 28,
+                              ),
+                              icon: const Icon(
+                                Icons.skip_next_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              tooltip: 'Next Episode',
+                              onPressed: _playNextEpisode,
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           if (_isInitialized && _controller != null)
                             ValueListenableBuilder(
                               valueListenable: _controller!,
@@ -1013,13 +991,36 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                 return Text(
                                   '${_formatDuration(val.position)} / ${_formatDuration(val.duration)}',
                                   style: const TextStyle(
-                                    color: Colors.white70,
+                                    color: Colors.white,
                                     fontSize: 11.5,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 );
                               },
                             ),
+                          const Spacer(),
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 28,
+                              minHeight: 28,
+                            ),
+                            icon: Icon(
+                              _isMuted || _volume == 0
+                                  ? Icons.volume_off_rounded
+                                  : Icons.volume_up_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                            tooltip: _isMuted ? 'Unmute' : 'Mute',
+                            onPressed: _toggleMute,
+                          ),
+                          const SizedBox(width: 6),
+                          _buildSpeedButton(isCompact: true),
+                          const SizedBox(width: 6),
+                          _buildQualityButton(isCompact: true),
+                          const SizedBox(width: 6),
+                          _buildFullscreenButton(isCompact: true),
                         ],
                       ),
                     ],
@@ -1497,12 +1498,22 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Video Player Surface
+            // 1. Video Player Surface (Fully responsive desktop/mobile fit)
             if (_isInitialized && _controller != null)
               Center(
-                child: AspectRatio(
-                  aspectRatio: _controller!.value.aspectRatio,
-                  child: VideoPlayer(_controller!),
+                child: SizedBox.expand(
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: SizedBox(
+                      width: _controller!.value.size.width > 0
+                          ? _controller!.value.size.width
+                          : 16,
+                      height: _controller!.value.size.height > 0
+                          ? _controller!.value.size.height
+                          : 9,
+                      child: VideoPlayer(_controller!),
+                    ),
+                  ),
                 ),
               )
             else if (_errorMessage != null)
@@ -1539,7 +1550,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                 child: CircularProgressIndicator(color: AppColors.primaryPink),
               ),
 
-            // 2. Overlay Controls
+            // 2. Overlay Controls (Auto-hides on inactivity, reveals on hover/tap)
             if (_showControls || !_isPlaying) ...[
               // Top Gradient Bar
               Positioned(
@@ -1589,32 +1600,39 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                 ),
               ),
 
-              // Center Play / Pause Icon
+              // Center Play / Pause Animated Overlay (On-Screen Only)
               Center(
                 child: GestureDetector(
                   onTap: _togglePlayPause,
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.65),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: Colors.white.withValues(alpha: 0.35),
                         width: 1.5,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
                     child: Icon(
                       _isPlaying
                           ? Icons.pause_rounded
                           : Icons.play_arrow_rounded,
                       color: Colors.white,
-                      size: 44,
+                      size: 48,
                     ),
                   ),
                 ),
               ),
 
-              // Bottom Gradient Bar (Fully Responsive)
+              // Bottom Gradient Control Bar
               if (_isInitialized && _controller != null)
                 Positioned(
                   bottom: 0,
@@ -1632,7 +1650,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
                         colors: [
-                          Colors.black.withValues(alpha: 0.9),
+                          Colors.black.withValues(alpha: 0.92),
                           Colors.transparent,
                         ],
                       ),
@@ -1640,6 +1658,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Scrubber Progress Indicator
                         VideoProgressIndicator(
                           _controller!,
                           allowScrubbing: true,
@@ -1650,52 +1669,39 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 6),
                         ),
+
+                        // Bottom Action Controls (Time on left, Sound/Speed/Quality/Fullscreen in line on right)
                         Row(
                           children: [
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                              icon: Icon(
-                                _isPlaying
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                              onPressed: _togglePlayPause,
+                            // Left Side: Time Display
+                            ValueListenableBuilder(
+                              valueListenable: _controller!,
+                              builder: (context, VideoPlayerValue val, _) {
+                                return Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.access_time_rounded,
+                                      color: Colors.white70,
+                                      size: 15,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${_formatDuration(val.position)} / ${_formatDuration(val.duration)}',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: isMobile ? 11.5 : 13,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
-                            const SizedBox(width: 10),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                              icon: const Icon(
-                                Icons.replay_10_rounded,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                              onPressed: () => _seekRelative(-10),
-                            ),
-                            const SizedBox(width: 10),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                minWidth: 32,
-                                minHeight: 32,
-                              ),
-                              icon: const Icon(
-                                Icons.forward_10_rounded,
-                                color: Colors.white,
-                                size: 22,
-                              ),
-                              onPressed: () => _seekRelative(10),
-                            ),
-                            const SizedBox(width: 10),
+
+                            const Spacer(),
+
+                            // Right Side: Sound, Speed, Quality, Fullscreen in one horizontal line
                             IconButton(
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
@@ -1707,14 +1713,15 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                     ? Icons.volume_off_rounded
                                     : Icons.volume_up_rounded,
                                 color: Colors.white,
-                                size: 22,
+                                size: 21,
                               ),
+                              tooltip: _isMuted ? 'Unmute' : 'Mute',
                               onPressed: _toggleMute,
                             ),
                             if (!isMobile) ...[
-                              const SizedBox(width: 10),
+                              const SizedBox(width: 4),
                               SizedBox(
-                                width: 80,
+                                width: 70,
                                 child: SliderTheme(
                                   data: SliderTheme.of(context).copyWith(
                                     activeTrackColor: AppColors.primaryPink,
@@ -1722,7 +1729,7 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                     thumbColor: Colors.white,
                                     trackHeight: 2.5,
                                     thumbShape: const RoundSliderThumbShape(
-                                      enabledThumbRadius: 5.0,
+                                      enabledThumbRadius: 4.5,
                                     ),
                                   ),
                                   child: Slider(
@@ -1734,37 +1741,12 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
                                 ),
                               ),
                             ],
-                            const SizedBox(width: 12),
-                            ValueListenableBuilder(
-                              valueListenable: _controller!,
-                              builder: (context, VideoPlayerValue val, _) {
-                                return Text(
-                                  '${_formatDuration(val.position)} / ${_formatDuration(val.duration)}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                );
-                              },
-                            ),
-                            const Spacer(),
-                            if (isMobile)
-                              _buildMoreOptionsMenu(isCompact: isMobile)
-                            else ...[
-                              _buildSpeedButton(isCompact: isMobile),
-                              const SizedBox(width: 8),
-                              _buildQualityButton(isCompact: isMobile),
-                            ],
-                            const SizedBox(width: 12),
-                            if (!isMobile)
-                              const Text(
-                                'Press ESC to exit',
-                                style: TextStyle(
-                                  color: AppColors.secondaryTextColor,
-                                  fontSize: 11.5,
-                                ),
-                              ),
+                            const SizedBox(width: 8),
+                            _buildSpeedButton(isCompact: isMobile),
+                            const SizedBox(width: 8),
+                            _buildQualityButton(isCompact: isMobile),
+                            const SizedBox(width: 8),
+                            _buildFullscreenButton(isCompact: isMobile),
                           ],
                         ),
                       ],
@@ -2041,149 +2023,22 @@ class _WebPlayerScreenState extends State<WebPlayerScreen> {
     );
   }
 
-  Widget _buildMoreOptionsMenu({bool isCompact = false}) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        cardColor: const Color(0xFF181B24),
-        popupMenuTheme: PopupMenuThemeData(
-          color: const Color(0xFF181B24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.15),
-              width: 1,
-            ),
-          ),
-        ),
+  Widget _buildFullscreenButton({bool isCompact = false}) {
+    return IconButton(
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(
+        minWidth: 32,
+        minHeight: 32,
       ),
-      child: PopupMenuButton<String>(
-        tooltip: 'More Options (Speed & Quality)',
-        offset: const Offset(0, -220),
-        color: const Color(0xFF181B24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: Colors.white.withValues(alpha: 0.15),
-            width: 1,
-          ),
-        ),
-        itemBuilder: (context) {
-          return [
-            const PopupMenuItem<String>(
-              enabled: false,
-              height: 28,
-              child: Text(
-                'PLAYBACK SPEED',
-                style: TextStyle(
-                  color: AppColors.secondaryTextColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            ..._availableSpeeds.map((speed) {
-              final isSelected = _playbackSpeed == speed;
-              return PopupMenuItem<String>(
-                value: 'speed_$speed',
-                height: 34,
-                child: Row(
-                  children: [
-                    Icon(
-                      isSelected
-                          ? Icons.check_circle_rounded
-                          : Icons.circle_outlined,
-                      size: 15,
-                      color: isSelected
-                          ? AppColors.primaryPink
-                          : Colors.white30,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      speed == 1.0 ? '1.0x (Normal)' : '${speed}x',
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
-                        fontSize: 12.5,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            const PopupMenuDivider(height: 12),
-            const PopupMenuItem<String>(
-              enabled: false,
-              height: 28,
-              child: Text(
-                'STREAM QUALITY',
-                style: TextStyle(
-                  color: AppColors.secondaryTextColor,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            ..._availableQualities.map((quality) {
-              final isSelected = _selectedQuality == quality;
-              return PopupMenuItem<String>(
-                value: 'quality_$quality',
-                height: 34,
-                child: Row(
-                  children: [
-                    Icon(
-                      isSelected
-                          ? Icons.check_circle_rounded
-                          : Icons.circle_outlined,
-                      size: 15,
-                      color: isSelected
-                          ? AppColors.primaryPink
-                          : Colors.white30,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      quality,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
-                        fontSize: 12.5,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ];
-        },
-        onSelected: (value) {
-          if (value.startsWith('speed_')) {
-            final speed = double.parse(value.replaceFirst('speed_', ''));
-            _setPlaybackSpeed(speed);
-          } else if (value.startsWith('quality_')) {
-            final quality = value.replaceFirst('quality_', '');
-            _changeQuality(quality);
-          }
-        },
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.18),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: const Icon(
-            Icons.more_vert_rounded,
-            color: Colors.white,
-            size: 20,
-          ),
-        ),
+      icon: Icon(
+        _isFullscreen
+            ? Icons.fullscreen_exit_rounded
+            : Icons.fullscreen_rounded,
+        color: Colors.white,
+        size: isCompact ? 20 : 24,
       ),
+      tooltip: _isFullscreen ? 'Exit Fullscreen' : 'Fullscreen (F)',
+      onPressed: _toggleFullscreen,
     );
   }
 

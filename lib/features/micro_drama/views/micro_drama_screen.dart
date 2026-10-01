@@ -245,19 +245,26 @@ class _MicroDramaScreenState extends State<MicroDramaScreen> {
 
   // ── Top bar ────────────────────────────────────────────────────────────────
   Widget _buildTopBar() {
+    final canPop = Navigator.canPop(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Row(
         children: [
-          const AppBackButton(),
-          const SizedBox(width: 12),
-          Obx(() {
-            final name = currentCategoryName;
-            return Text(
-              name == 'All' ? 'Micro Dramas' : name,
-              style: text18(fontWeight: FontWeight.bold),
-            );
-          }),
+          if (canPop) ...[
+            const AppBackButton(),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Obx(() {
+              final name = currentCategoryName;
+              return Text(
+                name == 'All' ? 'Micro Dramas' : name,
+                style: text18(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              );
+            }),
+          ),
         ],
       ),
     );

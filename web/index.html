@@ -97,6 +97,47 @@
         if (onError) onError(err.message || 'Razorpay initialization failed');
       }
     };
+
+    window.toggleWebFullscreen = function () {
+      try {
+        var docEl = document.documentElement || document.body;
+        var isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        if (!isFs) {
+          var req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+          if (req) {
+            var promise = req.call(docEl);
+            if (promise && promise.then) {
+              promise.then(function() {
+                if (screen.orientation && screen.orientation.lock) {
+                  screen.orientation.lock('landscape').catch(function(e) {});
+                }
+              }).catch(function(e) {});
+            } else {
+              if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(function(e) {});
+              }
+            }
+          }
+          return true;
+        } else {
+          var exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+          if (exit) {
+            exit.call(document);
+            if (screen.orientation && screen.orientation.unlock) {
+              screen.orientation.unlock();
+            }
+          }
+          return false;
+        }
+      } catch (err) {
+        console.error('Web Fullscreen toggle failed:', err);
+        return false;
+      }
+    };
+
+    window.isWebFullscreen = function () {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    };
   </script>
 </head>
 <body>

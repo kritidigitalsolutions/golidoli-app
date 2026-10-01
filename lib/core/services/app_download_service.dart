@@ -259,6 +259,7 @@ class AppDownloadService extends GetxService {
       await _dio.download(
         resolvedUrl,
         localFilePath,
+        options: Options(headers: getVideoPlayerHeaders(resolvedUrl)),
         onReceiveProgress: (received, total) {
           if (total > 0) {
             downloadProgress[id] = (received / total).clamp(0.0, 1.0);

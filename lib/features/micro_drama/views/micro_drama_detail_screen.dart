@@ -311,7 +311,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.borderColor.withOpacity(0.5)),
+        border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.5)),
       ),
       child: Text(label, style: text11(color: AppColors.secondaryTextColor)),
     );
@@ -604,7 +604,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                     border: Border.all(
                       color: isSelected
                           ? AppColors.accentColor
-                          : AppColors.borderColor.withOpacity(0.4),
+                          : AppColors.borderColor.withValues(alpha: 0.4),
                     ),
                   ),
                   child: Row(
@@ -660,13 +660,13 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppColors.accentColor.withOpacity(0.12)
+                        ? AppColors.accentColor.withValues(alpha: 0.12)
                         : AppColors.surfaceColor,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isSelected
                           ? AppColors.accentColor
-                          : AppColors.borderColor.withOpacity(0.3),
+                          : AppColors.borderColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -710,7 +710,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.55),
+                                    color: Colors.black.withValues(alpha: 0.55),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
@@ -735,7 +735,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                                     vertical: 1,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.7),
+                                    color: Colors.black.withValues(alpha: 0.7),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -1040,7 +1040,7 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                               end: Alignment.bottomCenter,
                               colors: [
                                 Colors.transparent,
-                                AppColors.backgroundColor.withOpacity(0.85),
+                                AppColors.backgroundColor.withValues(alpha: 0.85),
                               ],
                             ),
                           ),

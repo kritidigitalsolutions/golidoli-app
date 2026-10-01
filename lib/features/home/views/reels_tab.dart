@@ -176,6 +176,7 @@ class _ReelsTabState extends State<ReelsTab> {
     try {
       final vpc = VideoPlayerController.networkUrl(
         Uri.parse(reel.fullVideoUrl),
+        httpHeaders: getVideoPlayerHeaders(reel.fullVideoUrl),
       );
       _controllers[index] = vpc;
 
@@ -532,7 +533,10 @@ class _ReelItemState extends State<_ReelItem> {
     } else {
       final videoUrl = widget.reel.fullVideoUrl;
       if (videoUrl.isNotEmpty) {
-        _vpc = VideoPlayerController.networkUrl(Uri.parse(videoUrl));
+        _vpc = VideoPlayerController.networkUrl(
+          Uri.parse(videoUrl),
+          httpHeaders: getVideoPlayerHeaders(videoUrl),
+        );
         widget.onControllerCreated(_vpc!);
         _vpc!
             .initialize()

@@ -66,6 +66,18 @@ String formatMediaUrl(String? url) {
   return '${AppUrl.baseUrl}/$trimmed';
 }
 
+/// Returns standard HTTP headers required by CDNs (such as Bunny Stream)
+/// for playing video streams smoothly and preventing 403 Forbidden errors.
+Map<String, String> getVideoPlayerHeaders([String? url]) {
+  return const {
+    'User-Agent':
+        'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    'Accept': '*/*',
+    'Referer': 'https://golidoli.com/',
+    'Origin': 'https://golidoli.com',
+  };
+}
+
 /// Checks if content can be downloaded.
 /// If content is premium and user is unsubscribed, shows a subscription bottom sheet prompt and returns false.
 bool checkDownloadable(
