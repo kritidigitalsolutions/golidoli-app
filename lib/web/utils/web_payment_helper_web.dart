@@ -1,128 +1,113 @@
 import 'dart:async';
-import 'dart:js_interop';
+import 'package:flutter/foundation.dart';
+import 'package:web/web.dart' as web;
+import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 import 'package:golidoli_app/features/profile/repositories/payment_repo.dart';
 import 'package:golidoli_app/web/utils/web_payment_result.dart';
 
-@JS('openRazorpayWebCheckout')
-external void _openRazorpayWebCheckout(
-  JSAny options,
-  JSFunction onSuccess,
-  JSFunction onError,
-);
-
 class WebPaymentHelper {
   static final PaymentRepo _paymentRepo = PaymentRepo();
 
-  /// Launches Razorpay payment for a given subscription plan on Web
+  /// Navigates to SabPaisa payment gateway for a given subscription plan on Web in the same tab by default
   static Future<WebPaymentResult> purchasePlan({
     required SubscriptionPlan plan,
     String? userName,
     String? userEmail,
     String? userContact,
+    bool openInSameTab = true,
   }) async {
+    web.Window? newWindow;
+    if (!openInSameTab) {
+      // Open a blank tab immediately within the user gesture context if opening in a new tab
+      newWindow = web.window.open('about:blank', '_blank');
+    }
+
     try {
-      // 1. Create order on backend
-      final order = await _paymentRepo.createOrder(planId: plan.id);
-      if (order == null) {
+      final callbackUrl = '${web.window.location.origin}/payment/status';
+      final order = await _paymentRepo.createOrder(
+        planId: plan.id,
+        userName: userName,
+        userEmail: userEmail,
+        userContact: userContact,
+        callbackUrl: callbackUrl,
+      );
+
+      if (order == null || order.paymentUrl.isEmpty) {
+        newWindow?.close();
         return WebPaymentResult(
           success: false,
           errorMessage: 'Failed to initialize payment order on server',
         );
       }
 
-      final String razorpayKey = order.razorpayKey.isNotEmpty
-          ? order.razorpayKey
-          : "rzp_test_1DP5mmOlF5G5ag";
+      final txnId = order.transId.isNotEmpty ? order.transId : order.orderId;
 
-      final int amountInPaise = order.amount > 0
-          ? order.amount
-          : (plan.price * 100).toInt();
-
-      final completer = Completer<WebPaymentResult>();
-
-      final optionsMap = {
-        'key': razorpayKey,
-        'amount': amountInPaise,
-        'currency': order.currency.isNotEmpty ? order.currency : 'INR',
-        if (order.orderId.isNotEmpty) 'order_id': order.orderId,
-        'name': 'GoliDoli',
-        'description': '${plan.name} VIP Subscription',
-        'prefill': {
-          'name': userName ?? '',
-          'email': userEmail ?? '',
-          'contact': userContact ?? '',
-        },
-        'theme': {
-          'color': '#FF0564',
-        },
-      };
-
-      final jsOptions = optionsMap.jsify();
-
-      final onSuccess = ((JSString paymentId, JSString orderId, JSString signature) {
-        final pId = paymentId.toDart;
-        final oId = orderId.toDart;
-        final sig = signature.toDart;
-
-        // Verify on backend
-        _paymentRepo
-            .verifyPayment(
-              razorpayOrderId: oId.isNotEmpty ? oId : order.orderId,
-              razorpayPaymentId: pId,
-              razorpaySignature: sig,
-              planId: plan.id,
-            )
-            .then((verifyRes) {
-              if (verifyRes != null && verifyRes.success) {
-                if (!completer.isCompleted) {
-                  completer.complete(WebPaymentResult(
-                    success: true,
-                    paymentId: pId,
-                    orderId: oId,
-                    signature: sig,
-                  ));
-                }
-              } else {
-                if (!completer.isCompleted) {
-                  completer.complete(WebPaymentResult(
-                    success: false,
-                    errorMessage:
-                        verifyRes?.message ?? 'Payment verification failed',
-                  ));
-                }
-              }
-            })
-            .catchError((e) {
-              if (!completer.isCompleted) {
-                completer.complete(WebPaymentResult(
-                  success: false,
-                  errorMessage: 'Verification error: $e',
-                ));
-              }
-            });
-      }).toJS;
-
-      final onError = ((JSString error) {
-        if (!completer.isCompleted) {
-          completer.complete(WebPaymentResult(
-            success: false,
-            errorMessage: error.toDart,
-          ));
+      // Synchronously write to web window.localStorage as a fail-safe before page unloads
+      if (txnId.isNotEmpty) {
+        web.window.localStorage.setItem('pending_txn_id', txnId);
+        web.window.localStorage.setItem('pending_plan_id', plan.id);
+        if (order.paymentId.isNotEmpty) {
+          web.window.localStorage.setItem('pending_payment_id', order.paymentId);
         }
-      }).toJS;
 
-      if (jsOptions != null) {
-        _openRazorpayWebCheckout(jsOptions, onSuccess, onError);
-      } else {
-        return WebPaymentResult(
-          success: false,
-          errorMessage: 'Failed to serialize payment configuration',
+        await StorageService.savePendingPayment(
+          txnId: txnId,
+          planId: plan.id,
+          paymentId: order.paymentId,
         );
       }
 
-      return await completer.future;
+      final target = openInSameTab ? '_self' : '_blank';
+
+      if (order.encData.isNotEmpty) {
+        // Form POST method (SabPaisa encrypted request)
+        if (!openInSameTab) newWindow?.close();
+        final form = web.document.createElement('form') as web.HTMLFormElement
+          ..method = 'POST'
+          ..action = order.paymentUrl
+          ..target = target;
+
+        order.rawData.forEach((key, value) {
+          if (key != 'paymentUrl' &&
+              key != 'url' &&
+              key != 'checkoutUrl' &&
+              key != 'success' &&
+              key != 'plan' &&
+              key != 'appliedPromo' &&
+              value != null) {
+            final input = web.document.createElement('input') as web.HTMLInputElement
+              ..type = 'hidden'
+              ..name = key
+              ..value = value.toString();
+            form.appendChild(input);
+          }
+        });
+
+        web.document.body!.appendChild(form);
+        form.submit();
+        form.remove();
+      } else {
+        // Direct checkout URL method
+        if (openInSameTab) {
+          web.window.location.href = order.paymentUrl;
+        } else {
+          if (newWindow != null) {
+            newWindow.location.href = order.paymentUrl;
+          } else {
+            web.window.open(order.paymentUrl, '_blank');
+          }
+        }
+      }
+
+      return WebPaymentResult(
+        success: true,
+        orderId: txnId,
+        paymentId: order.paymentId,
+      );
     } catch (e) {
+      newWindow?.close();
+      debugPrint("SabPaisa web payment error: $e");
       return WebPaymentResult(
         success: false,
         errorMessage: 'Payment error: ${e.toString()}',

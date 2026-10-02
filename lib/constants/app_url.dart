@@ -1,6 +1,7 @@
 class AppUrl {
-  // static const String baseUrl = 'http://192.168.1.13:5000';
+  // static const String baseUrl = 'http://192.168.1.28:5000';
   static const String baseUrl = 'https://api.golidoli.com';
+  static const String webBaseUrl = 'https://golidoli.com';
 
   // static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
@@ -37,6 +38,11 @@ class AppUrl {
   static String createOrder = "$baseUrl/api/payment/create-order";
   static String verifyPayment = "$baseUrl/api/payment/verify";
   static const String subscriptionStatus = "$baseUrl/api/subscription/status";
+
+  static String webSubscriptionUrl({required String planId, String? token}) {
+    final tokenParam = token != null && token.isNotEmpty ? "&token=$token" : "";
+    return "$webBaseUrl/subscription?planId=$planId$tokenParam";
+  }
 
   // Home Banners & Intro Screens
   static const String homeBanners = "$baseUrl/api/home-banners";

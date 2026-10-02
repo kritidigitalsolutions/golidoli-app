@@ -4,9 +4,9 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/profile/controllers/plan_controller.dart';
-import 'package:golidoli_app/features/profile/controllers/profile_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
+import 'package:golidoli_app/features/profile/repositories/payment_repo.dart';
 import 'package:golidoli_app/shared/widgets/shimmer/shimmer.dart';
 import 'package:golidoli_app/utils/text_style.dart';
 import 'package:golidoli_app/web/layouts/web_main_layout.dart';
@@ -46,6 +46,112 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
     if (!Get.isRegistered<SubscriptionStatusController>()) {
       Get.put(SubscriptionStatusController());
     }
+
+    // Automatically check for pending payment / return query parameters from gateway
+    _checkAndVerifyPendingPayment();
+  }
+
+  Map<String, String> _getAllQueryParams() {
+    final params = <String, String>{};
+    params.addAll(Uri.base.queryParameters);
+
+    final fragment = Uri.base.fragment;
+    if (fragment.contains('?')) {
+      final queryString = fragment.substring(fragment.indexOf('?') + 1);
+      final fragmentUri = Uri.parse('http://dummy.com/?$queryString');
+      params.addAll(fragmentUri.queryParameters);
+    }
+
+    Get.parameters.forEach((key, value) {
+      if (value != null) {
+        params[key] = value;
+      }
+    });
+    return params;
+  }
+
+  Future<void> _checkAndVerifyPendingPayment() async {
+    try {
+      final queryParams = _getAllQueryParams();
+      final pending = await StorageService.getPendingPayment();
+
+      String? txnId = queryParams['txnId'] ??
+          queryParams['clientTxnId'] ??
+          queryParams['merchantTxnId'] ??
+          queryParams['transactionId'] ??
+          queryParams['paymentId'] ??
+          queryParams['orderId'] ??
+          pending?['txnId'];
+
+      final planId = queryParams['planId'] ?? pending?['planId'] ?? '';
+      final paymentId = queryParams['paymentId'] ?? pending?['paymentId'];
+
+      if ((txnId == null || txnId.isEmpty) && pending == null) {
+        return;
+      }
+
+      if (mounted) {
+        setState(() => _isProcessingPayment = true);
+      }
+
+      final repo = PaymentRepo();
+      debugPrint("WebSubscriptionScreen auto-verifying: txnId=$txnId, planId=$planId, params=$queryParams");
+
+      final verifyRes = await repo.verifyPayment(
+        transactionId: txnId ?? '',
+        planId: planId,
+        paymentId: paymentId,
+        extraData: queryParams,
+      );
+
+      // Clear pending payment from localStorage
+      await StorageService.clearPendingPayment();
+
+      // Check user subscription status
+      final subStatusController = Get.find<SubscriptionStatusController>();
+      await subStatusController.checkStatus();
+      final isPremium = subStatusController.isPremiumUser.value;
+
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+
+        if ((verifyRes != null && verifyRes.success) || isPremium) {
+          final plan = _planController.allPlans.value?.plans
+                  .firstWhereOrNull((p) => p.id == planId) ??
+              _planController.selectedPlan.value ??
+              _planController.allPlans.value?.plans.firstOrNull;
+
+          if (plan != null) {
+            _showPaymentSuccessDialog(plan);
+          } else {
+            Get.snackbar(
+              'VIP Unlocked!',
+              'Your VIP subscription is active!',
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: AppColors.primaryPink.withValues(alpha: 0.9),
+              colorText: Colors.white,
+              duration: const Duration(seconds: 5),
+            );
+          }
+        } else if (verifyRes != null && !verifyRes.success) {
+          Get.snackbar(
+            'Payment Verification',
+            verifyRes.message.isNotEmpty
+                ? verifyRes.message
+                : 'Payment status pending or incomplete.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.orange.withValues(alpha: 0.9),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 4),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("WebSubscriptionScreen verify error: $e");
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+      }
+    }
   }
 
   Future<void> _startPayment() async {
@@ -65,7 +171,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         'Subscription Active',
         'You already have an active subscription plan.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppColors.accentColor.withOpacity(0.8),
+        backgroundColor: AppColors.accentColor.withValues(alpha: 0.8),
         colorText: Colors.white,
       );
       return;
@@ -79,7 +185,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         'Notice',
         'No subscription plan selected.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange.withOpacity(0.8),
+        backgroundColor: Colors.orange.withValues(alpha: 0.8),
         colorText: Colors.white,
       );
       return;
@@ -94,17 +200,19 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         userName: user?.name,
         userEmail: user?.email,
         userContact: user?.phone,
+        openInSameTab: true,
       );
 
       if (result.success) {
-        // Refresh subscription and profile state
-        await subStatusController.checkStatus();
-        if (Get.isRegistered<ProfileController>()) {
-          await Get.find<ProfileController>().fetchProfile();
-        }
-
         if (mounted) {
-          _showPaymentSuccessDialog(selectedPlan);
+          Get.snackbar(
+            'Redirecting to SabPaisa',
+            'Redirecting to payment gateway...',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.primaryPink.withValues(alpha: 0.9),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 3),
+          );
         }
       } else {
         if (mounted && result.errorMessage != null && result.errorMessage!.isNotEmpty) {
@@ -112,7 +220,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
             'Payment Failed',
             result.errorMessage ?? 'Payment could not be completed.',
             snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: AppColors.errorColor.withOpacity(0.8),
+            backgroundColor: AppColors.errorColor.withValues(alpha: 0.8),
             colorText: Colors.white,
           );
         }
@@ -124,7 +232,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
           'Error',
           'Payment error: ${e.toString()}',
           snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColors.errorColor.withOpacity(0.8),
+          backgroundColor: AppColors.errorColor.withValues(alpha: 0.8),
           colorText: Colors.white,
         );
       }
@@ -148,12 +256,12 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
             color: AppColors.backgroundColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: AppColors.primaryColor.withOpacity(0.5),
+              color: AppColors.primaryColor.withValues(alpha: 0.5),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryColor.withOpacity(0.25),
+                color: AppColors.primaryColor.withValues(alpha: 0.25),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
@@ -167,7 +275,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
                 height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.primaryColor.withOpacity(0.15),
+                  color: AppColors.primaryColor.withValues(alpha: 0.15),
                 ),
                 child: const Icon(
                   Icons.verified_rounded,
@@ -285,7 +393,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
               color: AppColors.surfaceColor,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
-                color: AppColors.borderColor.withOpacity(0.4),
+                color: AppColors.borderColor.withValues(alpha: 0.4),
               ),
             ),
             child: const Icon(
@@ -296,9 +404,34 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
           ),
         ),
         const SizedBox(width: 14),
-        Text(
-          'Choose your plan',
-          style: text20(fontWeight: FontWeight.bold),
+        Expanded(
+          child: Text(
+            'Choose your plan',
+            style: text20(fontWeight: FontWeight.bold),
+          ),
+        ),
+        IconButton(
+          onPressed: () async {
+            await Get.find<SubscriptionStatusController>().checkStatus();
+            final isPremium = Get.find<SubscriptionStatusController>().isPremiumUser.value;
+            if (isPremium) {
+              final plan = _planController.selectedPlan.value ??
+                  _planController.allPlans.value?.plans.firstOrNull;
+              if (plan != null && mounted) {
+                _showPaymentSuccessDialog(plan);
+              }
+            } else {
+              Get.snackbar(
+                'Status Refreshed',
+                'No active subscription found.',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: AppColors.surfaceColor,
+                colorText: Colors.white,
+              );
+            }
+          },
+          icon: const Icon(Icons.refresh_rounded, color: AppColors.white),
+          tooltip: 'Check Status',
         ),
       ],
     );
@@ -311,20 +444,20 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         gradient: LinearGradient(
           colors: [
             AppColors.surfaceColor,
-            AppColors.cardColor.withOpacity(0.8),
+            AppColors.cardColor.withValues(alpha: 0.8),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderColor.withOpacity(0.4)),
+        border: Border.all(color: AppColors.borderColor.withValues(alpha: 0.4)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.15),
+              color: AppColors.primaryColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
@@ -465,18 +598,18 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.surfaceColor
-              : AppColors.cardColor.withOpacity(0.6),
+              : AppColors.cardColor.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
                 ? AppColors.primaryColor
-                : AppColors.borderColor.withOpacity(0.4),
+                : AppColors.borderColor.withValues(alpha: 0.4),
             width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primaryColor.withOpacity(0.18),
+                    color: AppColors.primaryColor.withValues(alpha: 0.18),
                     blurRadius: 14,
                     offset: const Offset(0, 4),
                   ),
@@ -500,13 +633,13 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.primaryColor.withOpacity(0.2)
+                            ? AppColors.primaryColor.withValues(alpha: 0.2)
                             : AppColors.surfaceColor,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected
-                              ? AppColors.primaryColor.withOpacity(0.5)
-                              : AppColors.borderColor.withOpacity(0.3),
+                              ? AppColors.primaryColor.withValues(alpha: 0.5)
+                              : AppColors.borderColor.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
@@ -612,7 +745,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
 
             const SizedBox(height: 12),
             Divider(
-              color: AppColors.dividerColor.withOpacity(0.5),
+              color: AppColors.dividerColor.withValues(alpha: 0.5),
               height: 1,
             ),
             const SizedBox(height: 10),
@@ -773,7 +906,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
           color: AppColors.surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: AppColors.borderColor.withOpacity(0.5),
+            color: AppColors.borderColor.withValues(alpha: 0.5),
           ),
         ),
         child: Row(

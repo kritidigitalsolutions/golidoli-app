@@ -7,6 +7,7 @@ class WebPaymentHelper {
     String? userName,
     String? userEmail,
     String? userContact,
+    bool openInSameTab = true,
   }) async {
     return WebPaymentResult(
       success: false,

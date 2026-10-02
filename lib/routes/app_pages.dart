@@ -21,6 +21,7 @@ import 'package:golidoli_app/features/profile/views/privacy_policy_screen.dart';
 import 'package:golidoli_app/features/profile/views/rate_app_screen.dart';
 import 'package:golidoli_app/features/profile/views/refund_policy.dart';
 import 'package:golidoli_app/features/profile/views/subscription_screen.dart';
+import 'package:golidoli_app/web/screens/subscription/payment_status_screen.dart';
 import 'package:golidoli_app/features/profile/views/terms_conditions_screen.dart';
 import 'package:golidoli_app/features/audio_play/views/audio_stories_screen.dart';
 import 'package:golidoli_app/features/audio_play/views/audio_detail_screen.dart';
@@ -113,6 +114,12 @@ abstract class AppPages {
       page: () => const SubscriptionScreen(),
       transition: Transition.rightToLeft,
       transitionDuration: const Duration(milliseconds: 350),
+    ),
+    GetPage(
+      name: AppRoutes.paymentStatus,
+      page: () => const PaymentStatusScreen(),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 250),
     ),
     GetPage(
       name: AppRoutes.premiumWelcome,

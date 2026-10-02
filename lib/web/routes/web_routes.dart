@@ -10,4 +10,5 @@ class WebRoutes {
   static const profile = '/profile';
   static const login = '/login';
   static const subscription = '/subscription';
+  static const paymentStatus = '/payment/status';
 }

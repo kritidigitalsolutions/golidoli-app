@@ -9,6 +9,44 @@ class StorageService {
   static const String _likedContentKey = 'liked_content_ids';
   static const String _dislikedContentKey = 'disliked_content_ids';
   static const String _loginMethodKey = 'auth_login_method';
+  static const String _pendingTxnIdKey = 'pending_txn_id';
+  static const String _pendingPlanIdKey = 'pending_plan_id';
+  static const String _pendingPaymentIdKey = 'pending_payment_id';
+
+  // Save pending payment for verification
+  static Future<void> savePendingPayment({required String txnId, required String planId, String? paymentId}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pendingTxnIdKey, txnId);
+    await prefs.setString(_pendingPlanIdKey, planId);
+    if (paymentId != null && paymentId.isNotEmpty) {
+      await prefs.setString(_pendingPaymentIdKey, paymentId);
+    }
+  }
+
+  static Future<Map<String, String>?> getPendingPayment() async {
+    final prefs = await SharedPreferences.getInstance();
+    final txnId = prefs.getString(_pendingTxnIdKey);
+    final planId = prefs.getString(_pendingPlanIdKey);
+    final paymentId = prefs.getString(_pendingPaymentIdKey);
+    if (txnId != null && txnId.isNotEmpty && planId != null && planId.isNotEmpty) {
+      final map = <String, String>{
+        'txnId': txnId,
+        'planId': planId,
+      };
+      if (paymentId != null && paymentId.isNotEmpty) {
+        map['paymentId'] = paymentId;
+      }
+      return map;
+    }
+    return null;
+  }
+
+  static Future<void> clearPendingPayment() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingTxnIdKey);
+    await prefs.remove(_pendingPlanIdKey);
+    await prefs.remove(_pendingPaymentIdKey);
+  }
 
   // Save and get login method ('phone' or 'google')
   static Future<void> saveLoginMethod(String method) async {

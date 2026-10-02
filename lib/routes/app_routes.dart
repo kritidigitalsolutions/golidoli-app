@@ -12,6 +12,7 @@ class AppRoutes {
   static const movieDetails = '/movie-details';
   static const videoPlayer = '/video-player';
   static const subscription = '/subscription';
+  static const paymentStatus = '/payment/status';
   static const premiumWelcome = '/premium-welcome';
   static const editProfile = '/edit-profile';
   static const notifications = '/notifications';

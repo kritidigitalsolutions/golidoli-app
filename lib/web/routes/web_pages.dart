@@ -9,6 +9,7 @@ import 'package:golidoli_app/web/screens/player/web_player_screen.dart';
 import 'package:golidoli_app/web/screens/profile/web_profile_screen.dart';
 import 'package:golidoli_app/web/screens/search/web_search_screen.dart';
 import 'package:golidoli_app/web/screens/series/web_series_screen.dart';
+import 'package:golidoli_app/web/screens/subscription/payment_status_screen.dart';
 import 'package:golidoli_app/web/screens/subscription/web_subscription_screen.dart';
 
 abstract class WebPages {
@@ -78,6 +79,12 @@ abstract class WebPages {
     GetPage(
       name: WebRoutes.subscription,
       page: () => const WebSubscriptionScreen(),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 250),
+    ),
+    GetPage(
+      name: WebRoutes.paymentStatus,
+      page: () => const PaymentStatusScreen(),
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 250),
     ),

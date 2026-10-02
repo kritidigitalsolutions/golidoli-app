@@ -140,9 +140,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         children: [
           const AppBackButton(),
           const SizedBox(width: 14),
-          Text(
-            'Choose your plan',
-            style: text18(fontWeight: FontWeight.bold),
+          Expanded(
+            child: Text(
+              'Choose your plan',
+              style: text18(fontWeight: FontWeight.bold),
+            ),
+          ),
+          IconButton(
+            onPressed: () => _paymentController.checkAndUpdateStatus(),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.white),
+            tooltip: 'Check Payment Status',
           ),
         ],
       ),
