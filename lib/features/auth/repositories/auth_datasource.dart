@@ -13,6 +13,10 @@ import 'package:golidoli_app/features/auth/models/intro_screen_model.dart';
 class AuthDatasource {
   final NetworkApiService _apiService = NetworkApiService();
 
+  void setToken(String token) {
+    _apiService.setToken(token);
+  }
+
   Future<IntroScreenResponse?> fetchIntroScreens() async {
     try {
       final response = await _apiService.getApi(AppUrl.introScreens);
@@ -323,6 +327,54 @@ class AuthDatasource {
       debugPrint("❌ Update Profile Error: $e");
       rethrow;
     }
+  }
+
+  Future<WebsiteLoginResult?> websiteLogin() async {
+    try {
+      debugPrint("🌐 Calling Website Login API at URL => ${AppUrl.websiteLogin}");
+      final response = await _apiService.postApi(AppUrl.websiteLogin, {});
+      if (response != null) {
+        UserModel? userModel;
+        Map<String, dynamic>? userData;
+        if (response["user"] is Map) {
+          userData = Map<String, dynamic>.from(response["user"]);
+          userModel = UserModel.fromJson(userData);
+          await StorageService.saveUser(userModel);
+        }
+        final bool success = response["success"] == true ||
+            response["status"] == "success" ||
+            userModel != null ||
+            response["token"] != null;
+        return WebsiteLoginResult(
+          success: success,
+          user: userModel,
+          message: response["message"]?.toString(),
+        );
+      }
+      return WebsiteLoginResult.failure("Invalid response from server");
+    } catch (e) {
+      debugPrint("❌ Website Login Error: $e");
+      return WebsiteLoginResult.failure(e.toString());
+    }
+  }
+}
+
+class WebsiteLoginResult {
+  final bool success;
+  final UserModel? user;
+  final String? message;
+
+  WebsiteLoginResult({
+    required this.success,
+    this.user,
+    this.message,
+  });
+
+  factory WebsiteLoginResult.failure([String? message]) {
+    return WebsiteLoginResult(
+      success: false,
+      message: message,
+    );
   }
 }
 

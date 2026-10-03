@@ -214,7 +214,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     return Obx(() {
       final status = _controller.allPlanStatus.value;
 
-      if (status == Status.loading) {
+      if (status == Status.loading || status == Status.init) {
         return const SubscriptionPlansShimmer();
       }
 

@@ -16,26 +16,33 @@ class SubscriptionStatusController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    checkStatus();
+    checkStatus(verify: false);
   }
 
-  Future<void> checkStatus() async {
+  void markAsPremium() {
+    isPremiumUser.value = true;
+  }
+
+  Future<void> checkStatus({bool verify = false}) async {
     try {
       isLoading.value = true;
 
-      // Check if there is a pending payment verification
-      final pending = await StorageService.getPendingPayment();
-      if (pending != null) {
-        final txnId = pending['txnId'];
-        final planId = pending['planId'];
-        if (txnId != null && txnId.isNotEmpty && planId != null && planId.isNotEmpty) {
-          debugPrint("Verifying pending payment before fetching status: txnId=$txnId, planId=$planId");
-          final verifyRes = await _paymentRepo.verifyPayment(
-            transactionId: txnId,
-            planId: planId,
-          );
-          if (verifyRes != null && verifyRes.success) {
-            await StorageService.clearPendingPayment();
+      // Only verify pending payment if explicitly requested (e.g. returning from payment gateway or manual refresh)
+      if (verify) {
+        final pending = await StorageService.getPendingPayment();
+        if (pending != null) {
+          final txnId = pending['txnId'];
+          final planId = pending['planId'];
+          if (txnId != null && txnId.isNotEmpty && planId != null && planId.isNotEmpty) {
+            debugPrint("Verifying pending payment: txnId=$txnId, planId=$planId");
+            final verifyRes = await _paymentRepo.verifyPayment(
+              transactionId: txnId,
+              planId: planId,
+            );
+            if (verifyRes != null && verifyRes.success) {
+              await StorageService.clearPendingPayment();
+              isPremiumUser.value = true; // Force active immediately on successful verification
+            }
           }
         }
       }
@@ -44,20 +51,24 @@ class SubscriptionStatusController extends GetxController {
       if (result != null) {
         subscriptionStatus.value = result;
         // A user is premium if the API returns success and the active subscription exists and is active.
-        isPremiumUser.value = result.success &&
+        final serverIsActive = result.success &&
             result.subscription != null &&
             result.subscription!.status.toLowerCase() == 'active';
-        if (isPremiumUser.value) {
+        
+        if (serverIsActive) {
+          isPremiumUser.value = true;
           await StorageService.clearPendingPayment();
+        } else if (!isPremiumUser.value) {
+          isPremiumUser.value = false;
         }
       } else {
-        isPremiumUser.value = false;
+        if (!isPremiumUser.value) {
+          isPremiumUser.value = false;
+        }
         subscriptionStatus.value = null;
       }
     } catch (e) {
       debugPrint("SubscriptionStatusController checkStatus error: $e");
-      isPremiumUser.value = false;
-      subscriptionStatus.value = null;
     } finally {
       isLoading.value = false;
     }

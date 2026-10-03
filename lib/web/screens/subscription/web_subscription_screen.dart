@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
+import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/plan_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
@@ -47,8 +48,58 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
       Get.put(SubscriptionStatusController());
     }
 
+    // Handle incoming web parameters (Auto-Login & Payment Flow)
+    _handleWebParams();
+
     // Automatically check for pending payment / return query parameters from gateway
     _checkAndVerifyPendingPayment();
+  }
+
+  Future<void> _handleWebParams() async {
+    final queryParams = _getAllQueryParams();
+    final String? token = queryParams['token'];
+    final String? planId = queryParams['planId'];
+    final String? promoCode = queryParams['promoCode'];
+    final String? source = queryParams['source'];
+
+    final String? merchantTxnId = queryParams['merchantTxnId'] ?? queryParams['transactionId'];
+    final String? paymentId = queryParams['paymentId'];
+    final String? checksum = queryParams['checksum'];
+
+    if (promoCode != null) debugPrint("🏷️ PromoCode: $promoCode");
+    if (paymentId != null) debugPrint("💳 PaymentId: $paymentId");
+    if (checksum != null) debugPrint("🔐 Checksum: $checksum");
+
+    if (token != null && token.isNotEmpty) {
+      debugPrint("🌐 Web Auto-Login: Token found in URL");
+      final AuthController authController = Get.isRegistered<AuthController>()
+          ? Get.find<AuthController>()
+          : Get.put(AuthController());
+
+      bool loginSuccess = await authController.websiteLogin(token);
+
+      if (loginSuccess && planId != null && planId.isNotEmpty) {
+        if (_planController.allPlans.value?.plans.isEmpty ?? true) {
+          await _planController.fetchAllPlans();
+        }
+
+        // Auto-initiate payment if redirected from mobile app
+        if (source == 'app' && merchantTxnId == null) {
+          debugPrint("🚀 Auto-initiating payment from WebSubscriptionScreen");
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _startPayment();
+          });
+        }
+      } else if (!loginSuccess) {
+        Get.snackbar(
+          "Error",
+          "Login failed or token expired",
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    }
   }
 
   Map<String, String> _getAllQueryParams() {

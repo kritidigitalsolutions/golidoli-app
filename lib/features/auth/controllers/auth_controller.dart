@@ -8,6 +8,9 @@ import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/features/home/controllers/ai_reels_controller.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 
+import '../../../core/services/storage_service.dart';
+import '../models/response/user_model.dart';
+
 // ── Splash Controller ──────────────────────────────────────────
 class SplashController extends GetxController
     with GetSingleTickerProviderStateMixin {
@@ -152,6 +155,36 @@ class OnboardingController extends GetxController {
 class AuthController extends GetxController {
   final AuthDatasource authDatasource = AuthDatasource();
   final GoogleAuthService googleAuthService = GoogleAuthService();
+
+  // ── State ───────────────────────────────────────────
+  final RxBool isLoading = false.obs;
+  final Rx<UserModel?> userData = Rx<UserModel?>(null);
+  final RxBool isLoggedIn = false.obs;
+
+  // ── Website Auto-Login ──────────────────────────────
+  Future<bool> websiteLogin(String token) async {
+    isLoading.value = true;
+    try {
+      await StorageService.saveToken(token);
+      authDatasource.setToken(token);
+
+      final response = await authDatasource.websiteLogin();
+      if (response != null && response.success) {
+        if (response.user != null) {
+          userData.value = response.user;
+          await StorageService.saveUser(response.user!);
+        }
+        isLoggedIn.value = true;
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("❌ Website Login Error: $e");
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
 
   // ── Google Sign-In ──────────────────────────────────
   final RxBool isGoogleLoading = false.obs;

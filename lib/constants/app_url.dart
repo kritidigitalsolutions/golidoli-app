@@ -1,12 +1,14 @@
 class AppUrl {
   // static const String baseUrl = 'http://192.168.1.28:5000';
   static const String baseUrl = 'https://api.golidoli.com';
-  static const String webBaseUrl = 'https://golidoli.com';
+  // static const String webBaseUrl = 'https://golidoli.com';
+  static const String webBaseUrl = 'https://sage-praline-c605a4.netlify.app';
 
   // static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';
   static const String verifyOtp = "$baseUrl/api/auth/verify-otp";
   static const String googleLogin = "$baseUrl/api/auth/google-login";
+  static const String websiteLogin = "$baseUrl/api/auth/website-login";
   static const String logout = "$baseUrl/api/auth/logout";
   static const String completeProfile = "$baseUrl/api/user/complete-profile";
   static const String fetchProfile = "$baseUrl/api/user/profile";
@@ -39,10 +41,7 @@ class AppUrl {
   static String verifyPayment = "$baseUrl/api/payment/verify";
   static const String subscriptionStatus = "$baseUrl/api/subscription/status";
 
-  static String webSubscriptionUrl({required String planId, String? token}) {
-    final tokenParam = token != null && token.isNotEmpty ? "&token=$token" : "";
-    return "$webBaseUrl/subscription?planId=$planId$tokenParam";
-  }
+  static const String webSubscription = "$webBaseUrl/subscription";
 
   // Home Banners & Intro Screens
   static const String homeBanners = "$baseUrl/api/home-banners";
