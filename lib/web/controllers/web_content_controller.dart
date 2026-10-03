@@ -38,10 +38,12 @@ class WebContentController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchCategories();
-    fetchDramas();
-    fetchMovies();
-    fetchSeries();
+    if (categories.isEmpty && movies.isEmpty && series.isEmpty && dramas.isEmpty) {
+      fetchCategories();
+      fetchDramas();
+      fetchMovies();
+      fetchSeries();
+    }
   }
 
   Future<void> fetchCategories() async {

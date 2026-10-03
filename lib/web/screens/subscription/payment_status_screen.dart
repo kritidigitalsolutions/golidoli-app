@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -5,6 +6,7 @@ import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/repositories/payment_repo.dart';
 import 'package:golidoli_app/web/routes/web_routes.dart';
+import 'package:golidoli_app/web/utils/web_payment_helper.dart';
 
 class PaymentStatusScreen extends StatefulWidget {
   const PaymentStatusScreen({super.key});
@@ -59,11 +61,21 @@ class _PaymentStatusScreenState extends State<PaymentStatusScreen> {
           queryParams['merchantTxnId'] ??
           queryParams['transactionId'] ??
           queryParams['paymentId'] ??
+          queryParams['sppayId'] ??
+          queryParams['sabpaisaTxnId'] ??
           queryParams['orderId'] ??
-          pending?['txnId'];
+          pending?['txnId'] ??
+          (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_txn_id') : null);
 
-      final planId = queryParams['planId'] ?? pending?['planId'] ?? '';
-      final paymentId = queryParams['paymentId'] ?? pending?['paymentId'];
+      String planId = queryParams['planId'] ??
+          pending?['planId'] ??
+          (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_plan_id') : null) ??
+          '';
+
+      String? paymentId = queryParams['paymentId'] ??
+          queryParams['sppayId'] ??
+          pending?['paymentId'] ??
+          (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_payment_id') : null);
 
       debugPrint("PaymentStatusScreen verifying: txnId=$txnId, planId=$planId, params=$queryParams");
 
@@ -76,6 +88,13 @@ class _PaymentStatusScreenState extends State<PaymentStatusScreen> {
 
       if (verifyRes != null && verifyRes.success) {
         await StorageService.clearPendingPayment();
+        if (kIsWeb) {
+          try {
+            WebPaymentHelper.removeLocalStorageItem('pending_txn_id');
+            WebPaymentHelper.removeLocalStorageItem('pending_plan_id');
+            WebPaymentHelper.removeLocalStorageItem('pending_payment_id');
+          } catch (_) {}
+        }
         await Get.find<SubscriptionStatusController>().checkStatus();
         if (mounted) {
           setState(() {

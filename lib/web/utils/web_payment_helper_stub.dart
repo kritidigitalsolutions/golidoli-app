@@ -14,4 +14,7 @@ class WebPaymentHelper {
       errorMessage: 'Web payments are not available on this platform.',
     );
   }
+
+  static String? getLocalStorageItem(String key) => null;
+  static void removeLocalStorageItem(String key) {}
 }

@@ -14,7 +14,7 @@ class WebHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(WebHomeController());
+    final controller = Get.put(WebHomeController(), permanent: true);
     final horizontalPadding = WebResponsive.contentHorizontalPadding(context);
 
     return WebMainLayout(

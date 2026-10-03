@@ -1,8 +1,8 @@
 class AppUrl {
   // static const String baseUrl = 'http://192.168.1.28:5000';
   static const String baseUrl = 'https://api.golidoli.com';
-  // static const String webBaseUrl = 'https://golidoli.com';
-  static const String webBaseUrl = 'https://sage-praline-c605a4.netlify.app';
+  static const String webBaseUrl = 'https://golidoli.com';
+  // static const String webBaseUrl = 'https://sage-praline-c605a4.netlify.app';
 
   // static const String baseUrl = 'https://goli-doli-ott-backend.vercel.app';
   static const String sendOtp = '$baseUrl/api/auth/send-otp';

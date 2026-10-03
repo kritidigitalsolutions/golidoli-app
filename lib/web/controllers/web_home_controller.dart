@@ -42,7 +42,9 @@ class WebHomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchAllHomeData();
+    if (banners.isEmpty && movies.isEmpty && series.isEmpty && dramas.isEmpty) {
+      fetchAllHomeData();
+    }
     _startBannerAutoRefresh();
   }
 

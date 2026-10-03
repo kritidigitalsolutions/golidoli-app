@@ -9,6 +9,20 @@ import 'package:golidoli_app/web/utils/web_payment_result.dart';
 class WebPaymentHelper {
   static final PaymentRepo _paymentRepo = PaymentRepo();
 
+  static String? getLocalStorageItem(String key) {
+    try {
+      return web.window.localStorage.getItem(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void removeLocalStorageItem(String key) {
+    try {
+      web.window.localStorage.removeItem(key);
+    } catch (_) {}
+  }
+
   /// Navigates to SabPaisa payment gateway for a given subscription plan on Web in the same tab by default
   static Future<WebPaymentResult> purchasePlan({
     required SubscriptionPlan plan,
@@ -24,7 +38,7 @@ class WebPaymentHelper {
     }
 
     try {
-      final callbackUrl = '${web.window.location.origin}/payment/status';
+      final callbackUrl = '${web.window.location.origin}/subscription';
       final order = await _paymentRepo.createOrder(
         planId: plan.id,
         userName: userName,

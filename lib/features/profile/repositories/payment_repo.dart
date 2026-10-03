@@ -16,7 +16,7 @@ class PaymentRepo {
   }) async {
     try {
       final origin = kIsWeb ? Uri.base.origin : AppUrl.webBaseUrl;
-      final defaultCallback = '$origin/payment/status';
+      final defaultCallback = '$origin/subscription';
       final finalCallback = callbackUrl ?? defaultCallback;
 
       final response = await _apiService.postApi(AppUrl.createOrder, {

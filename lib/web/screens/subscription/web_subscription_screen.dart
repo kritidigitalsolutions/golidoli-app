@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:golidoli_app/constants/app_colors.dart';
@@ -131,14 +132,30 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
           queryParams['merchantTxnId'] ??
           queryParams['transactionId'] ??
           queryParams['paymentId'] ??
+          queryParams['sppayId'] ??
+          queryParams['sabpaisaTxnId'] ??
           queryParams['orderId'] ??
-          pending?['txnId'];
+          pending?['txnId'] ??
+          (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_txn_id') : null);
 
-      final planId = queryParams['planId'] ?? pending?['planId'] ?? '';
-      final paymentId = queryParams['paymentId'] ?? pending?['paymentId'];
+      String planId = queryParams['planId'] ??
+          pending?['planId'] ??
+          (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_plan_id') : null) ??
+          '';
 
-      if ((txnId == null || txnId.isEmpty) && pending == null) {
+      String? paymentId = queryParams['paymentId'] ??
+          queryParams['sppayId'] ??
+          pending?['paymentId'] ??
+          (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_payment_id') : null);
+
+      if ((txnId == null || txnId.isEmpty) && pending == null && (kIsWeb ? WebPaymentHelper.getLocalStorageItem('pending_txn_id') == null : true)) {
         return;
+      }
+
+      if (planId.isEmpty) {
+        planId = _planController.selectedPlan.value?.id ??
+            _planController.allPlans.value?.plans.firstOrNull?.id ??
+            '';
       }
 
       if (mounted) {
@@ -157,6 +174,13 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
 
       // Clear pending payment from localStorage
       await StorageService.clearPendingPayment();
+      if (kIsWeb) {
+        try {
+          WebPaymentHelper.removeLocalStorageItem('pending_txn_id');
+          WebPaymentHelper.removeLocalStorageItem('pending_plan_id');
+          WebPaymentHelper.removeLocalStorageItem('pending_payment_id');
+        } catch (_) {}
+      }
 
       // Check user subscription status
       final subStatusController = Get.find<SubscriptionStatusController>();

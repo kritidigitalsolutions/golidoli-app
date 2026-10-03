@@ -14,7 +14,7 @@ class WebMoviesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(WebContentController());
+    final controller = Get.put(WebContentController(), permanent: true);
     final horizontalPadding = WebResponsive.contentHorizontalPadding(context);
 
     return WebMainLayout(
