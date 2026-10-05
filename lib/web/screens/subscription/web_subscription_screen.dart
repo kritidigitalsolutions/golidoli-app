@@ -30,6 +30,11 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
   final Set<String> _expandedPlanIds = {};
   bool _isProcessingPayment = false;
 
+  SubscriptionStatusController get _subController =>
+      Get.isRegistered<SubscriptionStatusController>()
+          ? Get.find<SubscriptionStatusController>()
+          : Get.put(SubscriptionStatusController(), permanent: true);
+
   @override
   void initState() {
     super.initState();
@@ -196,7 +201,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
       }
 
       // Check user subscription status
-      final subStatusController = Get.find<SubscriptionStatusController>();
+      final subStatusController = _subController;
       await subStatusController.checkStatus();
       final isPremium = subStatusController.isPremiumUser.value;
 
@@ -253,7 +258,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
   }
 
   Future<void> _processPurchase() async {
-    final subStatusController = Get.find<SubscriptionStatusController>();
+    final subStatusController = _subController;
     if (subStatusController.isPremiumUser.value) {
       Get.snackbar(
         'Subscription Active',
@@ -500,8 +505,8 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         ),
         IconButton(
           onPressed: () async {
-            await Get.find<SubscriptionStatusController>().checkStatus();
-            final isPremium = Get.find<SubscriptionStatusController>().isPremiumUser.value;
+            await _subController.checkStatus();
+            final isPremium = _subController.isPremiumUser.value;
             if (isPremium) {
               final plan = _planController.selectedPlan.value ??
                   _planController.allPlans.value?.plans.firstOrNull;
@@ -975,8 +980,7 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
 
   Widget _buildBottomBar() {
     return Obx(() {
-      final isSubscribed =
-          Get.find<SubscriptionStatusController>().isPremiumUser.value;
+      final isSubscribed = _subController.isPremiumUser.value;
       final selectedPlan = _planController.selectedPlan.value;
 
       String buttonText;

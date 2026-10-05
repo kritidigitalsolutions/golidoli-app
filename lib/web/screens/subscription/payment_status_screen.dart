@@ -21,6 +21,11 @@ class _PaymentStatusScreenState extends State<PaymentStatusScreen> {
   bool _isSuccess = false;
   String _message = 'Verifying your payment...';
 
+  SubscriptionStatusController get _subController =>
+      Get.isRegistered<SubscriptionStatusController>()
+          ? Get.find<SubscriptionStatusController>()
+          : Get.put(SubscriptionStatusController(), permanent: true);
+
   @override
   void initState() {
     super.initState();
@@ -95,7 +100,7 @@ class _PaymentStatusScreenState extends State<PaymentStatusScreen> {
             WebPaymentHelper.removeLocalStorageItem('pending_payment_id');
           } catch (_) {}
         }
-        await Get.find<SubscriptionStatusController>().checkStatus();
+        await _subController.checkStatus();
         if (mounted) {
           setState(() {
             _isVerifying = false;
@@ -109,8 +114,8 @@ class _PaymentStatusScreenState extends State<PaymentStatusScreen> {
       }
 
       // Check subscription status as fallback
-      await Get.find<SubscriptionStatusController>().checkStatus();
-      final isPremium = Get.find<SubscriptionStatusController>().isPremiumUser.value;
+      await _subController.checkStatus();
+      final isPremium = _subController.isPremiumUser.value;
 
       if (mounted) {
         if (isPremium) {

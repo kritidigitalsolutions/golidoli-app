@@ -110,6 +110,10 @@ class MyApp extends StatelessWidget {
       title: 'GoliDoli',
       debugShowCheckedModeBanner: false,
       scrollBehavior: const AppWebScrollBehavior(),
+      initialBinding: BindingsBuilder(() {
+        Get.put(SubscriptionStatusController(), permanent: true);
+        Get.put(NotificationSettingsController(), permanent: true);
+      }),
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,

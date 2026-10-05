@@ -19,6 +19,11 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  SubscriptionStatusController get _subController =>
+      Get.isRegistered<SubscriptionStatusController>()
+          ? Get.find<SubscriptionStatusController>()
+          : Get.put(SubscriptionStatusController(), permanent: true);
+
   late final PlanController _controller;
   late final PaymentController _paymentController;
   late final ProfileController _profileController;
@@ -40,7 +45,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   void startPayment() {
-    if (Get.find<SubscriptionStatusController>().isPremiumUser.value) {
+    if (_subController.isPremiumUser.value) {
       Get.snackbar(
         'Subscription Active',
         'You already have an active subscription plan.',
@@ -616,8 +621,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
       child: Obx(() {
         final isProcessing = _paymentController.isProcessing.value;
-        final isSubscribed =
-            Get.find<SubscriptionStatusController>().isPremiumUser.value;
+        final isSubscribed = _subController.isPremiumUser.value;
         final selectedPlan = _controller.selectedPlan.value;
 
         String buttonText;

@@ -307,7 +307,9 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildSubscriptionCard() {
-    final subController = Get.find<SubscriptionStatusController>();
+    final subController = Get.isRegistered<SubscriptionStatusController>()
+        ? Get.find<SubscriptionStatusController>()
+        : Get.put(SubscriptionStatusController(), permanent: true);
     return Obx(() {
       if (subController.isLoading.value) {
         return const ShimmerEffect(
