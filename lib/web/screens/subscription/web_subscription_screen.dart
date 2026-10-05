@@ -5,6 +5,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/enums.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/auth/controllers/auth_controller.dart';
+import 'package:golidoli_app/features/auth/repositories/auth_datasource.dart';
 import 'package:golidoli_app/features/profile/controllers/plan_controller.dart';
 import 'package:golidoli_app/features/profile/controllers/subscription_status_controller.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
@@ -71,11 +72,12 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
     if (paymentId != null) debugPrint("💳 PaymentId: $paymentId");
     if (checksum != null) debugPrint("🔐 Checksum: $checksum");
 
+    final AuthController authController = Get.isRegistered<AuthController>()
+        ? Get.find<AuthController>()
+        : Get.put(AuthController());
+
     if (token != null && token.isNotEmpty) {
       debugPrint("🌐 Web Auto-Login: Token found in URL");
-      final AuthController authController = Get.isRegistered<AuthController>()
-          ? Get.find<AuthController>()
-          : Get.put(AuthController());
 
       bool loginSuccess = await authController.websiteLogin(token);
 
@@ -99,6 +101,17 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
+      }
+    } else {
+      // If token is not in URL (e.g. returning from gateway), restore saved user session
+      final savedToken = await StorageService.getToken();
+      if (savedToken != null && savedToken.isNotEmpty) {
+        var user = await StorageService.getUser();
+        user ??= await AuthDatasource().fetchProfile();
+        if (user != null) {
+          authController.userData.value = user;
+          authController.isLoggedIn.value = true;
+        }
       }
     }
   }

@@ -89,7 +89,7 @@ class PaymentController extends GetxController with WidgetsBindingObserver {
   /// Manually verifies and checks subscription status upon returning from website
   Future<void> checkAndUpdateStatus() async {
     try {
-      await Get.find<SubscriptionStatusController>().checkStatus(verify: false);
+      await Get.find<SubscriptionStatusController>().checkStatus(verify: true);
       final isSubscribed = Get.find<SubscriptionStatusController>().isPremiumUser.value;
       if (isSubscribed) {
         Get.find<SubscriptionStatusController>().markAsPremium();

@@ -16,8 +16,9 @@ class PaymentRepo {
   }) async {
     try {
       final origin = kIsWeb ? Uri.base.origin : AppUrl.webBaseUrl;
-      final defaultCallback = '$origin/subscription';
-      final finalCallback = callbackUrl ?? defaultCallback;
+      final backendCallback = '${AppUrl.baseUrl}/api/payment/callback';
+      final frontendReturn = '$origin/subscription';
+      final finalCallback = callbackUrl ?? backendCallback;
 
       final response = await _apiService.postApi(AppUrl.createOrder, {
         'planId': planId,
@@ -26,8 +27,9 @@ class PaymentRepo {
         if (userEmail != null && userEmail.isNotEmpty) 'userEmail': userEmail,
         if (userContact != null && userContact.isNotEmpty) 'userContact': userContact,
         'callbackUrl': finalCallback,
-        'returnUrl': finalCallback,
-        'redirectUrl': finalCallback,
+        'returnUrl': frontendReturn,
+        'redirectUrl': frontendReturn,
+        'frontendUrl': frontendReturn,
       });
       return SabPaisaOrderResponse.fromJson(response);
     } catch (e) {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
+import 'package:golidoli_app/constants/app_url.dart';
 import 'package:golidoli_app/core/services/storage_service.dart';
 import 'package:golidoli_app/features/profile/models/response/plan_model.dart';
 import 'package:golidoli_app/features/profile/repositories/payment_repo.dart';
@@ -38,7 +39,7 @@ class WebPaymentHelper {
     }
 
     try {
-      final callbackUrl = '${web.window.location.origin}/subscription';
+      final callbackUrl = '${AppUrl.baseUrl}/api/payment/callback';
       final order = await _paymentRepo.createOrder(
         planId: plan.id,
         userName: userName,

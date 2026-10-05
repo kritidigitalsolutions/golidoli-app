@@ -11,6 +11,8 @@ import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/screens/auth/web_login_dialog.dart';
 import 'package:golidoli_app/web/utils/web_responsive.dart';
 
+import '../../features/auth/controllers/auth_controller.dart';
+
 class WebHeader extends StatefulWidget implements PreferredSizeWidget {
   final String activeRoute;
 
@@ -40,7 +42,16 @@ class _WebHeaderState extends State<WebHeader> {
     if (hasToken && user == null) {
       try {
         user = await AuthDatasource().fetchProfile();
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("WebHeader fetchProfile error: $e");
+      }
+    }
+    if (Get.isRegistered<AuthController>()) {
+      final auth = Get.find<AuthController>();
+      if (user != null && auth.userData.value == null) {
+        auth.userData.value = user;
+        auth.isLoggedIn.value = hasToken;
+      }
     }
     if (mounted) {
       setState(() {
