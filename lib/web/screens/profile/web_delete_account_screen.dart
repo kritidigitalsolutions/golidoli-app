@@ -20,7 +20,6 @@ class WebDeleteAccountScreen extends StatefulWidget {
 
 class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
   final AuthDatasource _authDatasource = AuthDatasource();
-  final TextEditingController _accountController = TextEditingController();
   final TextEditingController _feedbackController = TextEditingController();
 
   bool _isDeleting = false;
@@ -41,31 +40,7 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserIfAvailable();
-  }
-
-  Future<void> _loadUserIfAvailable() async {
-    try {
-      final user = await StorageService.getUser();
-      if (user != null) {
-        if (mounted) {
-          setState(() {
-            _accountController.text = user.email.isNotEmpty
-                ? user.email
-                : user.phone;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Load user info error: $e");
-    }
-  }
-
-  @override
   void dispose() {
-    _accountController.dispose();
     _feedbackController.dispose();
     super.dispose();
   }
@@ -77,20 +52,6 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
   }
 
   void _onSubmitPressed() {
-    final account = _accountController.text.trim();
-
-    if (account.isEmpty) {
-      Get.snackbar(
-        'Account Required',
-        'Please enter your email address or mobile number.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.redAccent.withValues(alpha: 0.9),
-        colorText: Colors.white,
-        margin: const EdgeInsets.all(16),
-      );
-      return;
-    }
-
     if (_selectedReason == null || _selectedReason!.isEmpty) {
       Get.snackbar(
         'Reason Required',
@@ -236,11 +197,20 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
                                     });
 
                                     try {
-                                      await _authDatasource.submitDeletionRequest(
+                                      final response =
+                                          await _authDatasource.submitDeletionRequest(
                                         reasonCategory: _selectedReason ?? 'Other',
                                         reasonDetails: _feedbackController.text,
-                                        emailOrPhone: _accountController.text,
                                       );
+
+                                      final success = response != null &&
+                                          (response['success'] == true ||
+                                              response['status'] == 'success' ||
+                                              response['request'] != null);
+
+                                      final message = response != null
+                                          ? response['message']?.toString()
+                                          : null;
 
                                       await StorageService.logout();
 
@@ -255,11 +225,13 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
                                       if (mounted) {
                                         Navigator.of(dialogCtx).pop();
                                         Get.snackbar(
-                                          'Account Deletion Request',
-                                          'User has been deleted in next 24 hour',
+                                          success ? 'Deletion Request Submitted' : 'Account Deletion',
+                                          message ??
+                                              'Account deletion request submitted successfully. It will be reviewed by our team.',
                                           snackPosition: SnackPosition.BOTTOM,
-                                          backgroundColor:
-                                              Colors.green.withValues(alpha: 0.9),
+                                          backgroundColor: success
+                                              ? Colors.green.withValues(alpha: 0.9)
+                                              : Colors.orange.withValues(alpha: 0.9),
                                           colorText: Colors.white,
                                           duration: const Duration(seconds: 4),
                                           margin: const EdgeInsets.all(16),
@@ -276,16 +248,14 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
                                         });
                                         Navigator.of(dialogCtx).pop();
                                         Get.snackbar(
-                                          'Account Deletion Request',
-                                          'User has been deleted in next 24 hour',
+                                          'Error',
+                                          'Failed to submit deletion request: $e',
                                           snackPosition: SnackPosition.BOTTOM,
                                           backgroundColor:
-                                              Colors.green.withValues(alpha: 0.9),
+                                              Colors.redAccent.withValues(alpha: 0.9),
                                           colorText: Colors.white,
-                                          duration: const Duration(seconds: 4),
                                           margin: const EdgeInsets.all(16),
                                         );
-                                        Get.offAllNamed(WebRoutes.home);
                                       }
                                     }
                                   },
@@ -452,7 +422,7 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Enter your account details and reason to request permanent account deletion.',
+                              'Submit an account deletion request using your authenticated session.',
                               style: text13(
                                 color: AppColors.secondaryTextColor,
                               ),
@@ -465,46 +435,6 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
 
                   const SizedBox(height: 28),
                   const Divider(color: AppColors.borderColor),
-                  const SizedBox(height: 24),
-
-                  // Email or Mobile Number Input Field
-                  Text(
-                    'Email or Mobile Number',
-                    style: text14(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _accountController,
-                    style: text14(color: AppColors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Enter your email or mobile number',
-                      hintStyle: text13(
-                        color: AppColors.secondaryTextColor.withValues(alpha: 0.6),
-                      ),
-                      filled: true,
-                      fillColor: AppColors.backgroundColor.withValues(alpha: 0.6),
-                      prefixIcon: const Icon(
-                        Icons.account_circle_outlined,
-                        color: AppColors.secondaryTextColor,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(
-                          color: AppColors.borderColor.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(
-                          color: AppColors.accentColor,
-                        ),
-                      ),
-                    ),
-                  ),
-
                   const SizedBox(height: 24),
 
                   // Reason Category Selection
@@ -640,7 +570,7 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'After account deletion, you won\'t be able to use this account or access your subscription.',
+                                'Identity is extracted securely on the server from your token. After deletion, you won\'t be able to use this account or access your subscription.',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: AppColors.secondaryTextColor,
@@ -677,7 +607,7 @@ class _WebDeleteAccountScreenState extends State<WebDeleteAccountScreen> {
                         fontWeight: _understandCheck
                             ? FontWeight.w600
                             : FontWeight.normal,
-                        ),
+                      ),
                     ),
                   ),
 

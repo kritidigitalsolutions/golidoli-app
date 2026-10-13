@@ -394,7 +394,6 @@ class AuthDatasource {
   Future<Map<String, dynamic>?> submitDeletionRequest({
     required String reasonCategory,
     String? reasonDetails,
-    String? emailOrPhone,
   }) async {
     try {
       debugPrint("🗑️ Submitting Account Deletion Request => ${AppUrl.deleteAccountRequest}");
@@ -406,19 +405,16 @@ class AuthDatasource {
         "reasonCategory": reasonCategory,
         if (reasonDetails != null && reasonDetails.trim().isNotEmpty)
           "reasonDetails": reasonDetails.trim(),
-        if (emailOrPhone != null && emailOrPhone.trim().isNotEmpty)
-          "emailOrPhone": emailOrPhone.trim(),
       });
       if (response is Map<String, dynamic>) {
         return response;
       } else if (response != null) {
-        return {"success": true, "message": "User has been deleted in next 24 hour"};
+        return {"success": true, "message": response.toString()};
       }
-      return {"success": true, "message": "User has been deleted in next 24 hour"};
+      return null;
     } catch (e) {
       debugPrint("❌ Submit Deletion Request Error: $e");
-      // Dummy success fallback as requested when user is not logged in or network request fails
-      return {"success": true, "message": "User has been deleted in next 24 hour"};
+      rethrow;
     }
   }
 
