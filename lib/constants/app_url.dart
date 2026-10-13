@@ -1,5 +1,5 @@
 class AppUrl {
-  // static const String baseUrl = 'http://192.168.1.28:5000';
+  // static const String baseUrl = 'http://192.168.1.13:5000';
   static const String baseUrl = 'https://api.golidoli.com';
   static const String webBaseUrl = 'https://golidoli.com';
   // static const String webBaseUrl = 'https://sage-praline-c605a4.netlify.app';
@@ -13,6 +13,8 @@ class AppUrl {
   static const String completeProfile = "$baseUrl/api/user/complete-profile";
   static const String fetchProfile = "$baseUrl/api/user/profile";
   static const String updateProfile = "$baseUrl/api/user/update-profile";
+  static const String deleteAccount = "$baseUrl/api/user/delete-account";
+  static const String deleteAccountRequest = "$baseUrl/api/user/delete-account-request";
   static const String allMovies = "$baseUrl/api/movies";
   static String detailMovie(String id) => "$baseUrl/api/movies/$id";
   static const String allSeries = "$baseUrl/api/series";

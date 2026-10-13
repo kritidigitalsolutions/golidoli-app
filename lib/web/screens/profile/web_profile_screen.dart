@@ -672,8 +672,13 @@ class _WebProfileScreenState extends State<WebProfileScreen> {
           _ProfileListTile(
             icon: Icons.money_off_outlined,
             title: 'Refund Policy',
-            showDivider: false,
             onTap: () => _openLegalModal('refund-policy', 'Refund Policy'),
+          ),
+          _ProfileListTile(
+            icon: Icons.delete_forever_outlined,
+            title: 'Delete Account',
+            showDivider: false,
+            onTap: () => Get.toNamed(WebRoutes.deleteAccount),
           ),
         ],
       ),

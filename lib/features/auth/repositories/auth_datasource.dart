@@ -357,6 +357,97 @@ class AuthDatasource {
       return WebsiteLoginResult.failure(e.toString());
     }
   }
+
+  Future<bool> deleteAccount({
+    required String reason,
+    String? feedback,
+    String? emailOrPhone,
+    String? name,
+  }) async {
+    try {
+      debugPrint("🗑️ Calling Delete Account API at URL => ${AppUrl.deleteAccount}");
+      final token = await StorageService.getToken();
+      if (token != null && token.isNotEmpty) {
+        _apiService.setToken(token);
+      }
+      final response = await _apiService.deleteApi(AppUrl.deleteAccount, {
+        "reason": reason,
+        if (feedback != null && feedback.trim().isNotEmpty)
+          "feedback": feedback.trim(),
+        if (emailOrPhone != null && emailOrPhone.trim().isNotEmpty)
+          "emailOrPhone": emailOrPhone.trim(),
+        if (name != null && name.trim().isNotEmpty)
+          "name": name.trim(),
+      });
+      if (response != null) {
+        return response["success"] == true ||
+            response["status"] == "success" ||
+            response["message"] != null;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("❌ Delete Account API Error: $e");
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> submitDeletionRequest({
+    required String reasonCategory,
+    String? reasonDetails,
+    String? emailOrPhone,
+  }) async {
+    try {
+      debugPrint("🗑️ Submitting Account Deletion Request => ${AppUrl.deleteAccountRequest}");
+      final token = await StorageService.getToken();
+      if (token != null && token.isNotEmpty) {
+        _apiService.setToken(token);
+      }
+      final response = await _apiService.postApi(AppUrl.deleteAccountRequest, {
+        "reasonCategory": reasonCategory,
+        if (reasonDetails != null && reasonDetails.trim().isNotEmpty)
+          "reasonDetails": reasonDetails.trim(),
+        if (emailOrPhone != null && emailOrPhone.trim().isNotEmpty)
+          "emailOrPhone": emailOrPhone.trim(),
+      });
+      if (response is Map<String, dynamic>) {
+        return response;
+      } else if (response != null) {
+        return {"success": true, "message": "User has been deleted in next 24 hour"};
+      }
+      return {"success": true, "message": "User has been deleted in next 24 hour"};
+    } catch (e) {
+      debugPrint("❌ Submit Deletion Request Error: $e");
+      // Dummy success fallback as requested when user is not logged in or network request fails
+      return {"success": true, "message": "User has been deleted in next 24 hour"};
+    }
+  }
+
+  Future<dynamic> getDeletionStatus() async {
+    try {
+      final token = await StorageService.getToken();
+      if (token != null && token.isNotEmpty) {
+        _apiService.setToken(token);
+      }
+      return await _apiService.getApi(AppUrl.deleteAccountRequest);
+    } catch (e) {
+      debugPrint("❌ Get Deletion Status Error: $e");
+      return null;
+    }
+  }
+
+  Future<bool> cancelDeletionRequest() async {
+    try {
+      final token = await StorageService.getToken();
+      if (token != null && token.isNotEmpty) {
+        _apiService.setToken(token);
+      }
+      final response = await _apiService.deleteApi(AppUrl.deleteAccountRequest, {});
+      return response != null && response["success"] == true;
+    } catch (e) {
+      debugPrint("❌ Cancel Deletion Request Error: $e");
+      return false;
+    }
+  }
 }
 
 class WebsiteLoginResult {

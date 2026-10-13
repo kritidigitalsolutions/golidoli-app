@@ -4,6 +4,7 @@ import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/constants/app_images.dart';
 import 'package:golidoli_app/routes/app_routes.dart';
 import 'package:golidoli_app/web/controllers/company_info_controller.dart';
+import 'package:golidoli_app/web/routes/web_routes.dart';
 import 'package:golidoli_app/web/utils/web_responsive.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -283,6 +284,10 @@ class WebFooter extends StatelessWidget {
                     _buildRedLink(
                       'Help & Support',
                       () => Get.toNamed(AppRoutes.faq),
+                    ),
+                    _buildRedLink(
+                      'Delete Account',
+                      () => Get.toNamed(WebRoutes.deleteAccount),
                     ),
                   ],
                 ),
