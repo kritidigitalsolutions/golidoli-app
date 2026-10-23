@@ -848,15 +848,25 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
               final series = _seriesController.seriesDetail.value;
 
               if (isDownloading) {
-                return Container(
-                  width: 30,
-                  height: 30,
-                  padding: const EdgeInsets.all(6),
-                  margin: const EdgeInsets.only(right: 6),
-                  child: CircularProgressIndicator(
-                    value: progress > 0 ? progress : null,
-                    strokeWidth: 2,
-                    color: AppColors.primaryColor,
+                return SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        value: progress > 0 ? progress : null,
+                        strokeWidth: 2,
+                        color: AppColors.primaryColor,
+                      ),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: text9(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 );
               }
@@ -900,6 +910,10 @@ class _WebSeriesDetailScreenState extends State<WebSeriesDetailScreen> {
                     extra: {
                       'seriesId': widget.id,
                       'seasonNumber': ep.seasonNumber,
+                      'banner': series?.banner ?? '',
+                      'poster': series?.poster ?? '',
+                      'description': ep.description,
+                      'duration': ep.duration,
                     },
                     isPremium: isEpPremium,
                   );

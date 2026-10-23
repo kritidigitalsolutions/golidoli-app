@@ -578,6 +578,13 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                         remoteUrl: movie.videoUrl,
                         mediaType: DownloadMediaType.movie,
                         isPremium: movie.isPremium,
+                        extra: {
+                          'banner': movie.banner,
+                          'poster': movie.poster,
+                          'description': movie.description,
+                          'genre': movie.genre,
+                          'duration': movie.duration,
+                        },
                       );
                     }
                   },

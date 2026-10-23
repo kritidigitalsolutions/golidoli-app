@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:golidoli_app/constants/app_colors.dart';
 import 'package:golidoli_app/features/micro_drama/controllers/continue_watching_controller.dart';
 import 'package:golidoli_app/features/movie/controllers/movie_controller.dart';
@@ -69,12 +70,7 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         : null;
 
     if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
-      final rawUrl = widget.videoUrl!.trim();
-      final isLocal = isLocalFilePath(rawUrl);
-      final playUrl = isLocal ? rawUrl : formatMediaUrl(rawUrl);
-      _qualityUrls[isLocal ? 'Offline' : 'Auto'] = playUrl;
-      _selectedQuality = isLocal ? 'Offline' : 'Auto';
-      _initializePlayer(playUrl);
+      _setupVideoQualitiesAndInitialize(widget.videoUrl!.trim());
     } else if (widget.episodeId != null && widget.episodeId!.isNotEmpty) {
       _episodeController = Get.put(EpisodeController());
 
@@ -103,11 +99,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
               return;
             }
           }
-          final videoUrl = formatMediaUrl(episodeDetailVal.episode.videoUrl);
+          final videoUrl = episodeDetailVal.episode.videoUrl;
           if (videoUrl.isNotEmpty) {
-            _qualityUrls['Auto'] = videoUrl;
-            _selectedQuality = 'Auto';
-            _initializePlayer(videoUrl);
+            _setupVideoQualitiesAndInitialize(videoUrl);
           } else {
             if (mounted) {
               setState(() {
@@ -143,11 +137,9 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
         if (status == Status.success &&
             movieController.movieDetail.value != null) {
           final movie = movieController.movieDetail.value!;
-          final videoUrl = formatMediaUrl(movie.videoUrl);
+          final videoUrl = movie.videoUrl;
           if (videoUrl.isNotEmpty) {
-            _qualityUrls['Auto'] = videoUrl;
-            _selectedQuality = 'Auto';
-            _initializePlayer(videoUrl);
+            _setupVideoQualitiesAndInitialize(videoUrl);
           } else {
             if (mounted) {
               setState(() {
@@ -174,6 +166,132 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
           _errorMessage = 'No video URL or episode ID provided';
         });
       }
+    }
+  }
+
+  void _setupVideoQualitiesAndInitialize(String rawUrl) {
+    final isLocal = isLocalFilePath(rawUrl);
+    if (isLocal) {
+      if (mounted) {
+        setState(() {
+          _qualityUrls.clear();
+          _qualityUrls['Offline'] = rawUrl;
+          _selectedQuality = 'Offline';
+        });
+      }
+      _initializePlayer(rawUrl);
+      return;
+    }
+
+    final playUrl = formatMediaUrl(rawUrl);
+    if (mounted) {
+      setState(() {
+        _qualityUrls.clear();
+        _qualityUrls['Auto'] = playUrl;
+        _selectedQuality = 'Auto';
+      });
+    }
+
+    _initializePlayer(playUrl);
+
+    // Asynchronously fetch/parse available qualities for network stream
+    _fetchAndParseQualities(playUrl);
+  }
+
+  Future<void> _fetchAndParseQualities(String playUrl) async {
+    try {
+      final Map<String, String> parsed = {};
+      parsed['Auto'] = playUrl;
+
+      if (playUrl.contains('.m3u8')) {
+        try {
+          final response = await http
+              .get(Uri.parse(playUrl), headers: getVideoPlayerHeaders(playUrl))
+              .timeout(const Duration(seconds: 6));
+          if (response.statusCode == 200 && response.body.contains('#EXTM3U')) {
+            final lines = response.body.split('\n');
+            for (int i = 0; i < lines.length; i++) {
+              final line = lines[i].trim();
+              if (line.startsWith('#EXT-X-STREAM-INF')) {
+                final resMatch = RegExp(
+                  r'RESOLUTION=(\d+)x(\d+)',
+                  caseSensitive: false,
+                ).firstMatch(line);
+                String label = '';
+                if (resMatch != null) {
+                  final h = int.parse(resMatch.group(2)!);
+                  final w = int.parse(resMatch.group(1)!);
+                  final height = h < w ? h : w;
+                  label = '${height}p';
+                } else {
+                  final bwMatch = RegExp(r'BANDWIDTH=(\d+)').firstMatch(line);
+                  if (bwMatch != null) {
+                    final bw = int.parse(bwMatch.group(1)!);
+                    if (bw > 2500000) {
+                      label = '1080p';
+                    } else if (bw > 1200000) {
+                      label = '720p';
+                    } else if (bw > 600000) {
+                      label = '480p';
+                    } else if (bw > 300000) {
+                      label = '360p';
+                    } else {
+                      label = '240p';
+                    }
+                  }
+                }
+
+                for (int j = i + 1; j < lines.length; j++) {
+                  final nextLine = lines[j].trim();
+                  if (nextLine.isNotEmpty && !nextLine.startsWith('#')) {
+                    final variantUrl =
+                        Uri.parse(playUrl).resolve(nextLine).toString();
+                    if (label.isNotEmpty) {
+                      parsed[label] = variantUrl;
+                    }
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ Error parsing HLS manifest: $e');
+        }
+      }
+
+      // Bunny Stream / CDN fallback patterns if sub-playlists were not discovered via manifest
+      if (parsed.length == 1 && playUrl.contains('/playlist.m3u8')) {
+        parsed['1080p'] = playUrl.replaceFirst('/playlist.m3u8', '/1080p/video.m3u8');
+        parsed['720p'] = playUrl.replaceFirst('/playlist.m3u8', '/720p/video.m3u8');
+        parsed['480p'] = playUrl.replaceFirst('/playlist.m3u8', '/480p/video.m3u8');
+        parsed['360p'] = playUrl.replaceFirst('/playlist.m3u8', '/360p/video.m3u8');
+        parsed['240p'] = playUrl.replaceFirst('/playlist.m3u8', '/240p/video.m3u8');
+      }
+
+      // Default qualities map matching web if none parsed (e.g. standard MP4 or CDN streams)
+      if (parsed.length == 1) {
+        parsed['1080p'] = playUrl;
+        parsed['720p'] = playUrl;
+        parsed['480p'] = playUrl;
+        parsed['360p'] = playUrl;
+        parsed['240p'] = playUrl;
+      }
+
+      final Map<String, String> sortedMap = {};
+      final sortedKeys = _sortQualityKeys(parsed.keys);
+      for (final key in sortedKeys) {
+        sortedMap[key] = parsed[key]!;
+      }
+
+      if (mounted) {
+        setState(() {
+          _qualityUrls.clear();
+          _qualityUrls.addAll(sortedMap);
+        });
+      }
+    } catch (e) {
+      debugPrint('⚠️ Quality parsing error: $e');
     }
   }
 
@@ -360,7 +478,11 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
     return formatMediaUrl(videoUrl);
   }
 
-  void _initializePlayer(String videoUrl) {
+  void _initializePlayer(
+    String videoUrl, {
+    Duration? seekToPosition,
+    bool autoPlay = true,
+  }) {
     try {
       final isLocal = isLocalFilePath(videoUrl);
       if (isLocal) {
@@ -407,8 +529,10 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
                   }
                 });
 
-                // Resume from initial position if provided
-                if (widget.initialPositionSeconds != null &&
+                // Resume from initial position or seekToPosition
+                if (seekToPosition != null && seekToPosition > Duration.zero) {
+                  _videoController!.seekTo(seekToPosition);
+                } else if (widget.initialPositionSeconds != null &&
                     widget.initialPositionSeconds! > 0) {
                   final startPos = Duration(
                     seconds: widget.initialPositionSeconds!,
@@ -418,10 +542,12 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
                   }
                 }
 
-                _videoController!.play();
-                _isPlaying = true;
-                _startHideControlsTimer();
-                _startProgressTimer();
+                if (autoPlay) {
+                  _videoController!.play();
+                  _isPlaying = true;
+                  _startHideControlsTimer();
+                  _startProgressTimer();
+                }
               }
             })
             .catchError((e) {
@@ -544,23 +670,28 @@ class _MoviePlayerScreenState extends State<MoviePlayerScreen> {
   }
 
   void _changeQuality(String quality) {
+    if (_selectedQuality == quality) return;
+    if (!_qualityUrls.containsKey(quality)) return;
+
+    final newUrl = _qualityUrls[quality]!;
+    final currentPosition = _position;
+    final wasPlaying = _isPlaying;
+
     setState(() {
       _selectedQuality = quality;
-      if (_qualityUrls.containsKey(quality)) {
-        final newUrl = _qualityUrls[quality]!;
-        final currentPosition = _position;
-        _videoController?.dispose();
-        _videoController = null;
-        _isInitialized = false;
-        _initializePlayer(newUrl);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_videoController != null &&
-              _videoController!.value.isInitialized) {
-            _videoController!.seekTo(currentPosition);
-          }
-        });
-      }
+      _isLoading = true;
+      _isInitialized = false;
     });
+
+    _videoController?.pause();
+    _videoController?.dispose();
+    _videoController = null;
+
+    _initializePlayer(
+      newUrl,
+      seekToPosition: currentPosition,
+      autoPlay: wasPlaying,
+    );
   }
 }
 
@@ -808,12 +939,6 @@ class _ControlsOverlay extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (qualityUrls.isNotEmpty)
-                    _QualityMenu(
-                      selectedQuality: selectedQuality,
-                      qualityUrls: qualityUrls,
-                      onQualitySelected: changeQuality,
-                    ),
                 ],
               ),
             ),
@@ -930,90 +1055,171 @@ class _ControlsOverlay extends StatelessWidget {
   }
 
   void _showQualitySheet(BuildContext context) {
+    final sortedKeys = _sortQualityKeys(qualityUrls.keys);
+    final mediaQuery = MediaQuery.of(context);
+    final maxSheetHeight = mediaQuery.size.height * 0.8;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surfaceColor,
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Quality', style: text18(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 12),
-              ...qualityUrls.keys.map(
-                (quality) => ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(quality, style: text14()),
-                  trailing: selectedQuality == quality
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: AppColors.primaryColor,
-                        )
-                      : null,
-                  onTap: () {
-                    Navigator.pop(context);
-                    changeQuality(quality);
-                  },
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: const Color(0xFF181B24),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => Container(
+        constraints: BoxConstraints(maxHeight: maxSheetHeight),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QualityMenu extends StatelessWidget {
-  final String selectedQuality;
-  final Map<String, String> qualityUrls;
-  final void Function(String) onQualitySelected;
-
-  const _QualityMenu({
-    required this.selectedQuality,
-    required this.qualityUrls,
-    required this.onQualitySelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      color: AppColors.surfaceColor,
-      initialValue: selectedQuality,
-      onSelected: onQualitySelected,
-      itemBuilder: (_) => qualityUrls.keys
-          .map(
-            (quality) => PopupMenuItem(
-              value: quality,
-              child: Row(
-                children: [
-                  Expanded(child: Text(quality, style: text13())),
-                  if (selectedQuality == quality)
-                    const Icon(
-                      Icons.check,
-                      color: AppColors.primaryColor,
-                      size: 18,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(
+                  Icons.hd_rounded,
+                  color: AppColors.primaryColor,
+                  size: 22,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Stream Quality',
+                    style: text18(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.white,
                     ),
-                ],
+                  ),
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  onPressed: () => Navigator.pop(sheetContext),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(color: Colors.white12, height: 1),
+            const SizedBox(height: 8),
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: sortedKeys.map((quality) {
+                    final isSelected = selectedQuality == quality;
+                    return ListTile(
+                      dense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      tileColor: isSelected
+                          ? AppColors.primaryColor.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      leading: Icon(
+                        isSelected
+                            ? Icons.check_circle_rounded
+                            : Icons.circle_outlined,
+                        color: isSelected
+                            ? AppColors.primaryColor
+                            : Colors.white38,
+                        size: 20,
+                      ),
+                      title: Row(
+                        children: [
+                          Text(
+                            quality,
+                            style: text14(
+                              color: isSelected ? Colors.white : Colors.white70,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          if (quality == 'Auto') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: AppColors.primaryColor.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                              child: const Text(
+                                'DEFAULT',
+                                style: TextStyle(
+                                  color: AppColors.primaryColor,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ] else if (quality == '1080p' || quality == '720p') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blueAccent.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: Colors.blueAccent.withValues(
+                                    alpha: 0.5,
+                                  ),
+                                ),
+                              ),
+                              child: const Text(
+                                'HD',
+                                style: TextStyle(
+                                  color: Colors.blueAccent,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        changeQuality(quality);
+                      },
+                    );
+                  }).toList(),
+                ),
               ),
             ),
-          )
-          .toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.44),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.white.withValues(alpha: 0.16)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.hd_rounded, color: AppColors.white, size: 16),
-            const SizedBox(width: 5),
-            Text(selectedQuality, style: text11()),
           ],
         ),
       ),
@@ -1034,4 +1240,22 @@ class _SmallAction extends StatelessWidget {
       icon: Icon(icon, color: AppColors.white, size: 21),
     );
   }
+}
+
+/// Helper function to sort video stream quality labels in sequence:
+/// Auto -> 1080p -> 720p -> 480p -> 360p -> 240p
+List<String> _sortQualityKeys(Iterable<String> keys) {
+  final list = keys.toList();
+  list.sort((a, b) {
+    if (a == 'Auto') return -1;
+    if (b == 'Auto') return 1;
+    if (a == 'Offline') return -1;
+    if (b == 'Offline') return 1;
+
+    final numA = int.tryParse(a.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+    final numB = int.tryParse(b.replaceAll(RegExp(r'[^\d]'), '')) ?? 0;
+
+    return numB.compareTo(numA); // Descending (1080p -> 720p -> 480p -> 360p -> 240p)
+  });
+  return list;
 }

@@ -797,15 +797,25 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                         final progress = downloadService.getProgress(ep.id);
 
                         if (isDownloading) {
-                          return Container(
-                            width: 26,
-                            height: 26,
-                            padding: const EdgeInsets.all(4),
-                            margin: const EdgeInsets.only(right: 6),
-                            child: CircularProgressIndicator(
-                              value: progress > 0 ? progress : null,
-                              strokeWidth: 2,
-                              color: AppColors.primaryColor,
+                          return SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  value: progress > 0 ? progress : null,
+                                  strokeWidth: 2,
+                                  color: AppColors.primaryColor,
+                                ),
+                                Text(
+                                  '${(progress * 100).toInt()}%',
+                                  style: text9(
+                                    color: AppColors.primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
                           );
                         }
@@ -856,7 +866,13 @@ class _MicroDramaDetailScreenState extends State<MicroDramaDetailScreen> {
                               remoteUrl: ep.videoUrl,
                               mediaType: DownloadMediaType.microDrama,
                               episodeNumber: ep.episodeNumber,
-                              extra: {'dramaId': drama.id},
+                              extra: {
+                                'dramaId': drama.id,
+                                'banner': drama.banner,
+                                'poster': drama.poster,
+                                'description': ep.description,
+                                'duration': ep.duration,
+                              },
                               isPremium: isEpPrem,
                             );
                           },

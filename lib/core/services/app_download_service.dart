@@ -239,9 +239,40 @@ class AppDownloadService extends GetxService {
       downloadingIds.add(id);
       downloadProgress[id] = 0.0;
 
-      final resolvedUrl = formatMediaUrl(remoteUrl);
+      String resolvedUrl = formatMediaUrl(remoteUrl);
       if (resolvedUrl.isEmpty) {
         throw Exception('Media stream URL could not be resolved');
+      }
+
+      // If HLS .m3u8 URL, resolve to direct .mp4 video file for full offline download
+      if (resolvedUrl.contains('.m3u8')) {
+        final candidates = [
+          resolvedUrl.replaceFirst('/playlist.m3u8', '/play.mp4'),
+          resolvedUrl.replaceFirst('/playlist.m3u8', '/video.mp4'),
+          resolvedUrl.replaceFirst('/playlist.m3u8', '/play_720p.mp4'),
+          resolvedUrl.replaceAll('.m3u8', '.mp4'),
+        ];
+        
+        for (final candidate in candidates) {
+          try {
+            final headResp = await _dio.head(
+              candidate,
+              options: Options(headers: getVideoPlayerHeaders(candidate)),
+            );
+            if (headResp.statusCode == 200) {
+              resolvedUrl = candidate;
+              break;
+            }
+          } catch (_) {
+            // try next
+          }
+        }
+        
+        if (resolvedUrl.contains('.m3u8')) {
+          resolvedUrl = resolvedUrl
+              .replaceFirst('/playlist.m3u8', '/play.mp4')
+              .replaceAll('.m3u8', '.mp4');
+        }
       }
 
       // Prepare local directory
