@@ -42,21 +42,21 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         ? Get.find<PlanController>()
         : Get.put(PlanController());
 
-    _planController.fetchAllPlans().then((_) {
+    // Ensure status controller is registered
+    if (!Get.isRegistered<SubscriptionStatusController>()) {
+      Get.put(SubscriptionStatusController());
+    }
+
+    // Handle web params FIRST (so planId from URL is used when fetching plans)
+    // fetchAllPlans is called inside _handleWebParams with the correct planId
+    _handleWebParams().then((_) {
+      // After web params handled, expand the selected plan card
       if (_planController.selectedPlan.value != null && mounted) {
         setState(() {
           _expandedPlanIds.add(_planController.selectedPlan.value!.id);
         });
       }
     });
-
-    // Ensure status controller is registered
-    if (!Get.isRegistered<SubscriptionStatusController>()) {
-      Get.put(SubscriptionStatusController());
-    }
-
-    // Handle incoming web parameters (Auto-Login & Payment Flow)
-    _handleWebParams();
 
     // Automatically check for pending payment / return query parameters from gateway
     _checkAndVerifyPendingPayment();
@@ -122,6 +122,16 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
         if (user != null) {
           authController.userData.value = user;
           authController.isLoggedIn.value = true;
+        }
+      }
+      // Even without token, if planId is in URL, select that plan
+      if (planId != null && planId.isNotEmpty) {
+        await _planController.fetchAllPlans(initialPlanId: planId);
+        debugPrint("📋 Plan pre-selected from URL (no token): $planId");
+      } else {
+        // No planId in URL — load all plans with default selection
+        if (_planController.allPlans.value?.plans.isEmpty ?? true) {
+          await _planController.fetchAllPlans();
         }
       }
     }
