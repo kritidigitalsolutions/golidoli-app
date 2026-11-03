@@ -186,7 +186,7 @@ class MovieModel {
           ? (json['priority'] as num).toInt()
           : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
       videoUrl: json['videoUrl'] ?? '',
-      trailerUrl: json['trailerUrl'] ?? '',
+      trailerUrl: json['trailerUrl'] ?? json['trailer_url'] ?? json['trailer'] ?? '',
       isPremium: _parseBool(
         json['isPremium'] ??
             json['is_premium'] ??

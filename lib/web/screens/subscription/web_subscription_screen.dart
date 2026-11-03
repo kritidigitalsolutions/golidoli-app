@@ -86,16 +86,22 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
 
       bool loginSuccess = await authController.websiteLogin(token);
 
-      if (loginSuccess && planId != null && planId.isNotEmpty) {
+      SubscriptionPlan? targetPlan;
+      if (planId != null && planId.isNotEmpty) {
+        await _planController.fetchAllPlans(initialPlanId: planId);
+        targetPlan = _planController.selectedPlan.value;
+      } else {
         if (_planController.allPlans.value?.plans.isEmpty ?? true) {
           await _planController.fetchAllPlans();
         }
+      }
 
+      if (loginSuccess && planId != null && planId.isNotEmpty) {
         // Auto-initiate payment if redirected from mobile app
         if (source == 'app' && merchantTxnId == null) {
-          debugPrint("🚀 Auto-initiating payment from WebSubscriptionScreen");
+          debugPrint("🚀 Auto-initiating payment from WebSubscriptionScreen for plan ${targetPlan?.name ?? planId}");
           Future.delayed(const Duration(milliseconds: 500), () {
-            _startPayment();
+            _startPayment(targetPlan: targetPlan);
           });
         }
       } else if (!loginSuccess) {
@@ -247,17 +253,17 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
     }
   }
 
-  Future<void> _startPayment() async {
+  Future<void> _startPayment({SubscriptionPlan? targetPlan}) async {
     await WebAuthGuard.requireAuth(
       context: context,
       message: 'Please sign in to purchase a subscription plan and unlock VIP content.',
       onSuccess: () {
-        _processPurchase();
+        _processPurchase(targetPlan: targetPlan);
       },
     );
   }
 
-  Future<void> _processPurchase() async {
+  Future<void> _processPurchase({SubscriptionPlan? targetPlan}) async {
     final subStatusController = _subController;
     if (subStatusController.isPremiumUser.value) {
       Get.snackbar(
@@ -270,7 +276,8 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
       return;
     }
 
-    final selectedPlan = _planController.selectedPlan.value ??
+    final selectedPlan = targetPlan ??
+        _planController.selectedPlan.value ??
         _planController.allPlans.value?.plans.firstOrNull;
 
     if (selectedPlan == null) {
@@ -283,6 +290,8 @@ class _WebSubscriptionScreenState extends State<WebSubscriptionScreen> {
       );
       return;
     }
+
+    _planController.selectPlan(selectedPlan);
 
     setState(() => _isProcessingPayment = true);
 

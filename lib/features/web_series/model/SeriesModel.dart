@@ -161,7 +161,7 @@ class Series {
         json['isComingSoon'] ?? json['is_coming_soon'] ?? json['comingSoon'],
       ),
       releaseDate: json['releaseDate'],
-      trailerUrl: json['trailerUrl'] ?? '',
+      trailerUrl: json['trailerUrl'] ?? json['trailer_url'] ?? json['trailer'] ?? '',
       isPremium: _parseBool(
         json['isPremium'] ??
             json['is_premium'] ??

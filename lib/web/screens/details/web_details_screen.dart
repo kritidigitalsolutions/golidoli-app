@@ -246,6 +246,39 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
     );
   }
 
+  void _onPlayTrailerClicked(String trailerUrl, String title) {
+    final formattedUrl = formatMediaUrl(trailerUrl);
+    if (formattedUrl.isNotEmpty) {
+      Get.toNamed(
+        WebRoutes.player,
+        arguments: {
+          'contentId': _id,
+          'episodeId': '',
+          'title': '$title (Trailer)',
+          'dramaTitle': title,
+          'poster': _drama?.poster.isNotEmpty == true
+              ? _drama!.poster
+              : (_drama?.banner.isNotEmpty == true
+                  ? _drama!.banner
+                  : (_series?.poster.isNotEmpty == true
+                      ? _series!.poster
+                      : (_movie?.poster ?? ''))),
+          'videoUrl': formattedUrl,
+          'type': 'trailer',
+          'isPremium': false,
+        },
+      );
+    } else {
+      Get.snackbar(
+        'Notice',
+        'Trailer is not available',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.black87,
+        colorText: Colors.white,
+      );
+    }
+  }
+
   Widget _buildDetailsMeta({
     required bool isMobile,
     required bool isTablet,
@@ -382,32 +415,76 @@ class _WebDetailsScreenState extends State<WebDetailsScreen> {
           ),
         const SizedBox(height: 18),
 
-        // Watch Now Button
-        ElevatedButton.icon(
-          onPressed: () => _onPlayClicked(),
-          icon: const Icon(Icons.play_arrow_rounded,
-              size: 26, color: Colors.white),
-          label: const Text(
-            'Watch Now',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryPink,
-            padding: EdgeInsets.symmetric(
-              horizontal: isMobile ? 24 : 32,
-              vertical: isMobile ? 12 : 16,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            elevation: 8,
-            shadowColor: AppColors.primaryPink.withOpacity(0.5),
-          ),
-        ),
+        // Watch Now & Watch Trailer Buttons
+        () {
+          String trailerUrl = '';
+          if (_movie != null) {
+            trailerUrl = _movie!.trailerUrl;
+          } else if (_series != null) {
+            trailerUrl = _series!.trailerUrl;
+          } else if (_drama != null) {
+            trailerUrl = _drama!.trailerUrl;
+          }
+
+          return Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _onPlayClicked(),
+                icon: const Icon(Icons.play_arrow_rounded,
+                    size: 26, color: Colors.white),
+                label: const Text(
+                  'Watch Now',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryPink,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isMobile ? 24 : 32,
+                    vertical: isMobile ? 12 : 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 8,
+                  shadowColor: AppColors.primaryPink.withValues(alpha: 0.5),
+                ),
+              ),
+              if (trailerUrl.isNotEmpty)
+                OutlinedButton.icon(
+                  onPressed: () => _onPlayTrailerClicked(trailerUrl, title),
+                  icon: const Icon(Icons.movie_filter_outlined,
+                      size: 22, color: Colors.white),
+                  label: const Text(
+                    'Watch Trailer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 20 : 28,
+                      vertical: isMobile ? 12 : 16,
+                    ),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      width: 1.5,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        }(),
       ],
     );
   }

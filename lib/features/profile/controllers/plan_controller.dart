@@ -12,7 +12,7 @@ class PlanController extends GetxController {
   // ── Actions ───────────────────────────────────────────────────────────────
   final ProfileDatasource _api = ProfileDatasource();
 
-  Future<void> fetchAllPlans() async {
+  Future<void> fetchAllPlans({String? initialPlanId}) async {
     allPlanStatus.value = Status.loading;
     final result = await _api.allSubscriptionPlans();
     if (result != null) {
@@ -21,6 +21,16 @@ class PlanController extends GetxController {
 
       // Auto-select a plan if not already selected
       if (result.plans.isNotEmpty) {
+        if (initialPlanId != null && initialPlanId.isNotEmpty) {
+          final matched = result.plans.firstWhereOrNull(
+            (p) => p.id == initialPlanId || p.planType.toLowerCase() == initialPlanId.toLowerCase(),
+          );
+          if (matched != null) {
+            selectedPlan.value = matched;
+            return;
+          }
+        }
+
         final current = selectedPlan.value;
         final stillExists = result.plans.any((p) => p.id == current?.id);
         if (!stillExists) {
