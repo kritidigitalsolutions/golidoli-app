@@ -126,20 +126,49 @@ class _HomeTabState extends State<HomeTab> {
 
   // ─── Navigation helper ──────────────────────────────────────────────────
   void _navigateToDetail(String id, {String type = 'movie'}) {
-    if (type == 'movie') {
+    final t = type.trim().toLowerCase();
+    if (t == 'movie' || t == 'movies') {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => MovieDetailsScreen(id: id)));
-    } else if (type == 'series' ||
-        type == 'web_series' ||
-        type == 'webseries') {
+    } else if (t == 'series' ||
+        t == 'web_series' ||
+        t == 'webseries' ||
+        t == 'web-series' ||
+        t == 'tvshow' ||
+        t == 'tv_show') {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => WebSeriesDetailScreen(id: id)));
-    } else {
+    } else if (t == 'microdrama' ||
+        t == 'micro_drama' ||
+        t == 'micro-drama' ||
+        t == 'drama' ||
+        t == 'shorts') {
       Navigator.of(
         context,
       ).push(MaterialPageRoute(builder: (_) => MicroDramaDetailScreen(id: id)));
+    } else {
+      // Smart Fallback if type string is ambiguous or unrecognized
+      if (_movieController.allMovies.any((m) => m.id == id)) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => MovieDetailsScreen(id: id)));
+      } else if ((_seriesController.allSeries.value?.series ?? [])
+          .any((s) => s.id == id)) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => WebSeriesDetailScreen(id: id)));
+      } else if ((_microDramaController.allMicroDrama.value?.microdramas ?? [])
+          .any((d) => d.id == id)) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => MicroDramaDetailScreen(id: id)));
+      } else {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => MovieDetailsScreen(id: id)));
+      }
     }
   }
 
@@ -969,26 +998,95 @@ class _HomeTabState extends State<HomeTab> {
       final isSeriesLoading =
           _seriesController.allSeriesStatus.value == Status.loading &&
           (_seriesController.allSeries.value?.series.isEmpty ?? true);
+      final isCatsLoading =
+          _homeController.isCategoriesLoading.value &&
+          _homeController.categories.isEmpty;
 
-      if (isMoviesLoading && isSeriesLoading) {
+      if (isMoviesLoading && isSeriesLoading && isCatsLoading) {
         return const HomeFeedShimmer(sectionCount: 3);
       }
 
-      // Popular Movies
-      List<MovieModel> popularMovies = _movieController.allMovies
-          .where((m) => m.isPopular)
+      final allMovies = _movieController.allMovies.where((m) => m.isVisible).toList();
+      final allSeries = (_seriesController.allSeries.value?.series ?? [])
+          .where((s) => s.isVisible)
           .toList();
-      if (popularMovies.isEmpty) {
-        popularMovies = List<MovieModel>.from(_movieController.allMovies)
-          ..sort((a, b) => b.rating.compareTo(a.rating));
-      }
+      final dramas = (_microDramaController.allMicroDrama.value?.microdramas ?? [])
+          .where((d) => d.isVisible)
+          .toList();
 
-      // Top Web Series
-      final allSeries = _seriesController.allSeries.value?.series ?? [];
-      List<Series> topSeries = allSeries.where((s) => s.isPopular).toList();
-      if (topSeries.isEmpty) {
-        topSeries = List<Series>.from(allSeries)
-          ..sort((a, b) => b.rating.compareTo(a.rating));
+      // Categories sorted by priority ascending (1, 2, 3...)
+      final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..where((cat) => cat.isVisible)
+        ..sort((a, b) => a.priority.compareTo(b.priority));
+
+      final List<Widget> categorySections = [];
+      for (final cat in sortedCategories) {
+        // Strictly use items from categoryContents API (/api/categories/{id})
+        final apiContent = (_homeController.categoryContents[cat.id] ?? [])
+            .where((c) => c.isVisible)
+            .toList();
+
+        if (apiContent.isEmpty) continue;
+
+        // Sort items strictly by position ascending (position 1, position 2, position 3...)
+        final sortedContent = List<ContentModel>.from(apiContent)
+          ..sort((a, b) {
+            if (a.position != b.position) {
+              if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+              if (a.position > 0) return -1;
+              if (b.position > 0) return 1;
+            }
+            if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+            return b.rating.compareTo(a.rating);
+          });
+
+        final List<Map<String, dynamic>> items = [];
+        final Set<String> seenIds = {};
+
+        for (final c in sortedContent) {
+          if (c.id.isNotEmpty && !seenIds.contains(c.id)) {
+            seenIds.add(c.id);
+            String itemType = c.type.trim();
+            if (itemType.isEmpty || itemType.toLowerCase() == 'content') {
+              if (allMovies.any((m) => m.id == c.id)) {
+                itemType = 'movie';
+              } else if (allSeries.any((s) => s.id == c.id)) {
+                itemType = 'series';
+              } else if (dramas.any((d) => d.id == c.id)) {
+                itemType = 'microdrama';
+              } else {
+                itemType = 'movie';
+              }
+            }
+            items.add({
+              'id': c.id,
+              'title': c.title,
+              'image': c.poster.isNotEmpty ? c.poster : c.banner,
+              'type': itemType,
+              'isPremium': c.isPremium,
+              'priority': c.priority,
+              'position': c.position,
+              'rating': c.rating.toDouble(),
+            });
+          }
+        }
+
+        if (items.isNotEmpty) {
+          categorySections.add(
+            _buildMediaSection(
+              title: cat.name,
+              items: items,
+              onViewAll: () => Get.toNamed(
+                AppRoutes.movieListing,
+                arguments: {
+                  'category': cat.name,
+                  'categoryId': cat.id,
+                  'categorySlug': cat.slug,
+                },
+              ),
+            ),
+          );
+        }
       }
 
       return Column(
@@ -997,30 +1095,8 @@ class _HomeTabState extends State<HomeTab> {
           // Continue Watching
           _buildContinueWatchingSection(),
 
-          // Popular Movies
-          if (popularMovies.isNotEmpty)
-            _buildMediaSection(
-              title: 'Popular Movies',
-              items: popularMovies.map((m) => _toMap(m, 'movie')).toList(),
-              onViewAll: () => Get.toNamed(
-                AppRoutes.movieListing,
-                arguments: {'title': 'Popular Movies', 'category': 'All'},
-              ),
-            ),
-
-          // Top Web Series
-          if (topSeries.isNotEmpty)
-            _buildMediaSection(
-              title: 'Top Web Series',
-              items: topSeries.map((s) => _toMap(s, 'series')).toList(),
-              onViewAll: () => Get.toNamed(
-                AppRoutes.webSeries,
-                arguments: {'title': 'Top Web Series', 'category': 'All'},
-              ),
-            ),
-
-          // Trending Micro Dramas
-          _buildMicroDramaHorizontalSection(),
+          // Dynamic Category Sections ordered by Priority
+          ...categorySections,
         ],
       );
     });
@@ -1043,23 +1119,32 @@ class _HomeTabState extends State<HomeTab> {
         );
       }
 
-      final allMovies = _movieController.allMovies;
+      final allMovies = _movieController.allMovies.where((m) => m.isVisible).toList();
       // Sort categories by priority ascending (priority 1, 2, 3...)
       final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..where((cat) => cat.isVisible)
         ..sort((a, b) => a.priority.compareTo(b.priority));
 
       final List<Widget> categorySections = [];
       for (final cat in sortedCategories) {
-        // 1. From categoryContents API
+        // Strictly from categoryContents API
         final apiContent = _homeController.categoryContents[cat.id] ?? [];
         final apiMovies = apiContent
-            .where((c) => _isMovieContent(c, allMovies))
+            .where((c) => c.isVisible && _isMovieContent(c, allMovies))
             .toList();
 
-        // 2. From allMovies (local match)
-        final matchedMovies = allMovies
-            .where((m) => _matchesMovieCategory(m, cat))
-            .toList();
+        if (apiMovies.isEmpty) continue;
+
+        // Sort movies strictly by position ascending
+        apiMovies.sort((a, b) {
+          if (a.position != b.position) {
+            if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+            if (a.position > 0) return -1;
+            if (b.position > 0) return 1;
+          }
+          if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+          return b.rating.compareTo(a.rating);
+        });
 
         final List<Map<String, dynamic>> items = [];
         final Set<String> seenIds = {};
@@ -1074,37 +1159,13 @@ class _HomeTabState extends State<HomeTab> {
               'type': 'movie',
               'isPremium': c.isPremium,
               'priority': c.priority,
+              'position': c.position,
               'rating': c.rating.toDouble(),
             });
           }
         }
 
-        for (final m in matchedMovies) {
-          if (m.id.isNotEmpty && !seenIds.contains(m.id)) {
-            seenIds.add(m.id);
-            items.add({
-              'id': m.id,
-              'title': m.title,
-              'image': m.poster.isNotEmpty ? m.poster : m.banner,
-              'type': 'movie',
-              'isPremium': m.isPremium,
-              'priority': m.priority,
-              'rating': m.rating,
-            });
-          }
-        }
-
         if (items.isNotEmpty) {
-          // Sort movies by priority, then rating
-          items.sort((a, b) {
-            final pA = a['priority'] as int? ?? 0;
-            final pB = b['priority'] as int? ?? 0;
-            if (pA != pB) return pA.compareTo(pB);
-            final rA = (a['rating'] as num?)?.toDouble() ?? 0.0;
-            final rB = (b['rating'] as num?)?.toDouble() ?? 0.0;
-            return rB.compareTo(rA);
-          });
-
           categorySections.add(
             _buildMediaSection(
               title: cat.name,
@@ -1125,6 +1186,11 @@ class _HomeTabState extends State<HomeTab> {
       if (categorySections.isEmpty && allMovies.isNotEmpty) {
         final sortedAllMovies = List<MovieModel>.from(allMovies)
           ..sort((a, b) {
+            if (a.position != b.position) {
+              if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+              if (a.position > 0) return -1;
+              if (b.position > 0) return 1;
+            }
             if (a.priority != b.priority) {
               return a.priority.compareTo(b.priority);
             }
@@ -1170,23 +1236,34 @@ class _HomeTabState extends State<HomeTab> {
         );
       }
 
-      final allSeries = _seriesController.allSeries.value?.series ?? [];
+      final allSeries = (_seriesController.allSeries.value?.series ?? [])
+          .where((s) => s.isVisible)
+          .toList();
       // Sort categories by priority ascending (priority 1, 2, 3...)
       final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..where((cat) => cat.isVisible)
         ..sort((a, b) => a.priority.compareTo(b.priority));
 
       final List<Widget> categorySections = [];
       for (final cat in sortedCategories) {
-        // 1. From categoryContents API
+        // Strictly from categoryContents API
         final apiContent = _homeController.categoryContents[cat.id] ?? [];
         final apiSeries = apiContent
-            .where((c) => _isSeriesContent(c, allSeries))
+            .where((c) => c.isVisible && _isSeriesContent(c, allSeries))
             .toList();
 
-        // 2. From allSeries (local match)
-        final matchedSeries = allSeries
-            .where((s) => _matchesSeriesCategory(s, cat))
-            .toList();
+        if (apiSeries.isEmpty) continue;
+
+        // Sort series strictly by position ascending
+        apiSeries.sort((a, b) {
+          if (a.position != b.position) {
+            if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+            if (a.position > 0) return -1;
+            if (b.position > 0) return 1;
+          }
+          if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+          return b.rating.compareTo(a.rating);
+        });
 
         final List<Map<String, dynamic>> items = [];
         final Set<String> seenIds = {};
@@ -1201,37 +1278,13 @@ class _HomeTabState extends State<HomeTab> {
               'type': 'series',
               'isPremium': c.isPremium,
               'priority': c.priority,
+              'position': c.position,
               'rating': c.rating.toDouble(),
             });
           }
         }
 
-        for (final s in matchedSeries) {
-          if (s.id.isNotEmpty && !seenIds.contains(s.id)) {
-            seenIds.add(s.id);
-            items.add({
-              'id': s.id,
-              'title': s.title,
-              'image': s.poster.isNotEmpty ? s.poster : s.banner,
-              'type': 'series',
-              'isPremium': s.isPremium,
-              'priority': s.priority,
-              'rating': s.rating,
-            });
-          }
-        }
-
         if (items.isNotEmpty) {
-          // Sort series by priority, then rating
-          items.sort((a, b) {
-            final pA = a['priority'] as int? ?? 0;
-            final pB = b['priority'] as int? ?? 0;
-            if (pA != pB) return pA.compareTo(pB);
-            final rA = (a['rating'] as num?)?.toDouble() ?? 0.0;
-            final rB = (b['rating'] as num?)?.toDouble() ?? 0.0;
-            return rB.compareTo(rA);
-          });
-
           categorySections.add(
             _buildMediaSection(
               title: cat.name,
@@ -1252,6 +1305,11 @@ class _HomeTabState extends State<HomeTab> {
       if (categorySections.isEmpty && allSeries.isNotEmpty) {
         final sortedAllSeries = List<Series>.from(allSeries)
           ..sort((a, b) {
+            if (a.position != b.position) {
+              if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+              if (a.position > 0) return -1;
+              if (a.position < 0) return 1;
+            }
             if (a.priority != b.priority) {
               return a.priority.compareTo(b.priority);
             }
@@ -1298,24 +1356,34 @@ class _HomeTabState extends State<HomeTab> {
         );
       }
 
-      final dramas =
-          _microDramaController.allMicroDrama.value?.microdramas ?? [];
+      final dramas = (_microDramaController.allMicroDrama.value?.microdramas ?? [])
+          .where((d) => d.isVisible)
+          .toList();
       // Sort categories by priority ascending (priority 1, 2, 3...)
       final sortedCategories = List<CategoryModel>.from(_homeController.categories)
+        ..where((cat) => cat.isVisible)
         ..sort((a, b) => a.priority.compareTo(b.priority));
 
       final List<Widget> categorySections = [];
       for (final cat in sortedCategories) {
-        // 1. From categoryContents API
+        // Strictly from categoryContents API
         final apiContent = _homeController.categoryContents[cat.id] ?? [];
         final apiDramas = apiContent
-            .where((c) => _isDramaContent(c, dramas))
+            .where((c) => c.isVisible && _isDramaContent(c, dramas))
             .toList();
 
-        // 2. From allMicroDrama (local match)
-        final matchedDramas = dramas
-            .where((d) => _matchesDramaCategory(d, cat))
-            .toList();
+        if (apiDramas.isEmpty) continue;
+
+        // Sort dramas strictly by position ascending
+        apiDramas.sort((a, b) {
+          if (a.position != b.position) {
+            if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+            if (a.position > 0) return -1;
+            if (a.position < 0) return 1;
+          }
+          if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+          return b.rating.compareTo(a.rating);
+        });
 
         final List<Map<String, dynamic>> items = [];
         final Set<String> seenIds = {};
@@ -1330,37 +1398,13 @@ class _HomeTabState extends State<HomeTab> {
               'type': 'microdrama',
               'isPremium': c.isPremium,
               'priority': c.priority,
+              'position': c.position,
               'rating': c.rating.toDouble(),
             });
           }
         }
 
-        for (final d in matchedDramas) {
-          if (d.id.isNotEmpty && !seenIds.contains(d.id)) {
-            seenIds.add(d.id);
-            items.add({
-              'id': d.id,
-              'title': d.title,
-              'image': d.poster.isNotEmpty ? d.poster : d.banner,
-              'type': 'microdrama',
-              'isPremium': d.isPremium,
-              'priority': d.priority,
-              'rating': d.rating.toDouble(),
-            });
-          }
-        }
-
         if (items.isNotEmpty) {
-          // Sort dramas by priority, then rating
-          items.sort((a, b) {
-            final pA = a['priority'] as int? ?? 0;
-            final pB = b['priority'] as int? ?? 0;
-            if (pA != pB) return pA.compareTo(pB);
-            final rA = (a['rating'] as num?)?.toDouble() ?? 0.0;
-            final rB = (b['rating'] as num?)?.toDouble() ?? 0.0;
-            return rB.compareTo(rA);
-          });
-
           categorySections.add(
             _buildMediaSection(
               title: cat.name,
@@ -1381,6 +1425,11 @@ class _HomeTabState extends State<HomeTab> {
       if (categorySections.isEmpty && dramas.isNotEmpty) {
         final sortedDramas = List<Microdrama>.from(dramas)
           ..sort((a, b) {
+            if (a.position != b.position) {
+              if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+              if (a.position > 0) return -1;
+              if (b.position > 0) return 1;
+            }
             if (a.priority != b.priority) {
               return a.priority.compareTo(b.priority);
             }
@@ -1398,6 +1447,8 @@ class _HomeTabState extends State<HomeTab> {
                     'image': d.poster.isNotEmpty ? d.poster : d.banner,
                     'type': 'microdrama',
                     'isPremium': d.isPremium,
+                    'position': d.position,
+                    'priority': d.priority,
                   },
                 )
                 .toList(),

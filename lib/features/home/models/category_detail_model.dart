@@ -10,12 +10,29 @@ class CategoryContentResponse {
   });
 
   factory CategoryContentResponse.fromJson(Map<String, dynamic> json) {
+    final rawList = json['data'] ?? json['content'];
+    final list = (rawList as List<dynamic>? ?? [])
+        .map((e) => ContentModel.fromJson(e))
+        .where((c) => c.isVisible)
+        .toList();
+
+    // Sort contents by position (position 1, position 2...), then priority, then rating
+    list.sort((a, b) {
+      if (a.position != b.position) {
+        if (a.position > 0 && b.position > 0) {
+          return a.position.compareTo(b.position);
+        }
+        if (a.position > 0) return -1;
+        if (b.position > 0) return 1;
+      }
+      if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+      return b.rating.compareTo(a.rating);
+    });
+
     return CategoryContentResponse(
       success: json['success'] ?? false,
       category: Category.fromJson(json['category'] ?? {}),
-      content: (json['content'] as List<dynamic>? ?? [])
-          .map((e) => ContentModel.fromJson(e))
-          .toList(),
+      content: list,
     );
   }
 
@@ -134,6 +151,7 @@ class ContentModel {
   final bool isComingSoon;
   final String? releaseDate;
   final int priority;
+  final int position;
   final bool isPremium;
   final num rating;
   final List<dynamic> cast;
@@ -144,7 +162,10 @@ class ContentModel {
   final String updatedAt;
   final String slug;
   final bool isPublished;
+  final bool isHide;
   final String type;
+
+  bool get isVisible => !isHide;
 
   const ContentModel({
     required this.id,
@@ -159,6 +180,7 @@ class ContentModel {
     required this.isComingSoon,
     this.releaseDate,
     required this.priority,
+    this.position = 0,
     required this.isPremium,
     required this.rating,
     required this.cast,
@@ -169,6 +191,7 @@ class ContentModel {
     required this.updatedAt,
     required this.slug,
     required this.isPublished,
+    this.isHide = false,
     required this.type,
   });
 
@@ -203,6 +226,9 @@ class ContentModel {
       priority: (json['priority'] is num)
           ? (json['priority'] as num).toInt()
           : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
+      position: (json['position'] is num)
+          ? (json['position'] as num).toInt()
+          : int.tryParse(json['position']?.toString() ?? '0') ?? 0,
       isPremium: json['isPremium'] == true ||
           json['is_premium'] == true ||
           json['premium'] == true,
@@ -227,7 +253,10 @@ class ContentModel {
       isPublished: json['isPublished'] == true ||
           json['is_published'] == true ||
           json['published'] == true,
-      type: (json['type'] ?? '').toString(),
+      isHide: json['isHide'] == true ||
+          json['is_hide'] == true ||
+          json['hide'] == true,
+      type: (json['contentType'] ?? json['type'] ?? '').toString(),
     );
   }
 
@@ -245,6 +274,7 @@ class ContentModel {
       'isComingSoon': isComingSoon,
       'releaseDate': releaseDate,
       'priority': priority,
+      'position': position,
       'isPremium': isPremium,
       'rating': rating,
       'cast': cast,
@@ -255,6 +285,7 @@ class ContentModel {
       'updatedAt': updatedAt,
       'slug': slug,
       'isPublished': isPublished,
+      'isHide': isHide,
       'type': type,
     };
   }

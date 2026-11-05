@@ -6,12 +6,17 @@ class HomeBannerResponse {
   HomeBannerResponse({this.success, this.count, this.data});
 
   factory HomeBannerResponse.fromJson(Map<String, dynamic> json) {
+    final rawData = json['data'] as List?;
+    final items = rawData != null
+        ? rawData
+            .map((i) => HomeBannerItem.fromJson(i))
+            .where((b) => b.isVisible)
+            .toList()
+        : <HomeBannerItem>[];
     return HomeBannerResponse(
       success: json['success'],
       count: json['count'],
-      data: json['data'] != null
-          ? (json['data'] as List).map((i) => HomeBannerItem.fromJson(i)).toList()
-          : [],
+      data: items,
     );
   }
 
@@ -31,8 +36,16 @@ class HomeBannerItem {
   final String? contentType;
   final int? order;
   final bool? isActive;
+  final bool? isHide;
   final HomeBannerContent? content;
   final String? createdAt;
+
+  bool get isVisible {
+    if (isActive == false) return false;
+    if (isHide == true) return false;
+    if (content != null && content!.isVisible == false) return false;
+    return true;
+  }
 
   HomeBannerItem({
     this.id,
@@ -41,6 +54,7 @@ class HomeBannerItem {
     this.contentType,
     this.order,
     this.isActive,
+    this.isHide,
     this.content,
     this.createdAt,
   });
@@ -53,6 +67,7 @@ class HomeBannerItem {
       contentType: json['contentType'],
       order: json['order'],
       isActive: json['isActive'],
+      isHide: json['isHide'] == true || json['is_hide'] == true || json['hide'] == true,
       content: json['contentId'] is Map<String, dynamic>
           ? HomeBannerContent.fromJson(json['contentId'])
           : null,
@@ -68,6 +83,7 @@ class HomeBannerItem {
       'contentType': contentType,
       'order': order,
       'isActive': isActive,
+      'isHide': isHide,
       'contentId': content?.toJson(),
       'createdAt': createdAt,
     };
@@ -87,6 +103,9 @@ class HomeBannerContent {
   final String? videoUrl;
   final String? type;
   final String? modelName;
+  final bool? isHide;
+
+  bool get isVisible => isHide != true;
 
   HomeBannerContent({
     this.id,
@@ -101,6 +120,7 @@ class HomeBannerContent {
     this.videoUrl,
     this.type,
     this.modelName,
+    this.isHide,
   });
 
   factory HomeBannerContent.fromJson(Map<String, dynamic> json) {
@@ -117,6 +137,7 @@ class HomeBannerContent {
       videoUrl: json['videoUrl'],
       type: json['type'],
       modelName: json['modelName'],
+      isHide: json['isHide'] == true || json['is_hide'] == true || json['hide'] == true,
     );
   }
 

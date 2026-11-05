@@ -170,6 +170,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late final HomeController controller;
+  DateTime? _lastPressedAt;
 
   @override
   void initState() {
@@ -211,22 +212,51 @@ class _MyHomePageState extends State<MyHomePage> {
   Widget build(BuildContext context) {
     final pages = _getPages();
 
-    return Obx(
-      () => Scaffold(
-        backgroundColor: AppColors.backgroundColor,
-        bottomNavigationBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const AudioMiniPlayer(),
-            BottomNavBar(
-              currentIndex: controller.selectedIndex.value,
-              onTap: controller.changeTab,
-            ),
-          ],
-        ),
-        body: IndexedStack(
-          index: controller.selectedIndex.value,
-          children: pages,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+
+        if (controller.selectedIndex.value != 0) {
+          controller.changeTab(0);
+        } else {
+          final now = DateTime.now();
+          if (_lastPressedAt == null ||
+              now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
+            _lastPressedAt = now;
+            Get.rawSnackbar(
+              messageText: const Text(
+                'Press back again to exit',
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
+              duration: const Duration(seconds: 2),
+              backgroundColor: AppColors.surfaceColor,
+              snackPosition: SnackPosition.BOTTOM,
+              margin: const EdgeInsets.all(16),
+              borderRadius: 8,
+            );
+          } else {
+            SystemNavigator.pop();
+          }
+        }
+      },
+      child: Obx(
+        () => Scaffold(
+          backgroundColor: AppColors.backgroundColor,
+          bottomNavigationBar: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const AudioMiniPlayer(),
+              BottomNavBar(
+                currentIndex: controller.selectedIndex.value,
+                onTap: controller.changeTab,
+              ),
+            ],
+          ),
+          body: IndexedStack(
+            index: controller.selectedIndex.value,
+            children: pages,
+          ),
         ),
       ),
     );

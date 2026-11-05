@@ -33,6 +33,7 @@ class MovieModel {
   final int dislikes;
   final bool is18plus;
   final bool isHide;
+  final int position;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String slug;
@@ -61,6 +62,7 @@ class MovieModel {
     this.dislikes = 0,
     this.is18plus = false,
     this.isHide = false,
+    this.position = 0,
     required this.createdAt,
     required this.updatedAt,
     required this.slug,
@@ -218,6 +220,9 @@ class MovieModel {
         json['is18plus'] ?? json['is_18plus'] ?? json['18plus'],
       ),
       isHide: _parseBool(json['isHide'] ?? json['is_hide'] ?? json['hide']),
+      position: (json['position'] is num)
+          ? (json['position'] as num).toInt()
+          : int.tryParse(json['position']?.toString() ?? '0') ?? 0,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),

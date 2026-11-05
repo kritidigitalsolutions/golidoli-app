@@ -52,7 +52,8 @@ class HomeController extends GetxController {
       if (response != null &&
           response.data != null &&
           response.data!.isNotEmpty) {
-        banners.assignAll(response.data!);
+        final visibleBanners = response.data!.where((b) => b.isVisible).toList();
+        banners.assignAll(visibleBanners);
       }
     } catch (e) {
       debugPrint("Error fetching home banners: $e");
@@ -66,12 +67,14 @@ class HomeController extends GetxController {
       isCategoriesLoading.value = true;
       final response = await _homeDatasource.allCategories();
       if (response != null && response.categories.isNotEmpty) {
-        // Active categories sorted by priority (lowest number = highest priority)
+        // Active and visible categories sorted by priority (lowest number = highest priority)
         var topCats = response.categories
-            .where((cat) => cat.isActive)
+            .where((cat) => cat.isVisible)
             .toList();
         if (topCats.isEmpty) {
-          topCats = List<CategoryModel>.from(response.categories);
+          topCats = List<CategoryModel>.from(response.categories)
+              .where((cat) => cat.isVisible)
+              .toList();
         }
         topCats.sort((a, b) => a.priority.compareTo(b.priority));
         categories.assignAll(topCats);
@@ -107,7 +110,17 @@ class HomeController extends GetxController {
         size: 20,
       );
       if (response != null && response.content.isNotEmpty) {
-        categoryContents[categoryId] = response.content;
+        final visibleList = response.content.where((c) => c.isVisible).toList();
+        visibleList.sort((a, b) {
+          if (a.position != b.position) {
+            if (a.position > 0 && b.position > 0) return a.position.compareTo(b.position);
+            if (a.position > 0) return -1;
+            if (b.position > 0) return 1;
+          }
+          if (a.priority != b.priority) return a.priority.compareTo(b.priority);
+          return b.rating.compareTo(a.rating);
+        });
+        categoryContents[categoryId] = visibleList;
       }
     } catch (e) {
       debugPrint("Error fetching category content for $categoryId: $e");

@@ -23,6 +23,7 @@ class MicrodramasResponse {
       success: json['success'] ?? false,
       microdramas: (json['microdramas'] as List<dynamic>? ?? [])
           .map((e) => Microdrama.fromJson(e))
+          .where((d) => d.isVisible)
           .toList(),
     );
   }
@@ -63,6 +64,7 @@ class Microdrama {
   final int totalViews;
   final bool isPremium;
   final int priority;
+  final int position;
   final String status;
   final List<dynamic> cast;
   final List<dynamic> category;
@@ -71,6 +73,9 @@ class Microdrama {
   final String slug;
   final int v;
   final bool isPublished;
+  final bool isHide;
+
+  bool get isVisible => !isHide;
 
   const Microdrama({
     required this.id,
@@ -90,6 +95,7 @@ class Microdrama {
     required this.totalViews,
     required this.isPremium,
     required this.priority,
+    this.position = 0,
     required this.status,
     required this.cast,
     required this.category,
@@ -98,6 +104,7 @@ class Microdrama {
     required this.slug,
     required this.v,
     required this.isPublished,
+    this.isHide = false,
   });
 
   factory Microdrama.fromJson(Map<String, dynamic> json) {
@@ -145,6 +152,9 @@ class Microdrama {
       priority: (json['priority'] is num)
           ? (json['priority'] as num).toInt()
           : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
+      position: (json['position'] is num)
+          ? (json['position'] as num).toInt()
+          : int.tryParse(json['position']?.toString() ?? '0') ?? 0,
       status: json['status']?.toString() ?? '',
       cast: parseDynamicList(json['cast']),
       category: parseDynamicList(json['category'], json['categories']),
@@ -155,6 +165,7 @@ class Microdrama {
       isPublished: _parseBool(
         json['isPublished'] ?? json['is_published'] ?? json['published'],
       ),
+      isHide: _parseBool(json['isHide'] ?? json['is_hide'] ?? json['hide']),
     );
   }
 

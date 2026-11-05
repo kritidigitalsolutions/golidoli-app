@@ -177,7 +177,9 @@ class _DiscoverTabState extends State<DiscoverTab> {
 
   Widget _buildSearchResults() {
     final status = _contentController.searchContentStatus.value;
-    final items = _contentController.searchContents.value?.content ?? [];
+    final items = (_contentController.searchContents.value?.content ?? [])
+        .where((i) => i.isVisible)
+        .toList();
 
     if (status == Status.loading) {
       return Padding(

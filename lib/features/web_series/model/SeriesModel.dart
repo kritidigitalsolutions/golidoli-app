@@ -65,6 +65,7 @@ class Series {
   final int dislikes;
   final bool is18plus;
   final bool isHide;
+  final int position;
   final int totalSeasons;
   final int totalEpisodes;
   final String createdAt;
@@ -96,6 +97,7 @@ class Series {
     this.dislikes = 0,
     this.is18plus = false,
     this.isHide = false,
+    this.position = 0,
     required this.totalSeasons,
     required this.totalEpisodes,
     required this.createdAt,
@@ -193,6 +195,9 @@ class Series {
         json['is18plus'] ?? json['is_18plus'] ?? json['18plus'],
       ),
       isHide: _parseBool(json['isHide'] ?? json['is_hide'] ?? json['hide']),
+      position: (json['position'] is num)
+          ? (json['position'] as num).toInt()
+          : int.tryParse(json['position']?.toString() ?? '0') ?? 0,
       totalSeasons: json['totalSeasons'] ?? 0,
       totalEpisodes: json['totalEpisodes'] ?? 0,
       createdAt: json['createdAt'] ?? '',

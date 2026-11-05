@@ -27,6 +27,7 @@ class HomeContentResponse {
       microdramasEpisodesCount: json['microdramasEpisodesCount'] ?? 0,
       content: (json['content'] as List<dynamic>? ?? [])
           .map((e) => HomeContent.fromJson(e))
+          .where((c) => c.isVisible)
           .toList(),
     );
   }
@@ -80,6 +81,7 @@ class HomeContent {
   final bool isComingSoon;
   final bool isPremium;
   final int priority;
+  final int position;
   final num rating;
   final List<dynamic> cast;
   final List<String> category;
@@ -89,8 +91,11 @@ class HomeContent {
   final String updatedAt;
   final String slug;
   final bool isPublished;
+  final bool isHide;
   final String type;
   final bool isTrending;
+
+  bool get isVisible => !isHide;
 
   // Series
   final int? totalSeasons;
@@ -120,6 +125,7 @@ class HomeContent {
     required this.isComingSoon,
     required this.isPremium,
     required this.priority,
+    this.position = 0,
     required this.rating,
     required this.cast,
     required this.category,
@@ -129,6 +135,7 @@ class HomeContent {
     required this.updatedAt,
     required this.slug,
     required this.isPublished,
+    this.isHide = false,
     required this.type,
     required this.isTrending,
     this.totalSeasons,
@@ -155,6 +162,9 @@ class HomeContent {
       isComingSoon: json['isComingSoon'] ?? false,
       isPremium: json['isPremium'] ?? false,
       priority: json['priority'] ?? 0,
+      position: (json['position'] is num)
+          ? (json['position'] as num).toInt()
+          : int.tryParse(json['position']?.toString() ?? '0') ?? 0,
       rating: json['rating'] ?? 0,
       cast: List<dynamic>.from(json['cast'] ?? []),
       category: List<String>.from(json['category'] ?? []),
@@ -172,7 +182,10 @@ class HomeContent {
       updatedAt: json['updatedAt'] ?? '',
       slug: json['slug'] ?? '',
       isPublished: json['isPublished'] ?? false,
-      type: json['type'] ?? '',
+      isHide: json['isHide'] == true ||
+          json['is_hide'] == true ||
+          json['hide'] == true,
+      type: (json['contentType'] ?? json['type'] ?? '').toString(),
       isTrending: json['isTrending'] ?? false,
       totalSeasons: json['totalSeasons'],
       totalEpisodes: json['totalEpisodes'],

@@ -9,11 +9,14 @@ class CategoriesResponse {
 
   factory CategoriesResponse.fromJson(Map<String, dynamic> json) {
     final rawList = json['categories'] ?? json['data'];
+    final list = (rawList as List<dynamic>? ?? [])
+        .map((e) => CategoryModel.fromJson(e))
+        .where((cat) => cat.isVisible)
+        .toList();
+    list.sort((a, b) => a.priority.compareTo(b.priority));
     return CategoriesResponse(
       success: json['success'] ?? false,
-      categories: (rawList as List<dynamic>? ?? [])
-          .map((e) => CategoryModel.fromJson(e))
-          .toList(),
+      categories: list,
     );
   }
 
@@ -41,9 +44,12 @@ class CategoryModel {
   final String slug;
   final int priority;
   final bool isActive;
+  final bool isHide;
   final String createdAt;
   final String updatedAt;
   final int version;
+
+  bool get isVisible => isActive && !isHide;
 
   const CategoryModel({
     required this.id,
@@ -51,6 +57,7 @@ class CategoryModel {
     required this.slug,
     required this.priority,
     required this.isActive,
+    this.isHide = false,
     required this.createdAt,
     required this.updatedAt,
     required this.version,
@@ -63,6 +70,9 @@ class CategoryModel {
         : (active == true ||
             active == 1 ||
             active.toString().toLowerCase() == 'true');
+    final bool isHideParsed = json['isHide'] == true ||
+        json['is_hide'] == true ||
+        json['hide'] == true;
 
     return CategoryModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
@@ -72,6 +82,7 @@ class CategoryModel {
           ? (json['priority'] as num).toInt()
           : int.tryParse(json['priority']?.toString() ?? '0') ?? 0,
       isActive: isActiveParsed,
+      isHide: isHideParsed,
       createdAt: (json['createdAt'] ?? '').toString(),
       updatedAt: (json['updatedAt'] ?? '').toString(),
       version: (json['__v'] is num)
